@@ -14,6 +14,7 @@ const normalizedScriptDir = process.platform === "win32" && SCRIPT_DIR.startsWit
   : SCRIPT_DIR;
 const GUIDES_DIR = path.resolve(normalizedScriptDir, "..", "guides");
 const TEMPLATES_DIR = path.resolve(normalizedScriptDir, "..", "templates");
+const RECOMMENDATIONS_PATH = path.resolve(normalizedScriptDir, "..", "recommendations.json");
 
 function getGuideFiles() {
   try {
@@ -171,6 +172,62 @@ server.tool(
     } catch {
       return { content: [{ type: "text", text: "Template not found." }] };
     }
+  }
+);
+
+// Tool: Get project setup recommendations
+server.tool(
+  "get_project_setup_recommendations",
+  "Get recommended tools and setup steps for a new coding project. Always call this when initializing or setting up a new project to ensure critical tools like beads are configured.",
+  {
+    project_type: z.string().optional().describe("Type of project (e.g., 'unity', 'web', 'firebase', 'general'). Helps surface conditional recommendations. Omit for general recommendations."),
+  },
+  async ({ project_type }) => {
+    let recommendations;
+    try {
+      recommendations = JSON.parse(fs.readFileSync(RECOMMENDATIONS_PATH, "utf-8"));
+    } catch {
+      return { content: [{ type: "text", text: "Could not load recommendations.json" }] };
+    }
+
+    const setup = recommendations.project_setup;
+    const sections = [];
+
+    // Always-recommended tools
+    if (setup.always?.length > 0) {
+      const items = setup.always.map(r => {
+        const commands = r.setup_commands ? `\n  Setup: \`${r.setup_commands.join(" && ")}\`` : "";
+        return `- **[${r.priority.toUpperCase()}] ${r.tool}** — ${r.reason}${commands}\n  When: ${r.when}\n  Guide: \`read_guide("${r.guide}")\``;
+      }).join("\n\n");
+      sections.push(`## Always Required\n\n${items}`);
+    }
+
+    // Conditional tools matching project type
+    if (project_type && setup.conditional?.length > 0) {
+      const typeLower = project_type.toLowerCase();
+      const matching = setup.conditional.filter(r => typeLower.includes(r.condition));
+      if (matching.length > 0) {
+        const items = matching.map(r =>
+          `- **[${r.priority.toUpperCase()}] ${r.tool}** — ${r.reason}\n  Guide: \`read_guide("${r.guide}")\``
+        ).join("\n\n");
+        sections.push(`## Recommended for ${project_type} Projects\n\n${items}`);
+      }
+    }
+
+    // Always show other conditional tools as "also available"
+    if (setup.conditional?.length > 0) {
+      const typeLower = (project_type || "").toLowerCase();
+      const others = setup.conditional.filter(r => !typeLower || !typeLower.includes(r.condition));
+      if (others.length > 0) {
+        const items = others.map(r =>
+          `- **${r.tool}** (for ${r.condition} projects) — ${r.reason}`
+        ).join("\n");
+        sections.push(`## Also Available\n\n${items}`);
+      }
+    }
+
+    const output = `# Project Setup Recommendations\n\n${sections.join("\n\n---\n\n")}`;
+    return { content: [{ type: "text", text: output }] };
   }
 );
 

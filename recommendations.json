@@ -1,0 +1,38 @@
+{
+  "project_setup": {
+    "description": "Recommendations that should be surfaced when setting up or initializing a new coding project.",
+    "always": [
+      {
+        "tool": "beads",
+        "guide": "beads",
+        "reason": "Beads should always be used for any complex project to track issues, tasks, and dependencies. It provides structured, dependency-aware task management purpose-built for AI-assisted workflows. Run `bd init` in the project root and `bd setup claude` to wire up Claude Code hooks.",
+        "priority": "required",
+        "setup_commands": ["bd init --quiet", "bd setup claude"],
+        "when": "Any project with multiple tasks, features, or bugs to track. If the project is non-trivial, use beads."
+      }
+    ],
+    "conditional": [
+      {
+        "tool": "coplay-mcp-server",
+        "guide": "coplay-mcp-server",
+        "condition": "unity",
+        "reason": "Unity projects should have the CoPlay MCP server configured for direct editor integration.",
+        "priority": "required"
+      },
+      {
+        "tool": "firebase-mcp-server",
+        "guide": "firebase-mcp-server",
+        "condition": "firebase",
+        "reason": "Projects using Firebase should have the Firebase MCP server configured.",
+        "priority": "recommended"
+      },
+      {
+        "tool": "claude-preview-mcp-server",
+        "guide": "claude-preview-mcp-server",
+        "condition": "web",
+        "reason": "Web projects should set up a .claude/launch.json for dev server previews.",
+        "priority": "recommended"
+      }
+    ]
+  }
+}
