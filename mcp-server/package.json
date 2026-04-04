@@ -1,0 +1,16 @@
+{
+  "name": "alexandria-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for accessing Project Alexandria tooling documentation",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "alexandria-mcp": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  }
+}
