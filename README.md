@@ -92,6 +92,7 @@ In your first conversation after installing, ask Claude to call `get_onboarding`
 | [CoPlay MCP Server](guides/coplay-mcp-server.md) | Unity editor integration via MCP |
 | [Git MCP Server](guides/git-mcp-server.md) | Git operations via MCP |
 | [GitHub MCP Server](guides/github-mcp-server.md) | GitHub API access via MCP |
+| [GitHub CLI](guides/github-cli.md) | GitHub CLI (gh) for terminal-based GitHub operations |
 | [Memory MCP Server](guides/memory-mcp-server.md) | Persistent knowledge graph memory |
 | [Fetch MCP Server](guides/fetch-mcp-server.md) | Web content fetching via MCP |
 | [Firebase MCP Server](guides/firebase-mcp-server.md) | Firebase project management via MCP |
