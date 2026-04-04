@@ -15,6 +15,7 @@ const normalizedScriptDir = process.platform === "win32" && SCRIPT_DIR.startsWit
 const GUIDES_DIR = path.resolve(normalizedScriptDir, "..", "guides");
 const TEMPLATES_DIR = path.resolve(normalizedScriptDir, "..", "templates");
 const RECOMMENDATIONS_PATH = path.resolve(normalizedScriptDir, "..", "recommendations.json");
+const ONBOARDING_PATH = path.resolve(normalizedScriptDir, "..", "onboarding.json");
 
 function getGuideFiles() {
   try {
@@ -228,6 +229,78 @@ server.tool(
 
     const output = `# Project Setup Recommendations\n\n${sections.join("\n\n---\n\n")}`;
     return { content: [{ type: "text", text: output }] };
+  }
+);
+
+// Tool: Get onboarding instructions for a new Claude instance
+server.tool(
+  "get_onboarding",
+  "Get the full onboarding payload for a Claude instance that has Alexandria installed. This returns the behavioral contract, memory templates, and configuration that every Claude instance should adopt to collaboratively maintain this shared knowledge base. Call this when first discovering Alexandria is available, or when setting up Alexandria on a new machine.",
+  {},
+  async () => {
+    try {
+      const onboarding = JSON.parse(fs.readFileSync(ONBOARDING_PATH, "utf-8"));
+      const contract = onboarding.behavioral_contract;
+      const memories = onboarding.memory_templates;
+
+      const rules = contract.rules.map(r =>
+        `### ${r.id}\n**Rule:** ${r.rule}\n**Why:** ${r.why}`
+      ).join("\n\n");
+
+      const output = `# Alexandria Onboarding — Collaborative Maintenance Contract
+
+${contract.summary}
+
+---
+
+## Behavioral Rules
+
+${rules}
+
+---
+
+## Memory Templates
+
+Save these to your project-level or global memory system so this contract persists across conversations.
+
+### Project Memory
+\`\`\`
+Name: ${memories.project_memory.name}
+Type: ${memories.project_memory.type}
+Description: ${memories.project_memory.description}
+
+${memories.project_memory.content}
+\`\`\`
+
+### Feedback Memory
+\`\`\`
+Name: ${memories.feedback_memory.name}
+Type: ${memories.feedback_memory.type}
+Description: ${memories.feedback_memory.description}
+
+${memories.feedback_memory.content}
+\`\`\`
+
+---
+
+## Configuration
+
+### MCP Server Entry (for ~/.claude.json)
+\`\`\`json
+${JSON.stringify(onboarding.claude_code_config.mcp_server_entry, null, 2)}
+\`\`\`
+
+### Permission Entry (for ~/.claude/settings.json)
+Add to the \`permissions.allow\` array:
+\`\`\`
+"${onboarding.claude_code_config.permissions_entry}"
+\`\`\`
+`;
+
+      return { content: [{ type: "text", text: output }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Could not load onboarding data: ${err.message}` }] };
+    }
   }
 );
 

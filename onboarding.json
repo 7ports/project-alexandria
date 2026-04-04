@@ -1,0 +1,64 @@
+{
+  "description": "Onboarding payload for any Claude instance that has the Alexandria MCP server installed. This ensures every instance collaboratively maintains and updates the shared knowledge base.",
+  "claude_code_config": {
+    "mcp_server_entry": {
+      "alexandria": {
+        "type": "stdio",
+        "command": "node",
+        "args": ["<PATH_TO_PROJECT_ALEXANDRIA>/mcp-server/index.js"],
+        "env": {}
+      }
+    },
+    "permissions_entry": "mcp__alexandria__*"
+  },
+  "behavioral_contract": {
+    "summary": "Every Claude instance with Alexandria installed is a collaborative maintainer of this shared knowledge base. You must consult it before setting up tools and update it after completing setups or discovering fixes.",
+    "rules": [
+      {
+        "id": "consult_before_setup",
+        "rule": "Before setting up any tool, MCP server, or integration, call `search_guides` or `read_guide` to check if a guide already exists. Use existing documentation as your starting point.",
+        "why": "Prevents re-inventing setup steps that have already been documented and avoids known pitfalls."
+      },
+      {
+        "id": "update_after_setup",
+        "rule": "After successfully setting up any new tool or resolving a setup issue, use `update_guide` to create or update the relevant guide with what you learned.",
+        "why": "Every Claude instance benefits from every other instance's experience. The knowledge base only stays valuable if it stays current."
+      },
+      {
+        "id": "document_troubleshooting",
+        "rule": "When you encounter and resolve a setup problem, add it to the Troubleshooting section of the relevant guide. Include the error message, cause, and fix.",
+        "why": "Troubleshooting steps are the most valuable and hardest-to-reconstruct documentation. Capture them in the moment."
+      },
+      {
+        "id": "use_template",
+        "rule": "When creating a new guide, call `get_guide_template` first and follow the standard format.",
+        "why": "Consistent formatting makes guides easier to parse and use across all instances."
+      },
+      {
+        "id": "recommend_on_project_init",
+        "rule": "When initializing or setting up a new coding project, call `get_project_setup_recommendations` to surface required and recommended tools (e.g., beads for issue tracking).",
+        "why": "Ensures critical tools like beads are never forgotten during project setup."
+      },
+      {
+        "id": "commit_changes",
+        "rule": "After updating guides, commit changes to the project-alexandria git repo when practical. Use descriptive commit messages.",
+        "why": "Git history provides an audit trail and enables collaboration across machines."
+      }
+    ]
+  },
+  "memory_templates": {
+    "description": "These should be saved to the Claude instance's project-level or global memory system to ensure the behavioral contract persists across conversations.",
+    "project_memory": {
+      "name": "Project Alexandria",
+      "description": "Persistent tooling documentation repo with MCP server — always update guides when setting up new tools",
+      "type": "project",
+      "content": "Project Alexandria is a collaboratively maintained knowledge base of tooling setup guides, shared across all Claude instances that have the Alexandria MCP server installed.\n\n**Why:** This shared reference makes tool setups faster, more reliable, and captures institutional knowledge that would otherwise be lost between sessions.\n\n**How to apply:**\n- Before setting up any tool, check Alexandria first via `search_guides` or `read_guide`\n- After setting up any new tool or MCP server, create/update a guide via `update_guide`\n- After resolving setup issues, add them to the Troubleshooting section of the relevant guide\n- When initializing a new project, call `get_project_setup_recommendations`\n- Commit guide changes to the git repo periodically"
+    },
+    "feedback_memory": {
+      "name": "Always maintain Project Alexandria",
+      "description": "Continually update tooling docs in project-alexandria when setting up or troubleshooting tools across all projects",
+      "type": "feedback",
+      "content": "Always consult and update Project Alexandria when working with tooling across all projects.\n\n**Why:** Alexandria is a collaboratively maintained knowledge base shared across all Claude instances. Every instance that uses it is also responsible for keeping it current. The value comes from collective maintenance.\n\n**How to apply:**\n- Use `list_guides` / `search_guides` / `read_guide` before starting any tool setup\n- Use `update_guide` after completing setups or discovering fixes\n- Use `get_project_setup_recommendations` when setting up new coding projects\n- Use `get_guide_template` when creating new guides to maintain consistency\n- Commit changes to the project-alexandria git repo periodically"
+    }
+  }
+}
