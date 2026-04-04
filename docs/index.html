@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Alexandria — Collaborative Tooling Knowledge Base for Claude</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-subtle: #1f6feb22;
+      --green: #3fb950;
+      --purple: #bc8cff;
+      --orange: #d29922;
+      --red: #f85149;
+      --amber: #e3b341;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 80px 0 60px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: 800;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, var(--amber), var(--orange));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      max-width: 640px;
+      margin: 0 auto 32px;
+    }
+
+    .badge-row {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    /* Concept */
+    .concept {
+      padding: 60px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .concept h2 {
+      font-size: 1.75rem;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .concept-text {
+      max-width: 700px;
+      margin: 0 auto 32px;
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      text-align: center;
+    }
+
+    .diagram {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .diagram-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .diagram-row:last-child { margin-bottom: 0; }
+
+    .diagram-node {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      text-align: center;
+      font-size: 0.85rem;
+      min-width: 140px;
+    }
+
+    .diagram-node.center {
+      border-color: var(--orange);
+      min-width: 200px;
+    }
+
+    .diagram-node strong { display: block; color: var(--text); }
+    .diagram-node span { color: var(--text-muted); font-size: 0.8rem; }
+
+    .diagram-arrow {
+      color: var(--text-muted);
+      font-size: 1.4rem;
+      min-width: 30px;
+      text-align: center;
+    }
+
+    .diagram-arrow.down {
+      display: block;
+      text-align: center;
+      margin: 8px 0;
+    }
+
+    /* Guides */
+    .guides {
+      padding: 60px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .guides h2 {
+      font-size: 1.75rem;
+      margin-bottom: 32px;
+      text-align: center;
+    }
+
+    .guide-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .guide-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      transition: border-color 0.2s;
+    }
+
+    .guide-card:hover { border-color: var(--orange); }
+
+    .guide-card h3 {
+      font-size: 1.05rem;
+      margin-bottom: 4px;
+    }
+
+    .guide-card .tag {
+      font-size: 0.7rem;
+      color: var(--orange);
+      font-family: monospace;
+      background: rgba(227, 179, 65, 0.12);
+      padding: 2px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 8px;
+    }
+
+    .guide-card p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    /* Install */
+    .install {
+      padding: 60px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .install h2 {
+      font-size: 1.75rem;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--orange);
+      color: var(--bg);
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-bottom: 12px;
+    }
+
+    .step h3 { font-size: 1rem; margin-bottom: 8px; }
+    .step p { color: var(--text-muted); font-size: 0.9rem; }
+
+    pre {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      margin-top: 12px;
+    }
+
+    code { font-family: 'SF Mono', 'Fira Code', Consolas, monospace; }
+
+    /* Tools */
+    .tools {
+      padding: 60px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tools h2 {
+      font-size: 1.75rem;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    th, td {
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: #1c2128;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    td code {
+      color: var(--orange);
+      background: rgba(227, 179, 65, 0.12);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+
+    td .cost {
+      display: inline-block;
+      font-size: 0.7rem;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+
+    td .cost.low { background: rgba(63, 185, 80, 0.15); color: var(--green); }
+    td .cost.med { background: rgba(210, 153, 34, 0.15); color: var(--orange); }
+    td .cost.high { background: rgba(188, 140, 255, 0.15); color: var(--purple); }
+
+    /* Efficiency */
+    .efficiency {
+      padding: 60px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .efficiency h2 {
+      font-size: 1.75rem;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .flow-icon {
+      font-size: 1.5rem;
+      min-width: 40px;
+      text-align: center;
+    }
+
+    .flow-step strong { display: block; margin-bottom: 2px; }
+    .flow-step span { color: var(--text-muted); font-size: 0.9rem; }
+
+    .arrow {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 1.2rem;
+    }
+
+    /* Contract */
+    .contract {
+      padding: 60px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .contract h2 {
+      font-size: 1.75rem;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    .contract-sub {
+      text-align: center;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      font-size: 0.95rem;
+    }
+
+    .rule-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .rule-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    .rule-card h3 {
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+      color: var(--orange);
+    }
+
+    .rule-card p {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    /* Footer */
+    footer {
+      padding: 40px 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    footer a { color: var(--orange); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      .hero h1 { font-size: 2rem; }
+      .hero p { font-size: 1rem; }
+      .diagram-row { flex-direction: column; gap: 8px; }
+      .diagram-arrow { transform: rotate(90deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <h1>Project Alexandria</h1>
+      <p>A collaboratively maintained tooling knowledge base for Claude, served via MCP.</p>
+      <div class="badge-row">
+        <span class="badge">MCP Server</span>
+        <span class="badge">Claude Code</span>
+        <span class="badge">10 Guides</span>
+        <span class="badge">Collaborative</span>
+        <span class="badge">MIT License</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Concept -->
+  <section class="concept">
+    <div class="container">
+      <h2>How It Works</h2>
+      <p class="concept-text">
+        Every Claude instance with Alexandria installed is both a consumer and a contributor.
+        When one instance sets up a tool and documents the process, every other instance benefits.
+      </p>
+      <div class="diagram">
+        <div class="diagram-row">
+          <div class="diagram-node">
+            <strong>Instance A</strong>
+            <span>Sets up CoPlay, writes guide</span>
+          </div>
+          <div class="diagram-arrow">&rarr;</div>
+          <div class="diagram-node center">
+            <strong>Alexandria</strong>
+            <span>Shared knowledge base</span>
+          </div>
+          <div class="diagram-arrow">&larr;</div>
+          <div class="diagram-node">
+            <strong>Instance C</strong>
+            <span>Reads guide, avoids pitfalls</span>
+          </div>
+        </div>
+        <div class="diagram-arrow down">&uarr;</div>
+        <div class="diagram-row">
+          <div class="diagram-node" style="margin: 0 auto;">
+            <strong>Instance B</strong>
+            <span>Hits a bug, adds to troubleshooting</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Guides -->
+  <section class="guides">
+    <div class="container">
+      <h2>Setup Guides</h2>
+      <div class="guide-grid">
+        <div class="guide-card">
+          <h3>CoPlay MCP Server</h3>
+          <span class="tag">unity</span>
+          <p>Unity editor integration &mdash; scene hierarchy, prefabs, 3D model generation, animations, UI, and more.</p>
+        </div>
+        <div class="guide-card">
+          <h3>Beads</h3>
+          <span class="tag">required</span>
+          <p>Distributed graph issue tracker for AI agents. Always use for complex projects.</p>
+        </div>
+        <div class="guide-card">
+          <h3>GitHub MCP Server</h3>
+          <span class="tag">mcp</span>
+          <p>GitHub API access &mdash; repos, issues, PRs, branches, releases, Copilot integration.</p>
+        </div>
+        <div class="guide-card">
+          <h3>Git MCP Server</h3>
+          <span class="tag">mcp</span>
+          <p>Git operations via MCP &mdash; status, diff, log, commit, branch management.</p>
+        </div>
+        <div class="guide-card">
+          <h3>Firebase MCP Server</h3>
+          <span class="tag">mcp</span>
+          <p>Firebase project management &mdash; Firestore, Auth, Hosting, Storage, Data Connect.</p>
+        </div>
+        <div class="guide-card">
+          <h3>Claude in Chrome</h3>
+          <span class="tag">browser</span>
+          <p>Browser automation &mdash; screenshots, clicks, form filling, network monitoring.</p>
+        </div>
+        <div class="guide-card">
+          <h3>Claude Preview</h3>
+          <span class="tag">built-in</span>
+          <p>Dev server launcher &mdash; screenshots, element inspection, responsive testing.</p>
+        </div>
+        <div class="guide-card">
+          <h3>Memory MCP Server</h3>
+          <span class="tag">mcp</span>
+          <p>Persistent knowledge graph &mdash; entities, observations, and relations across sessions.</p>
+        </div>
+        <div class="guide-card">
+          <h3>Fetch MCP Server</h3>
+          <span class="tag">mcp</span>
+          <p>Web content fetching &mdash; retrieve and process content from any public URL.</p>
+        </div>
+        <div class="guide-card">
+          <h3>Alexandria MCP Server</h3>
+          <span class="tag">meta</span>
+          <p>This server &mdash; exposes all guides as searchable, queryable MCP tools.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Install -->
+  <section class="install">
+    <div class="container">
+      <h2>Quick Start</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Clone &amp; Install</h3>
+          <p>Get the source and install dependencies:</p>
+          <pre><code>git clone https://github.com/7ports/project-alexandria.git
+cd project-alexandria/mcp-server
+npm install</code></pre>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>Register</h3>
+          <p>Add as a global MCP server in <code>~/.claude.json</code>:</p>
+          <pre><code>{
+  "alexandria": {
+    "type": "stdio",
+    "command": "node",
+    "args": ["/path/to/mcp-server/index.js"]
+  }
+}</code></pre>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Onboard</h3>
+          <p>In your first conversation, tell Claude:</p>
+          <pre><code>"Call get_onboarding from Alexandria
+and save the maintenance contract."</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tools -->
+  <section class="tools">
+    <div class="container">
+      <h2>MCP Tools</h2>
+      <table>
+        <thead>
+          <tr><th>Tool</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>list_guides</code> <span class="cost low">low</span></td>
+            <td>Compact index of all guides &mdash; one line each</td>
+          </tr>
+          <tr>
+            <td><code>quick_setup</code> <span class="cost low">low</span></td>
+            <td>Just the install commands, config, and troubleshooting &mdash; no prose</td>
+          </tr>
+          <tr>
+            <td><code>search_guides</code> <span class="cost med">med</span></td>
+            <td>Keyword search across all guides with context</td>
+          </tr>
+          <tr>
+            <td><code>read_guide</code> <span class="cost high">full</span></td>
+            <td>Complete guide content &mdash; use when learning or troubleshooting</td>
+          </tr>
+          <tr>
+            <td><code>update_guide</code></td>
+            <td>Create or update a guide in a single call</td>
+          </tr>
+          <tr>
+            <td><code>get_project_setup_recommendations</code></td>
+            <td>Required and recommended tools for new project setup</td>
+          </tr>
+          <tr>
+            <td><code>get_onboarding</code></td>
+            <td>Collaborative maintenance contract for new Claude instances</td>
+          </tr>
+          <tr>
+            <td><code>get_guide_template</code></td>
+            <td>Standard template for creating new guides</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Efficiency -->
+  <section class="efficiency">
+    <div class="container">
+      <h2>Token-Efficient Lookup</h2>
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-icon">1</div>
+          <div>
+            <strong>list_guides</strong>
+            <span>~10 lines. Check if a guide exists. Cheapest call.</span>
+          </div>
+        </div>
+        <div class="arrow">|</div>
+        <div class="flow-step">
+          <div class="flow-icon">2</div>
+          <div>
+            <strong>quick_setup</strong>
+            <span>~20 lines. Commands + config + troubleshooting only. No prose.</span>
+          </div>
+        </div>
+        <div class="arrow">|</div>
+        <div class="flow-step">
+          <div class="flow-icon">3</div>
+          <div>
+            <strong>read_guide</strong>
+            <span>~100+ lines. Full document. Only when cheaper options don't suffice.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contract -->
+  <section class="contract">
+    <div class="container">
+      <h2>Maintenance Contract</h2>
+      <p class="contract-sub">Every Claude instance with Alexandria adopts these rules via <code>get_onboarding</code>.</p>
+      <div class="rule-grid">
+        <div class="rule-card">
+          <h3>Consult Before Setup</h3>
+          <p>Check if a guide exists before setting up any tool. Use existing docs as your starting point.</p>
+        </div>
+        <div class="rule-card">
+          <h3>Update After Setup</h3>
+          <p>Document what you did after completing any setup. One update_guide call, all changes batched.</p>
+        </div>
+        <div class="rule-card">
+          <h3>Document Troubleshooting</h3>
+          <p>When you fix a setup problem, add the error and fix to the guide's Troubleshooting section.</p>
+        </div>
+        <div class="rule-card">
+          <h3>Prefer quick_setup</h3>
+          <p>Use the cheapest tool that gets the job done. Escalate from list to quick_setup to read_guide.</p>
+        </div>
+        <div class="rule-card">
+          <h3>Always Write Quick Reference</h3>
+          <p>Every guide must have a Quick Reference block for fast extraction. Commands, config, verify.</p>
+        </div>
+        <div class="rule-card">
+          <h3>Recommend on Project Init</h3>
+          <p>Call get_project_setup_recommendations when starting new projects. Beads is always required.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p>
+        <a href="https://github.com/7ports/project-alexandria">GitHub</a> &middot;
+        MIT License &middot;
+        Built by <a href="https://github.com/7ports">7ports</a>
+      </p>
+    </div>
+  </footer>
+
+</body>
+</html>
