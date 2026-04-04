@@ -43,6 +43,26 @@
         "id": "commit_changes",
         "rule": "After updating guides, commit changes to the project-alexandria git repo when practical. Use descriptive commit messages.",
         "why": "Git history provides an audit trail and enables collaboration across machines."
+      },
+      {
+        "id": "prefer_quick_setup",
+        "rule": "Use `quick_setup` instead of `read_guide` when you already know what tool to install and just need the commands and config. Only use `read_guide` when troubleshooting, learning about a tool for the first time, or when quick_setup didn't have enough detail.",
+        "why": "quick_setup extracts only the Quick Reference block and code snippets, returning a fraction of the tokens. read_guide returns the full document. Choosing the right tool for the job saves significant context budget."
+      },
+      {
+        "id": "use_list_then_target",
+        "rule": "Call `list_guides` first to check if a guide exists (one line per guide, very cheap). Only then call `quick_setup` or `read_guide` for the specific guide you need. Never call read_guide on multiple guides when list_guides + one targeted read would suffice.",
+        "why": "list_guides is a compact index. Reading guides you don't need wastes tokens."
+      },
+      {
+        "id": "batch_updates",
+        "rule": "When updating a guide, include all changes in a single `update_guide` call rather than making multiple calls. Similarly, when creating a new guide, write the complete guide in one call — don't build it up incrementally.",
+        "why": "Each tool call has overhead. Batching reduces round-trips and token usage."
+      },
+      {
+        "id": "write_quick_reference",
+        "rule": "Every new or updated guide MUST have a Quick Reference section immediately after the title. This section should be self-contained: install command, config snippet, and verify step — nothing else. No prose, no explanations.",
+        "why": "The Quick Reference block is what quick_setup extracts. Without it, quick_setup falls back to parsing the full document, which is slower and returns more tokens. A good Quick Reference makes the entire system more efficient for all instances."
       }
     ]
   },
@@ -52,13 +72,13 @@
       "name": "Project Alexandria",
       "description": "Persistent tooling documentation repo with MCP server — always update guides when setting up new tools",
       "type": "project",
-      "content": "Project Alexandria is a collaboratively maintained knowledge base of tooling setup guides, shared across all Claude instances that have the Alexandria MCP server installed.\n\n**Why:** This shared reference makes tool setups faster, more reliable, and captures institutional knowledge that would otherwise be lost between sessions.\n\n**How to apply:**\n- Before setting up any tool, check Alexandria first via `search_guides` or `read_guide`\n- After setting up any new tool or MCP server, create/update a guide via `update_guide`\n- After resolving setup issues, add them to the Troubleshooting section of the relevant guide\n- When initializing a new project, call `get_project_setup_recommendations`\n- Commit guide changes to the git repo periodically"
+      "content": "Project Alexandria is a collaboratively maintained knowledge base of tooling setup guides, shared across all Claude instances that have the Alexandria MCP server installed.\n\n**Why:** This shared reference makes tool setups faster, more reliable, and captures institutional knowledge that would otherwise be lost between sessions.\n\n**How to apply:**\n- Use `list_guides` first (cheap) to check if a guide exists, then `quick_setup` (commands only) or `read_guide` (full doc) as needed\n- Prefer `quick_setup` over `read_guide` when you just need install steps — saves significant tokens\n- After setting up any new tool or MCP server, create/update a guide via `update_guide` in a single call\n- Every guide MUST include a Quick Reference section for fast extraction\n- After resolving setup issues, add them to the Troubleshooting section of the relevant guide\n- When initializing a new project, call `get_project_setup_recommendations`\n- Commit guide changes to the git repo periodically"
     },
     "feedback_memory": {
       "name": "Always maintain Project Alexandria",
       "description": "Continually update tooling docs in project-alexandria when setting up or troubleshooting tools across all projects",
       "type": "feedback",
-      "content": "Always consult and update Project Alexandria when working with tooling across all projects.\n\n**Why:** Alexandria is a collaboratively maintained knowledge base shared across all Claude instances. Every instance that uses it is also responsible for keeping it current. The value comes from collective maintenance.\n\n**How to apply:**\n- Use `list_guides` / `search_guides` / `read_guide` before starting any tool setup\n- Use `update_guide` after completing setups or discovering fixes\n- Use `get_project_setup_recommendations` when setting up new coding projects\n- Use `get_guide_template` when creating new guides to maintain consistency\n- Commit changes to the project-alexandria git repo periodically"
+      "content": "Always consult and update Project Alexandria when working with tooling across all projects. Be efficient with token budget.\n\n**Why:** Alexandria is a collaboratively maintained knowledge base shared across all Claude instances. Every instance that uses it is also responsible for keeping it current. The value comes from collective maintenance — but only if done efficiently.\n\n**How to apply:**\n- Use `list_guides` (cheapest) → `quick_setup` (commands only) → `read_guide` (full doc) in order of increasing cost. Only escalate when the cheaper option doesn't have what you need.\n- Use `update_guide` after completing setups or discovering fixes — batch all changes into one call\n- Always include a Quick Reference section when writing/updating guides\n- Use `get_project_setup_recommendations` when setting up new coding projects\n- Commit changes to the project-alexandria git repo periodically"
     }
   }
 }

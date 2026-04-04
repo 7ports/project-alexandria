@@ -1,5 +1,13 @@
 # Claude in Chrome (Browser Automation)
 
+## Quick Reference
+
+**Install:** Install "Claude in Chrome" extension from Chrome Web Store. No MCP config needed — auto-registers.
+
+**First use:** Call `tabs_context_mcp` (with `createIfEmpty: true`) to get tab IDs before using any other tools.
+
+**Reconnect:** Use `switch_browser` if connected to wrong Chrome instance.
+
 ## Overview
 
 Claude in Chrome is a browser extension that allows Claude Code to control a Chrome browser — taking screenshots, clicking elements, filling forms, reading page content, navigating, and more. Enables web-based automation workflows directly from Claude conversations.

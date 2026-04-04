@@ -1,5 +1,27 @@
 # Alexandria MCP Server
 
+## Quick Reference
+
+**Install:**
+```bash
+cd /path/to/project-alexandria/mcp-server && npm install
+```
+
+**Claude Code config** (`~/.claude.json` → `mcpServers`):
+```json
+{
+  "alexandria": {
+    "type": "stdio",
+    "command": "node",
+    "args": ["/path/to/project-alexandria/mcp-server/index.js"]
+  }
+}
+```
+
+**Permissions** (`~/.claude/settings.json` → `permissions.allow`): `"mcp__alexandria__*"`
+
+**First use:** Call `get_onboarding` to adopt the collaborative maintenance contract.
+
 ## Overview
 
 A custom MCP server that exposes Project Alexandria's tooling setup guides as searchable, queryable resources. This allows Claude to access documentation about previously set up tools from any project, making future tool setups faster and more reliable.

@@ -1,5 +1,22 @@
 # Fetch MCP Server
 
+## Quick Reference
+
+**Install:** Requires `uvx` (`pip install uv`).
+
+**Claude Code config** (`~/.claude.json` → `mcpServers`):
+```json
+{
+  "fetch": {
+    "type": "stdio",
+    "command": "uvx",
+    "args": ["mcp-server-fetch"]
+  }
+}
+```
+
+**Verify:** No further config needed. Works with any public URL.
+
 ## Overview
 
 Provides web content fetching capabilities via MCP. Allows AI assistants to retrieve and process content from URLs, converting HTML to readable text. Useful for reading documentation, checking web pages, and gathering information from the web.

@@ -1,5 +1,28 @@
 # [Tool Name]
 
+## Quick Reference
+
+<!-- This section is extracted by quick_setup for fast, low-token lookups. -->
+<!-- Keep it self-contained: just the commands and config needed to install. -->
+
+**Install:**
+```bash
+# install command here
+```
+
+**Claude Code config** (`~/.claude.json` → `mcpServers`):
+```json
+{
+  "tool-name": {
+    "type": "stdio",
+    "command": "...",
+    "args": ["..."]
+  }
+}
+```
+
+**Verify:** `command --version`
+
 ## Overview
 
 Brief description of what this tool does and why you'd use it.
@@ -34,10 +57,6 @@ Brief description of what this tool does and why you'd use it.
 ### Claude Code Integration
 
 How to add this tool to Claude Code's MCP configuration.
-
-```json
-// Example config snippet for .claude.json or settings.json
-```
 
 ### Standalone Configuration
 

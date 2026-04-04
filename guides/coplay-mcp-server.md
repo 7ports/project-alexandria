@@ -1,5 +1,23 @@
 # CoPlay MCP Server (Unity Integration)
 
+## Quick Reference
+
+**Install:** Requires `uvx` (`pip install uv`) and CoPlay Unity plugin in your project.
+
+**Claude Code config** (`~/.claude.json` → `mcpServers`):
+```json
+{
+  "coplay-mcp": {
+    "type": "stdio",
+    "command": "uvx",
+    "args": ["--python", ">=3.11", "coplay-mcp-server@latest"],
+    "env": { "MCP_TOOL_TIMEOUT": "720000" }
+  }
+}
+```
+
+**First use:** Call `set_unity_project_root` with the absolute path to your Unity project.
+
 ## Overview
 
 CoPlay MCP Server provides deep Unity Editor integration via the Model Context Protocol. It allows AI assistants to read/write scene hierarchies, create GameObjects, manage prefabs, generate 3D models (via Meshy AI), create animations, manage input actions, generate images/audio, and much more — all without leaving the conversation.

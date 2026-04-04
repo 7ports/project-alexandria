@@ -1,5 +1,22 @@
 # GitHub MCP Server
 
+## Quick Reference
+
+**Claude Code config** (`~/.claude.json` → `mcpServers`):
+```json
+{
+  "github": {
+    "type": "http",
+    "url": "https://api.githubcopilot.com/mcp/",
+    "headers": {
+      "Authorization": "Bearer YOUR_GITHUB_TOKEN"
+    }
+  }
+}
+```
+
+**Token:** GitHub → Settings → Developer Settings → Personal Access Tokens → scopes: `repo`, `read:org`, `read:user`.
+
 ## Overview
 
 Provides GitHub API access via MCP, enabling AI assistants to interact with repositories, issues, pull requests, branches, releases, and more through structured tool calls. Supports both read and write operations.

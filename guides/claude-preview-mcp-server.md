@@ -1,5 +1,26 @@
 # Claude Preview MCP Server
 
+## Quick Reference
+
+**Install:** Built into Claude Code. No MCP config needed.
+
+**Project config** (`.claude/launch.json`):
+```json
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev-server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    }
+  ]
+}
+```
+
+**First use:** `preview_start(name: "dev-server")`. Always use this instead of running servers via Bash.
+
 ## Overview
 
 Claude Preview provides a built-in dev server launcher and browser preview for Claude Code. It can start local development servers, take screenshots, inspect elements, fill forms, click buttons, monitor network requests, console logs, and test responsive layouts — all within Claude Code conversations.

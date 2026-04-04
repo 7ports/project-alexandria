@@ -1,5 +1,22 @@
 # Memory MCP Server
 
+## Quick Reference
+
+**Install:** Requires Node.js 18+.
+
+**Claude Code config** (`~/.claude.json` → `mcpServers`):
+```json
+{
+  "memory": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-memory"]
+  }
+}
+```
+
+**Storage:** `~/.mcp-memory/memory.json` (persists across sessions).
+
 ## Overview
 
 Provides a persistent knowledge graph for AI assistants via MCP. Stores entities, observations, and relations that persist across conversations. Useful for maintaining context about users, projects, and decisions over time.

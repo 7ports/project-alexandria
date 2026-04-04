@@ -1,5 +1,22 @@
 # Beads — Distributed Graph Issue Tracker for AI Agents
 
+## Quick Reference
+
+**Install (Windows):**
+```powershell
+npm install -g @beads/bd
+```
+
+**Project init:**
+```bash
+bd init --quiet
+bd setup claude
+```
+
+**Verify:** `bd version`
+
+**Key commands:** `bd ready` (list actionable tasks), `bd create "Title" -p 0` (new task), `bd update <id> --claim` (claim), `bd close <id> "reason"` (done).
+
 ## Overview
 
 Beads (`bd` CLI) is a distributed graph issue tracker designed for AI coding agents, powered by Dolt (a version-controlled SQL database). It provides persistent, structured memory for coding agents with dependency-aware task graphs, replacing unstructured markdown plans.

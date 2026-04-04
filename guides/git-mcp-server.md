@@ -1,5 +1,22 @@
 # Git MCP Server
 
+## Quick Reference
+
+**Install:** Requires `uvx` (`pip install uv`).
+
+**Claude Code config** (`~/.claude.json` → `mcpServers`):
+```json
+{
+  "git": {
+    "type": "stdio",
+    "command": "uvx",
+    "args": ["mcp-server-git"]
+  }
+}
+```
+
+**Verify:** Auto-detects git repos from working directory. No further config needed.
+
 ## Overview
 
 Provides Git repository operations via MCP. Allows AI assistants to perform git status, diff, log, commit, branch management, and other git operations through structured tool calls rather than shell commands.

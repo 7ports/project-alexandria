@@ -42,10 +42,10 @@ const server = new McpServer({
   version: "1.0.0",
 });
 
-// Tool: List all available guides
+// Tool: List all available guides (compact — one line per guide)
 server.tool(
   "list_guides",
-  "List all available tooling setup guides in Project Alexandria",
+  "List all available tooling setup guides. Returns one line per guide (name + title). Use this first to see what exists, then read_guide or quick_setup for details.",
   {},
   async () => {
     const guides = getGuideFiles();
@@ -54,22 +54,84 @@ server.tool(
     }
     const list = guides.map(g => {
       const content = readGuide(g.filename);
-      // Extract first heading as title
       const titleMatch = content?.match(/^#\s+(.+)$/m);
       const title = titleMatch ? titleMatch[1] : g.name;
-      // Extract overview section
-      const overviewMatch = content?.match(/## Overview\s*\n\s*\n(.+?)(?:\n\s*\n)/s);
-      const overview = overviewMatch ? overviewMatch[1].trim().slice(0, 150) : "";
-      return `- **${title}** (${g.filename})${overview ? `\n  ${overview}` : ""}`;
-    }).join("\n\n");
-    return { content: [{ type: "text", text: `# Available Guides\n\n${list}` }] };
+      return `- ${g.name} — ${title}`;
+    }).join("\n");
+    return { content: [{ type: "text", text: list }] };
   }
 );
 
-// Tool: Read a specific guide
+// Tool: Quick setup — returns only actionable commands and config, no prose
+server.tool(
+  "quick_setup",
+  "Get ONLY the actionable install commands, config snippets, and troubleshooting from a guide. Much cheaper than read_guide — use this when you already know what tool to install and just need the steps. Falls back to extracting code blocks if no Quick Reference section exists.",
+  { name: z.string().describe("Guide name (e.g., 'coplay-mcp-server', 'beads')") },
+  async ({ name }) => {
+    const content = readGuide(name);
+    if (!content) {
+      const guides = getGuideFiles();
+      return { content: [{ type: "text", text: `Guide '${name}' not found. Available: ${guides.map(g => g.name).join(", ")}` }] };
+    }
+
+    const sections = [];
+
+    // 1. Try Quick Reference block first (cheapest)
+    const qrMatch = content.match(/## Quick Reference\s*\n([\s\S]*?)(?=\n## (?!Quick Reference)|\n---|\n\*Last updated)/);
+    if (qrMatch) {
+      sections.push(qrMatch[1].trim());
+    } else {
+      // 2. Fallback: extract code blocks and their immediate headings
+      const lines = content.split("\n");
+      let inCodeBlock = false;
+      let codeBuffer = [];
+      let lastHeading = "";
+
+      for (const line of lines) {
+        if (line.startsWith("```")) {
+          if (!inCodeBlock) {
+            inCodeBlock = true;
+            if (lastHeading && !codeBuffer.some(b => b.startsWith(lastHeading))) {
+              codeBuffer.push(lastHeading);
+            }
+            codeBuffer.push(line);
+          } else {
+            codeBuffer.push(line);
+            codeBuffer.push("");
+            inCodeBlock = false;
+          }
+        } else if (inCodeBlock) {
+          codeBuffer.push(line);
+        } else if (line.startsWith("#")) {
+          lastHeading = line;
+        }
+      }
+
+      if (codeBuffer.length > 0) {
+        sections.push(codeBuffer.join("\n").trim());
+      }
+    }
+
+    // 3. Always include Troubleshooting table if present
+    const troubleMatch = content.match(/## Troubleshooting\s*\n([\s\S]*?)(?=\n## |\n---|\n\*Last updated|$)/);
+    if (troubleMatch) {
+      sections.push("## Troubleshooting\n" + troubleMatch[1].trim());
+    }
+
+    if (sections.length === 0) {
+      return { content: [{ type: "text", text: `No actionable content extracted from '${name}'. Use read_guide for full content.` }] };
+    }
+
+    const titleMatch = content.match(/^#\s+(.+)$/m);
+    const title = titleMatch ? titleMatch[1] : name;
+    return { content: [{ type: "text", text: `# ${title} — Quick Setup\n\n${sections.join("\n\n---\n\n")}` }] };
+  }
+);
+
+// Tool: Read a specific guide (full content — use quick_setup when possible)
 server.tool(
   "read_guide",
-  "Read the full content of a specific tooling setup guide",
+  "Read the FULL content of a guide. Prefer quick_setup when you just need install steps. Use read_guide only when troubleshooting, learning about a tool for the first time, or when quick_setup didn't have enough detail.",
   { name: z.string().describe("Guide name (e.g., 'coplay-mcp-server', 'beads', 'git-mcp-server')") },
   async ({ name }) => {
     const content = readGuide(name);

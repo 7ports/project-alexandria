@@ -1,5 +1,22 @@
 # Firebase MCP Server
 
+## Quick Reference
+
+**Install:** Requires Node.js 18+.
+
+**Claude Code config** (`~/.claude.json` → `mcpServers`):
+```json
+{
+  "firebase": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["-y", "firebase-tools@latest", "mcp"]
+  }
+}
+```
+
+**First use:** Call `firebase_login` to authenticate via browser OAuth.
+
 ## Overview
 
 Provides Firebase project management via MCP. Allows AI assistants to manage Firebase projects, apps, authentication, Firestore, Realtime Database, Hosting, Storage, Data Connect, and more through structured tool calls.
