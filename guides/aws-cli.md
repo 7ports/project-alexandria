@@ -32,10 +32,12 @@ unzip /tmp/awscliv2.zip -d /tmp && sudo /tmp/aws/install
 ```bash
 aws configure set aws_access_key_id <KEY_ID> --profile <profile-name>
 aws configure set aws_secret_access_key <SECRET> --profile <profile-name>
-aws configure set region us-east-1 --profile <profile-name>
+aws configure set region <preferred-region> --profile <profile-name>  # e.g. ca-central-1
 aws configure set output json --profile <profile-name>
 aws sts get-caller-identity --profile <profile-name>
 ```
+
+**Region note:** Set the profile region to your preferred region (e.g. `ca-central-1`). Exception: ACM certificates for CloudFront **must** be created in `us-east-1` — use a separate Terraform provider alias for that.
 
 ## Overview
 
@@ -84,12 +86,12 @@ sudo /tmp/aws/install
 
 ### Named Profiles (Recommended)
 
-Use named profiles to keep project credentials separate from default/root credentials:
+Use named profiles to keep project credentials separate from default/root credentials. Set the region to your preferred region — **not** necessarily `us-east-1`:
 
 ```bash
 aws configure set aws_access_key_id AKIA... --profile my-project
 aws configure set aws_secret_access_key u3E4... --profile my-project
-aws configure set region us-east-1 --profile my-project
+aws configure set region ca-central-1 --profile my-project  # use your preferred region
 aws configure set output json --profile my-project
 ```
 
@@ -97,9 +99,39 @@ Verify: `aws sts get-caller-identity --profile my-project`
 
 Profiles are stored in `~/.aws/credentials` and `~/.aws/config`.
 
+### Region Strategy for S3 + CloudFront Projects
+
+Use your preferred region (e.g. `ca-central-1`) for S3 and all other resources. However:
+
+> **ACM certificates for CloudFront must always be in `us-east-1`** — this is a hard AWS requirement regardless of where your other resources live.
+
+In Terraform, handle this with a provider alias:
+
+```hcl
+# Primary provider — your preferred region
+provider "aws" {
+  region  = "ca-central-1"
+  profile = "project-name"
+}
+
+# Alias for ACM certs used by CloudFront (must be us-east-1)
+provider "aws" {
+  alias   = "us_east_1"
+  region  = "us-east-1"
+  profile = "project-name"
+}
+
+# Use the alias only for the ACM certificate resource
+resource "aws_acm_certificate" "cert" {
+  provider    = aws.us_east_1
+  domain_name = "example.com"
+  # ...
+}
+```
+
 ### IAM User Setup for Static Site Projects
 
-For projects deploying to S3 + CloudFront, create a least-privilege IAM user:
+IAM is a global service — IAM users and policies have no region. Create them from any region.
 
 ```bash
 # 1. Create the policy (from a JSON file)
@@ -115,15 +147,17 @@ aws iam attach-user-policy \
   --user-name my-project-deploy \
   --policy-arn "arn:aws:iam::<ACCOUNT_ID>:policy/MyProjectDeploy"
 
-# 4. Create access keys
+# 4. Create access keys (save the secret — only shown once)
 aws iam create-access-key --user-name my-project-deploy
 ```
 
 Typical permissions needed for S3 + CloudFront static sites:
 - **S3**: CreateBucket, PutObject, GetObject, DeleteObject, PutBucketPolicy, PutBucketPublicAccessBlock, etc.
 - **CloudFront**: CreateDistribution, UpdateDistribution, CreateInvalidation, CreateOriginAccessControl, etc.
-- **ACM**: RequestCertificate, DescribeCertificate (for SSL certs, us-east-1 only)
+- **ACM**: RequestCertificate, DescribeCertificate (for SSL certs — must be issued in us-east-1 for CloudFront)
 - **Route53**: ChangeResourceRecordSets (only if using custom domain)
+
+**S3 ARNs are region-agnostic** — `arn:aws:s3:::my-project-*` covers buckets in any region. No need to include region in S3 policy ARNs.
 
 **Scope S3 permissions** to your bucket name pattern (e.g., `arn:aws:s3:::my-project-*`) for least privilege.
 
@@ -135,17 +169,21 @@ Typical permissions needed for S3 + CloudFront static sites:
 | `msiexec` returns exit code 103 in bash | Use PowerShell `Start-Process -Verb RunAs` instead of calling msiexec directly from bash |
 | winget not available in Git Bash / MSYS2 | winget is a Windows Store app, not available in all shell environments — use MSI installer directly |
 | Access denied creating IAM resources | Ensure you're using root or an admin user for initial IAM setup |
-| CloudFront ACM cert must be us-east-1 | ACM certs for CloudFront must be created in us-east-1 regardless of your default region |
+| CloudFront SSL cert validation failing | ACM cert must be in us-east-1, not your default region — use a Terraform provider alias |
+| S3 bucket created in wrong region | S3 bucket region is set at creation time; delete and recreate in the correct region |
 
 ## Platform Notes
 
 - **Windows (Git Bash/MSYS2)**: The `aws` binary installs to `C:\Program Files\Amazon\AWSCLIV2\` which may not be in PATH for the current bash session. Either use the full path or restart the terminal.
 - **CI/CD (GitHub Actions)**: AWS CLI is pre-installed on `ubuntu-latest` runners. Just configure credentials via `aws-actions/configure-aws-credentials`.
+- **IAM is global**: IAM users, groups, policies, and roles have no region. They work across all regions.
+- **CloudFront is global**: The CloudFront API is hosted in us-east-1 but distributions serve globally. Your S3 origin can be in any region.
 
 ## References
 
 - [Official AWS CLI v2 Install Guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
 - [AWS CLI Named Profiles](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html)
+- [ACM + CloudFront Region Requirement](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cnames-and-https-requirements.html)
 - [IAM Best Practices](https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html)
 
 ---
