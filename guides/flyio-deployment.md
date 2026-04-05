@@ -1,235 +1,206 @@
 # Fly.io Deployment — Node.js / TypeScript
 
-> Based on real-world deployment of an Express 5 + TypeScript server to Fly.io from a Windows machine.
-> Covers account creation through live production deployment.
+> Based on real-world deployment of a Node.js/Express SSE server (project-hammer-api, April 2026).
+> App region: yyz (Toronto). Deployed via flyctl from Windows (Git Bash).
 
 ---
 
-## What is Fly.io
-
-Fly.io is a platform-as-a-service for running Docker containers close to your users. It handles provisioning, scaling, TLS, and routing — you just push a Docker image.
-
-- **Pricing:** ~$2–5/month for a small Node.js server (shared CPU, 256 MB RAM) with `auto_stop_machines = true`
-- **Why not AWS Lambda for SSE/WebSocket?** Lambda does not natively support SSE; API Gateway WebSocket requires DynamoDB for connection management. Fly.io is far simpler for persistent connections.
-- **Region `yyz`** = Toronto — good for Canadian-user apps and Canadian data residency
-- **Website:** https://fly.io
-
----
-
-## Installation (Windows)
-
-```powershell
-# Option 1 — PowerShell installer
-pwsh -Command "iwr https://fly.io/install.ps1 -useb | iex"
-
-# Option 2 — winget
-winget install Fly.io.flyctl
-```
-
-Restart your terminal after install, then verify:
+## Quick Reference
 
 ```bash
-flyctl version
+# Install flyctl (Windows — official PowerShell installer)
+powershell -Command "iwr https://fly.io/install.ps1 -useb | iex"
+# Binary lands at: C:\Users\<user>\.fly\bin\flyctl.exe
+# Add to PATH or use full path
+
+# Authenticate via token (non-interactive — for CI or when browser not available)
+export FLY_API_TOKEN="FlyV1 fm2_..."
+flyctl auth whoami   # verify
+
+# Create app (region is set in fly.toml, not on the CLI)
+flyctl apps create my-app-name
+
+# Set secrets
+flyctl secrets set KEY=value --app my-app-name
+
+# Deploy (run from server/ directory where fly.toml lives)
+cd server/
+flyctl deploy --remote-only
+
+# Check status
+flyctl status --app my-app-name
+flyctl logs --app my-app-name
 ```
 
 ---
 
-## Authentication
+## Prerequisites
 
-```bash
-flyctl auth login
-# Opens your browser for OAuth login (GitHub or email)
+- Fly.io account **with a payment method added** — even free-tier apps require a credit card at `https://fly.io/dashboard/<org>/billing`
+- `fly.toml` in the server directory (see template below)
+- `Dockerfile` in the server directory
+
+---
+
+## fly.toml Template
+
+```toml
+app            = "my-app-name"
+primary_region = "yyz"   # Toronto — change to nearest region for your users
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port       = 3001
+  force_https         = true
+  auto_stop_machines  = true
+  auto_start_machines = true
+  min_machines_running = 1   # keep 1 machine always warm (no cold start)
+
+[[vm]]
+  size   = "shared-cpu-1x"
+  memory = "256mb"
+
+[checks]
+  [checks.health]
+    port     = 3001
+    type     = "http"
+    path     = "/api/health"
+    interval = "30s"
+    timeout  = "5s"
 ```
 
 ---
 
-## Project Setup
-
-> **Do NOT use `fly launch` if you already have a Dockerfile.** It may overwrite your config and generate an unwanted `fly.toml`. Instead, write `fly.toml` manually and run `fly deploy`.
-
-### First-time app creation
-
-```bash
-flyctl apps create your-app-name
-```
-
-Then write your own `fly.toml` (see below) and run:
-
-```bash
-flyctl deploy
-```
-
----
-
-## Dockerfile (Node.js 20 slim)
+## Dockerfile (Node.js multi-stage)
 
 ```dockerfile
-FROM node:20-slim
-
-# GOTCHA: node:20-slim does NOT include curl.
-# Fly.io health checks that use curl will fail silently if you skip this.
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-
+FROM node:20-slim AS builder
 WORKDIR /app
-
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci
+COPY tsconfig.json ./
+COPY src/ ./src/
+RUN npm run build
 
-COPY dist/ ./dist/
-
+FROM node:20-slim
+WORKDIR /app
+COPY --from=builder /app/dist ./dist
+COPY package*.json ./
+RUN npm ci --omit=dev
 EXPOSE 3001
 CMD ["node", "dist/index.js"]
 ```
 
-> **Gotcha — curl missing in slim images:** `node:20-slim` omits curl. If your health check or any startup script calls curl, the build will succeed but health checks will never pass. Always install curl explicitly unless you are certain nothing needs it.
-
 ---
 
-## fly.toml
-
-```toml
-app = 'your-app-name'
-primary_region = 'yyz'
-
-[build]
-
-[http_service]
-  internal_port = 3001        # Must match EXPOSE in Dockerfile and PORT env var
-  force_https = true
-  auto_stop_machines = true   # Stops machine when no traffic (saves cost)
-  auto_start_machines = true  # Restarts machine on first incoming request
-  min_machines_running = 0    # Set to 1 if cold-start latency is unacceptable
-
-[[vm]]
-  memory = '256mb'
-  cpu_kind = 'shared'
-  cpus = 1
-```
-
-> **Gotcha — auto_stop and persistent connections:** If your server maintains a persistent outbound WebSocket (e.g. to aisstream.io), the machine will NOT sleep while that connection is open. This is correct behaviour, but an aggressively reconnecting WebSocket may prevent the machine from ever entering the stopped state.
-
----
-
-## Injecting Secrets
-
-Never put API keys in `fly.toml` or checked-in `.env` files. Use Fly secrets — they are injected as environment variables at runtime and never appear in logs or image layers.
+## First-Time Setup
 
 ```bash
-flyctl secrets set AISSTREAM_API_KEY=your-key-here
-flyctl secrets set NODE_ENV=production
+# 1. Create the app (region comes from fly.toml, NOT from CLI flag --region)
+flyctl apps create my-app-name
 
-# Verify (values are always redacted in output):
-flyctl secrets list
+# 2. Set required secrets (injected as env vars at runtime — not in fly.toml)
+flyctl secrets set SOME_SECRET=value --app my-app-name
+flyctl secrets set ANOTHER_SECRET=value --app my-app-name
+
+# 3. Deploy from the directory containing fly.toml
+cd server/
+flyctl deploy --remote-only
 ```
 
 ---
 
-## Deploying
+## Subsequent Deploys
 
 ```bash
-# From the directory containing fly.toml:
-flyctl deploy
-```
-
-Fly.io will build the Docker image remotely, push it, and roll out the new version. Watch the output for health check results.
-
----
-
-## .dockerignore
-
-Place a `.dockerignore` in the same directory as your `Dockerfile` (e.g. `server/`):
-
-```
-node_modules
-src
-*.test.ts
-tsconfig*.json
-.env*
-```
-
-> **Gotcha — include dist, exclude src:** If you accidentally exclude `dist/` the image will fail to start (no compiled code). If you accidentally include `src/` after compiling, TypeScript source bloats the image. Double-check your `.dockerignore` before first deploy.
-
----
-
-## Health Checks
-
-Fly.io polls your app automatically. Add explicit checks to `fly.toml`:
-
-```toml
-[[services.tcp_checks]]
-  interval = "15s"
-  timeout = "2s"
-
-[[services.http_checks]]
-  interval = "15s"
-  timeout = "2s"
-  grace_period = "5s"
-  method = "get"
-  path = "/api/health"
-```
-
-Your Express server should expose:
-
-```ts
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' });
-});
+cd server/
+flyctl deploy --remote-only   # Fly builds remotely — faster, no local Docker needed
+# OR
+flyctl deploy --local-only    # Build locally — useful for debugging Dockerfile issues
 ```
 
 ---
 
-## Useful Commands
+## GitHub Actions CI/CD
+
+```yaml
+- name: Deploy to Fly.io
+  uses: superfly/flyctl-actions/setup-flyctl@master
+
+- name: Deploy
+  run: flyctl deploy --remote-only
+  working-directory: server/
+  env:
+    FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+```
+
+Store `FLY_API_TOKEN` as a GitHub repository secret.
+
+---
+
+## Verification
 
 ```bash
-flyctl status                    # App status and machine state
-flyctl logs                      # Tail live logs
-flyctl logs --instance <id>      # Logs for a specific machine instance
-flyctl ssh console               # SSH into the running machine
-flyctl scale show                # Current VM size
-flyctl regions list              # All available regions
-flyctl secrets list              # Show secret names (values always redacted)
-flyctl apps list                 # All apps in your org
+flyctl status --app my-app-name
+curl https://my-app-name.fly.dev/api/health
+# Expected: {"status":"ok","uptime":<seconds>,"timestamp":"<ISO>"}
+
+flyctl logs --app my-app-name   # tail live logs
 ```
 
 ---
 
-## Region Codes
-
-| Code | Location |
-|------|----------|
-| `yyz` | Toronto, Canada |
-| `ord` | Chicago, USA |
-| `iad` | Ashburn, Virginia, USA |
-| `lhr` | London, UK |
-| `cdg` | Paris, France |
-| `nrt` | Tokyo, Japan |
-| `syd` | Sydney, Australia |
-
----
-
-## Cost Management
-
-- With `auto_stop_machines = true` and `min_machines_running = 0` you only pay while the machine is actively running.
-- A small Node.js server handling SSE connections to a handful of clients typically costs **~$2–5/month**.
-- Check billing: https://fly.io/dashboard/billing
-- Cold-start latency with `min_machines_running = 0` is typically a few seconds. If that is unacceptable for your use case, set `min_machines_running = 1`.
-
----
-
-## Gotchas Summary
+## Gotchas
 
 | # | Gotcha | Fix |
-|---|--------|-----|
-| 1 | `node:20-slim` has no curl | Add `apt-get install -y curl` in Dockerfile |
-| 2 | `fly launch` overwrites existing config | Write `fly.toml` manually; run `fly deploy` instead |
-| 3 | Persistent WebSocket prevents machine sleep | Expected — set `min_machines_running = 0` and accept it stays up |
-| 4 | `.dockerignore` wrong — dist excluded or src included | Review `.dockerignore` carefully before first deploy |
-| 5 | Secrets in `fly.toml` | Use `flyctl secrets set` — never hardcode keys |
-| 6 | `internal_port` mismatch | Must match `EXPOSE` in Dockerfile and your `PORT` env var |
+|---|---|---|
+| 1 | `--region` flag removed from `apps create` | Region is set only in `fly.toml` via `primary_region` |
+| 2 | Account needs payment method even for free apps | Add credit card at `fly.io/dashboard/<org>/billing` before first `apps create` |
+| 3 | `FLY_API_TOKEN` contains a space (`FlyV1 fm2_...`) | Must quote the value: `FLY_API_TOKEN="FlyV1 fm2_..."` — sourcing a `.env` file fails without quotes |
+| 4 | flyctl not in PATH after Windows install | Binary at `C:\Users\<user>\.fly\bin\flyctl.exe` — use full path or restart shell |
+| 5 | `fly auth login` requires browser | Use `FLY_API_TOKEN` env var instead for non-interactive/CI environments |
+| 6 | Secrets not available on first deploy | Set secrets BEFORE running `flyctl deploy` — the app reads them at startup |
+
+---
+
+## Regions Reference
+
+| Code | Location |
+|---|---|
+| `yyz` | Toronto, Canada |
+| `ord` | Chicago, US |
+| `iad` | Ashburn, VA, US |
+| `lhr` | London, UK |
+
+---
+
+## Scaling
+
+```bash
+flyctl scale count 2 --app my-app-name          # Add a second machine
+flyctl scale vm shared-cpu-2x --app my-app-name  # Upgrade machine size
+```
+
+---
+
+## Rollback
+
+```bash
+flyctl releases --app my-app-name
+flyctl deploy --image <image-id>
+```
 
 ---
 
 ## Related Guides
 
-- `docker-node` — general Docker best practices for Node.js
-- `express-typescript` — Express 5 + TypeScript project setup
+- `terraform-aws-frontend-hosting` — frontend hosting (S3 + CloudFront)
+- `aws-cli` — AWS credentials and IAM setup
+- `claude-code-github-actions` — CI/CD with GitHub Actions
+
+---
+
+*Last updated: 2026-04-05*
+*Verified on: flyctl v0.4.29, Windows 10 (Git Bash), Node.js 20*
