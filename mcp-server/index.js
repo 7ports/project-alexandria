@@ -5,6 +5,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import fs from "fs";
 import path from "path";
+import { execFile } from "child_process";
 
 // Resolve guides directory relative to this script
 const SCRIPT_DIR = path.dirname(new URL(import.meta.url).pathname);
@@ -16,6 +17,55 @@ const GUIDES_DIR = path.resolve(normalizedScriptDir, "..", "guides");
 const TEMPLATES_DIR = path.resolve(normalizedScriptDir, "..", "templates");
 const RECOMMENDATIONS_PATH = path.resolve(normalizedScriptDir, "..", "recommendations.json");
 const ONBOARDING_PATH = path.resolve(normalizedScriptDir, "..", "onboarding.json");
+const REPO_ROOT = path.resolve(normalizedScriptDir, "..");
+
+/**
+ * Run a git command in the repo root directory.
+ * Returns a promise that resolves with { stdout, stderr } or rejects on error.
+ */
+function gitExec(args) {
+  return new Promise((resolve, reject) => {
+    execFile("git", args, { cwd: REPO_ROOT }, (error, stdout, stderr) => {
+      if (error) {
+        reject(new Error(`git ${args[0]} failed: ${stderr || error.message}`));
+      } else {
+        resolve({ stdout, stderr });
+      }
+    });
+  });
+}
+
+/**
+ * Auto-commit and push a guide file after it is written.
+ * Runs asynchronously (fire-and-forget) so it does not block the MCP response.
+ * Errors are logged to stderr but never propagated to the caller.
+ */
+function gitCommitAndPush(guideFilename, existed) {
+  const relPath = `guides/${guideFilename}`;
+  const verb = existed ? "update" : "create";
+  const guideName = guideFilename.replace(/\.md$/, "");
+  const commitMsg = `docs: ${verb} ${guideName} guide`;
+
+  // Fire-and-forget: chain git add -> commit -> push, log errors to stderr
+  (async () => {
+    try {
+      await gitExec(["add", relPath]);
+      await gitExec(["commit", "-m", commitMsg]);
+    } catch (err) {
+      // If there's nothing to commit (no changes), just skip the push
+      if (err.message && err.message.includes("nothing to commit")) {
+        return;
+      }
+      console.error(`[alexandria] git add/commit failed: ${err.message}`);
+      return;
+    }
+    try {
+      await gitExec(["push", "origin"]);
+    } catch (err) {
+      console.error(`[alexandria] git push failed (guide saved locally): ${err.message}`);
+    }
+  })();
+}
 
 function getGuideFiles() {
   try {
@@ -210,6 +260,10 @@ server.tool(
     try {
       fs.mkdirSync(GUIDES_DIR, { recursive: true });
       fs.writeFileSync(filepath, content, "utf-8");
+
+      // Fire-and-forget: auto-commit and push so GitHub Pages rebuilds
+      gitCommitAndPush(filename, existed);
+
       return {
         content: [{
           type: "text",

@@ -21,6 +21,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Build site
+        run: |
+          # Copy guide markdown files into docs/guides/ so they are deployed
+          mkdir -p docs/guides
+          cp guides/*.md docs/guides/
+
+          # Generate a JSON manifest of all guides for the client-side index
+          echo '[' > docs/guides/manifest.json
+          first=true
+          for f in guides/*.md; do
+            name="$(basename "$f" .md)"
+            title="$(head -5 "$f" | grep -m1 '^# ' | sed 's/^# //')"
+            [ -z "$title" ] && title="$name"
+            if [ "$first" = true ]; then first=false; else echo ',' >> docs/guides/manifest.json; fi
+            printf '  {"name":"%s","title":"%s"}' "$name" "$title" >> docs/guides/manifest.json
+          done
+          echo '' >> docs/guides/manifest.json
+          echo ']' >> docs/guides/manifest.json
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
