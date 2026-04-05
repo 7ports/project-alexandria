@@ -5,6 +5,7 @@ This is a living tooling documentation repository. It contains setup guides for 
 ## Key Rules
 
 - **Always update guides** when setting up new tooling or discovering fixes
+- **Always update `docs/index.html`** when guides are added, removed, or significantly changed — the GitHub Pages site must stay in sync with the actual guide library. This includes updating the guide count badge, adding/removing guide cards, and updating any feature sections that reference specific guides or counts.
 - **Use the guide template** in `templates/guide-template.md` for new guides
 - **Keep guides practical** — focus on step-by-step instructions, config snippets, and troubleshooting
 - **Include platform notes** — this setup runs primarily on Windows 10
