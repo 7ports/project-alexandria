@@ -526,7 +526,7 @@
       <div class="badge-row">
         <span class="badge">MCP Server</span>
         <span class="badge">Claude Code</span>
-        <span class="badge">13 Guides</span>
+        <span class="badge">19 Guides</span>
         <span class="badge">Collaborative</span>
         <span class="badge">MIT License</span>
       </div>
@@ -646,6 +646,36 @@
           <span class="tag">ci/cd</span>
           <p>Run Claude Code as a CI step &mdash; automated code review, implementation, and PR comments in GitHub Actions.</p>
         </a>
+        <a class="guide-card" href="guides/?guide=project-voltron">
+          <h3>Project Voltron</h3>
+          <span class="tag">agents</span>
+          <p>Specialized Claude Code agent teams for Unity, web, and fullstack projects &mdash; Alexandria-aware and self-improving.</p>
+        </a>
+        <a class="guide-card" href="guides/?guide=rancher-desktop-windows">
+          <h3>Rancher Desktop (Windows)</h3>
+          <span class="tag">docker</span>
+          <p>Docker-compatible container runtime for Windows 10/11 &mdash; the Colima equivalent for WSL2.</p>
+        </a>
+        <a class="guide-card" href="guides/?guide=maplibre-react-map-gl">
+          <h3>MapLibre + react-map-gl</h3>
+          <span class="tag">mapping</span>
+          <p>Open-source map rendering with React &mdash; vector tiles, custom layers, and real-time data.</p>
+        </a>
+        <a class="guide-card" href="guides/?guide=vitest">
+          <h3>Vitest</h3>
+          <span class="tag">testing</span>
+          <p>Fast unit testing for Vite projects &mdash; ESM-native, watch mode, coverage, and vi.mock.</p>
+        </a>
+        <a class="guide-card" href="guides/?guide=supertest">
+          <h3>Supertest</h3>
+          <span class="tag">testing</span>
+          <p>HTTP integration testing for Express &mdash; including the SSE-over-supertest hang workaround.</p>
+        </a>
+        <a class="guide-card" href="guides/?guide=environment-canada-weather-api">
+          <h3>Environment Canada Weather API</h3>
+          <span class="tag">api</span>
+          <p>GeoMet OGC API for weather data &mdash; METAR observations, bbox filter workaround for station queries.</p>
+        </a>
       </div>
     </div>
   </section>
@@ -732,6 +762,32 @@ and save the maintenance contract."</code></pre>
     </div>
   </section>
 
+  <!-- Voltron Integration -->
+  <section class="contract">
+    <div class="container">
+      <h2>Project Voltron Integration</h2>
+      <p class="contract-sub">Alexandria is paired with <a href="https://7ports.github.io/project-voltron/" target="_blank">Project Voltron</a> — a team of specialized Claude Code agents. Together they form a closed loop: agents consult Alexandria before setting up tools, and write discoveries back afterward.</p>
+      <div class="rule-grid">
+        <div class="rule-card">
+          <h3>scrum-master plans with context</h3>
+          <p>Before creating a work plan, calls <code>get_project_setup_recommendations</code> to surface required tools and include setup tasks in the sprint.</p>
+        </div>
+        <div class="rule-card">
+          <h3>Specialists consult before installing</h3>
+          <p>fullstack-dev, devops-engineer, and others call <code>quick_setup</code> before touching any tool — following proven guides rather than training data.</p>
+        </div>
+        <div class="rule-card">
+          <h3>Discoveries flow back to Alexandria</h3>
+          <p>After completing integrations, agents call <code>update_guide</code> to record platform quirks, working commands, and version notes for future sessions.</p>
+        </div>
+        <div class="rule-card">
+          <h3>Agents stay current automatically</h3>
+          <p>A <code>UserPromptSubmit</code> hook in scaffolded projects silently updates agent templates in place whenever Voltron ships improvements.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Efficiency -->
   <section class="efficiency">
     <div class="container">
@@ -792,7 +848,7 @@ and save the maintenance contract."</code></pre>
         </div>
         <div class="rule-card">
           <h3>Recommend on Project Init</h3>
-          <p>Call get_project_setup_recommendations when starting new projects. Beads is always required.</p>
+          <p>Call get_project_setup_recommendations when starting new projects. Beads and Project Voltron are always required.</p>
         </div>
       </div>
     </div>
