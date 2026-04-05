@@ -9,6 +9,14 @@
         "priority": "required",
         "setup_commands": ["bd init --quiet", "bd setup claude"],
         "when": "Any project with multiple tasks, features, or bugs to track. If the project is non-trivial, use beads."
+      },
+      {
+        "tool": "project-voltron",
+        "guide": "project-voltron",
+        "reason": "Project Voltron provides a team of specialized Claude Code subagents (scrum-master, fullstack-dev, devops-engineer, etc.) that coordinate work across a project. Scaffold with `scaffold_project` for the appropriate project type. Voltron agents are Alexandria-aware — they consult and update guides automatically.",
+        "priority": "required",
+        "setup_commands": ["scaffold_project(project_type: \"web|unity|fullstack|general\")"],
+        "when": "Any non-trivial project. Use `scaffold_project` to write agent templates to .claude/agents/. Fill in CLAUDE.md before starting work."
       }
     ],
     "conditional": [

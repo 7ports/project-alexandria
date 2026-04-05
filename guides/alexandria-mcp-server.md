@@ -125,6 +125,18 @@ Alexandria is designed to be collaboratively maintained by every Claude instance
 
 This contract is codified in `onboarding.json` and served by the `get_onboarding` tool.
 
+## Project Voltron Integration
+
+Alexandria is deeply integrated with **Project Voltron** (the companion agent-template MCP server). When both are installed:
+
+- **Voltron's `scrum-master`** calls `get_project_setup_recommendations` when planning new projects, and syncs tool-specific findings to Alexandria at session end via `update_guide`
+- **Specialist agents** (`fullstack-dev`, `devops-engineer`, `ui-designer`, `qa-tester`, `csharp-dev`, etc.) call `quick_setup` before installing any tool and `update_guide` after discovering platform-specific fixes
+- **Alexandria's `recommendations.json`** always suggests scaffolding Voltron for new projects — the two systems bootstrap each other
+
+This means tool knowledge flows in both directions: Voltron improves its agent instructions via reflections, and Alexandria accumulates concrete setup steps and workarounds discovered during those sessions.
+
+**Setup:** Install both MCP servers globally. No extra configuration needed — Voltron's agent templates already include the relevant `mcp__alexandria__*` tools in their `tools:` frontmatter.
+
 ## Architecture
 
 - Pure Node.js with `@modelcontextprotocol/sdk`
