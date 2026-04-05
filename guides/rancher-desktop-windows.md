@@ -6,44 +6,102 @@ Rancher Desktop is the free, open-source alternative to Docker Desktop on Window
 - **Why not Colima:** Colima uses Lima (Linux Machines), which is macOS-only. No Windows port exists.
 - **Why Rancher Desktop over Docker Desktop:** Rancher Desktop is fully free and open-source, no license required.
 
-## Prerequisites
+---
 
-**WSL must be installed first** — user-level install from Microsoft Store or `wsl --install`. After install, upgrade to WSL2:
+## Full Setup Sequence (Windows 10/11)
 
+### Step 0 — Verify hardware virtualization is enabled in BIOS
+Run this first — if `VirtualizationFirmwareEnabled` is False, nothing else will work:
 ```powershell
-# Run from PowerShell (NOT Git Bash — winget is blocked there due to App Execution Alias)
-wsl --update
+Get-ComputerInfo -Property HyperVisorPresent, HyperVRequirementVMMonitorModeExtensions, HyperVRequirementVirtualizationFirmwareEnabled, HyperVRequirementSecondLevelAddressTranslation
+```
+Expected (working) state:
+- `HyperVRequirementVMMonitorModeExtensions`: **True** — CPU supports VT
+- `HyperVRequirementVirtualizationFirmwareEnabled`: **True** — BIOS has it on ← most common failure point
+- `HyperVRequirementSecondLevelAddressTranslation`: **True** — SLAT supported
+
+If `VirtualizationFirmwareEnabled` is **False**: enter BIOS/UEFI and enable:
+- Intel CPUs: `Intel Virtualization Technology (VT-x)` — usually under Advanced → CPU Configuration
+- AMD CPUs: `AMD Virtualization (AMD-V)` or `SVM Mode`
+- Save (F10) and reboot. Then continue below.
+
+### Step 1 — Enable Virtual Machine Platform Windows feature
+Requires **admin PowerShell** (cannot be done from Git Bash or non-elevated terminal):
+```powershell
+dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+```
+Then **restart the computer**.
+
+### Step 2 — Install WSL and set default to v2
+```powershell
+# Run from PowerShell (winget is blocked in Git Bash)
+wsl --install --no-distribution   # installs WSL components
+wsl --update                       # ensure latest version
 wsl --set-default-version 2
-wsl --status   # verify "Default Version: 2"
+wsl --status                       # verify "Default Version: 2"
 ```
 
-**BIOS virtualization must be on.** If WSL2 refuses to enable, check BIOS for Intel VT-x or AMD-V and enable it.
-
-Note: enabling Windows features (`dism.exe`) requires elevation. These cannot be run from the Claude Code Bash tool — use an admin PowerShell or Windows Terminal (Run as Administrator).
-
-## Installation
-
+If Ubuntu is already installed as WSL1, upgrade it:
 ```powershell
-# Run from PowerShell (NOT Git Bash)
+wsl --set-version Ubuntu 2
+```
+
+### Step 3 — Install Rancher Desktop
+```powershell
 winget install --id SUSE.RancherDesktop --accept-package-agreements --accept-source-agreements
 ```
+Download is ~667 MB. Takes several minutes.
 
-**Download size:** ~667 MB. Takes several minutes. Successfully tested on Windows 10 Pro N 10.0.19045.
+### Step 4 — First launch configuration
+On first launch, Rancher Desktop shows a setup wizard:
+- Container engine: **`dockerd (moby)`** ← important — gives standard `docker` CLI
+- Backend: **WSL2** (default)
+- Allow admin access if prompted
 
-## First Launch Configuration (IMPORTANT)
+First launch takes ~5 minutes while it downloads additional components.
 
-On first launch Rancher Desktop shows a setup wizard. **Container engine choice matters:**
-- Choose **`dockerd (moby)`** — gives you the standard `docker` CLI
-- Do NOT choose `containerd` — that uses `nerdctl` instead of `docker`
-- Choose **WSL2 backend** (default on Windows)
-
-After first launch completes (takes a few minutes while it downloads components), `docker` is available in all terminals.
-
-## Verify
+### Step 5 — Verify
 ```bash
 docker --version
 docker run hello-world
 ```
+
+---
+
+## Diagnosing WSL2 / Rancher Desktop Errors
+
+### Error: `HCS_E_HYPERV_NOT_INSTALLED`
+```
+WSL2 is not supported with your current machine configuration.
+Error code: Wsl/Service/CreateVm/HCS/HCS_E_HYPERV_NOT_INSTALLED
+```
+**Cause:** Virtual Machine Platform Windows feature is not enabled, OR BIOS virtualization is disabled.
+
+**Diagnose first:**
+```powershell
+Get-ComputerInfo -Property HyperVRequirementVirtualizationFirmwareEnabled
+```
+- If **False** → go to BIOS and enable VT-x / AMD-V, then restart
+- If **True** → Virtual Machine Platform feature needs enabling (Step 1 above)
+
+### Error: WSL distro still on version 1 after `wsl --set-default-version 2`
+Setting the default only affects new distros. Existing distros must be upgraded manually:
+```powershell
+wsl --set-version Ubuntu 2
+```
+This will fail with `HCS_E_HYPERV_NOT_INSTALLED` if BIOS virtualization isn't on.
+
+### `wsl --install --no-distribution` succeeds but WSL2 still fails
+This command installs WSL-level components but does NOT enable the `VirtualMachinePlatform` Windows feature. You still need the `dism.exe` step (Step 1) in an admin terminal + restart.
+
+### winget blocked from Git Bash
+`/c/Users/.../AppData/Local/Microsoft/WindowsApps/winget: Permission denied`
+Always run winget from **PowerShell**, not Git Bash.
+
+### Elevation required for Windows features
+`Get-WindowsOptionalFeature` and `dism.exe /enable-feature` both require an **admin PowerShell**. The Claude Code Bash tool cannot elevate — user must run these manually.
+
+---
 
 ## Usage for this project (project-hammer)
 ```bash
@@ -60,15 +118,8 @@ docker run --rm -p 3001:3001 \
 curl http://localhost:3001/api/health
 ```
 
-## Version (verified 2026-04-05)
-- Rancher Desktop: 1.22.0
-- Installed via: `winget install --id SUSE.RancherDesktop`
-- WSL version: 2 (required)
+---
 
-## Gotchas
-- **winget blocked from Git Bash** — always run winget from PowerShell
-- **WSL must be installed before Rancher Desktop** — winget handles the WSL dependency automatically if WSL is already installed; if not, install WSL first via Microsoft Store or `wsl --install` in an admin terminal
-- **First launch is slow** — Rancher Desktop downloads additional components on first start (~5 min)
-- **`docker` not in PATH until after first launch completes** — wait for the Rancher Desktop UI to show "Running" before testing `docker --version`
-- **WSL1 → WSL2:** Existing WSL1 distros continue on WSL1 by default. Run `wsl --set-version Ubuntu 2` to upgrade an existing Ubuntu distro if needed.
-- **dism.exe elevation:** Enabling Windows features requires admin PowerShell — cannot be done from the Claude Code Bash tool
+## Versions (verified 2026-04-05, Windows 10 Pro N 10.0.19045)
+- Rancher Desktop: 1.22.0
+- WSL: latest (via `wsl --update`)
