@@ -60,7 +60,10 @@ function gitCommitAndPush(guideFilename, existed) {
       return;
     }
     try {
-      await gitExec(["push", "origin"]);
+      // Rebase onto origin/main first so worktree or other out-of-band pushes
+      // never leave us in a non-fast-forward state.
+      await gitExec(["pull", "--rebase", "origin", "main"]);
+      await gitExec(["push", "origin", "main"]);
     } catch (err) {
       console.error(`[alexandria] git push failed (guide saved locally): ${err.message}`);
     }
