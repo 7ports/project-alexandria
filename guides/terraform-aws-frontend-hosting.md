@@ -305,6 +305,147 @@ aws cloudfront create-invalidation \
 
 ---
 
+## IAM Policy for Deploy User
+
+### Required permissions
+
+The Terraform AWS provider reads many S3 and Route53 attributes silently on every `plan`/`refresh` that aren't obvious from the docs. Missing any of these causes `AccessDenied` errors. Use this complete set:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "S3StaticSite",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket", "s3:DeleteBucket",
+        "s3:PutBucketPolicy", "s3:GetBucketPolicy", "s3:DeleteBucketPolicy",
+        "s3:PutBucketPublicAccessBlock", "s3:GetBucketPublicAccessBlock",
+        "s3:PutBucketVersioning", "s3:GetBucketVersioning",
+        "s3:GetBucketLocation", "s3:ListBucket", "s3:ListBucketVersions",
+        "s3:PutObject", "s3:GetObject", "s3:DeleteObject", "s3:DeleteObjectVersion",
+        "s3:GetEncryptionConfiguration", "s3:PutEncryptionConfiguration",
+        "s3:GetBucketTagging", "s3:PutBucketTagging",
+        "s3:GetBucketAcl", "s3:PutBucketAcl",
+        "s3:GetBucketCORS", "s3:PutBucketCORS",
+        "s3:GetBucketWebsite", "s3:PutBucketWebsite", "s3:DeleteBucketWebsite",
+        "s3:GetBucketLogging", "s3:PutBucketLogging",
+        "s3:GetBucketNotification", "s3:PutBucketNotification",
+        "s3:GetBucketOwnershipControls", "s3:PutBucketOwnershipControls",
+        "s3:GetBucketObjectLockConfiguration",
+        "s3:GetBucketRequestPayment", "s3:PutBucketRequestPayment",
+        "s3:GetReplicationConfiguration",
+        "s3:GetAccelerateConfiguration", "s3:PutAccelerateConfiguration",
+        "s3:GetLifecycleConfiguration", "s3:PutLifecycleConfiguration",
+        "s3:ListBucketMultipartUploads",
+        "s3:GetObjectAcl", "s3:PutObjectAcl",
+        "s3:GetObjectTagging", "s3:PutObjectTagging"
+      ],
+      "Resource": [
+        "arn:aws:s3:::YOUR-BUCKET-NAME",
+        "arn:aws:s3:::YOUR-BUCKET-NAME/*"
+      ]
+    },
+    {
+      "Sid": "CloudFrontDistribution",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:CreateDistribution", "cloudfront:DeleteDistribution",
+        "cloudfront:GetDistribution", "cloudfront:GetDistributionConfig",
+        "cloudfront:UpdateDistribution",
+        "cloudfront:TagResource", "cloudfront:UntagResource", "cloudfront:ListTagsForResource",
+        "cloudfront:CreateInvalidation", "cloudfront:GetInvalidation", "cloudfront:ListInvalidations",
+        "cloudfront:CreateOriginAccessControl", "cloudfront:DeleteOriginAccessControl",
+        "cloudfront:GetOriginAccessControl", "cloudfront:UpdateOriginAccessControl",
+        "cloudfront:ListOriginAccessControls", "cloudfront:ListDistributions"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ACMCertificates",
+      "Effect": "Allow",
+      "Action": [
+        "acm:RequestCertificate", "acm:DeleteCertificate",
+        "acm:DescribeCertificate", "acm:ListCertificates",
+        "acm:GetCertificate", "acm:ListTagsForCertificate", "acm:AddTagsToCertificate"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "Route53",
+      "Effect": "Allow",
+      "Action": [
+        "route53:CreateHostedZone", "route53:DeleteHostedZone",
+        "route53:GetHostedZone", "route53:ListHostedZones",
+        "route53:ChangeResourceRecordSets", "route53:GetChange",
+        "route53:ListResourceRecordSets",
+        "route53:ListTagsForResource",
+        "route53:ChangeTagsForResource"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+> **Gotcha #9 — `s3:GetAccelerateConfiguration` is required even if you don't use transfer acceleration.** The Terraform AWS provider reads it on every `plan`/`refresh`. Missing it causes an `AccessDenied` during `terraform plan` — confusingly the error appears even before any resources are created or modified. The full list of "read-only" S3 permissions that must be present: `GetAccelerateConfiguration`, `GetBucketObjectLockConfiguration`, `GetBucketRequestPayment`, `GetReplicationConfiguration`, `GetBucketLogging`, `GetBucketNotification`, `GetBucketOwnershipControls`.
+
+> **Gotcha #10 — `route53:ChangeTagsForResource` is separate from `route53:ListTagsForResource`.** Terraform's `aws_route53_zone` resource tags the zone as a separate API call after creation. If `ChangeTagsForResource` is missing: the zone IS created successfully, but Terraform then fails, marks the resource as **tainted**, and will try to destroy+recreate it on the next apply. This can wipe and reassign NS records, breaking DNS. Always include both tag permissions.
+
+> **Gotcha #11 — S3 resource ARN pattern must match the actual bucket name.** If your bucket is named `app-production` but your IAM policy covers `arn:aws:s3:::myproject-*`, the policy won't apply. Either use the exact bucket name or ensure your naming convention is consistent with your policy pattern.
+
+### Updating an existing policy (adding permissions)
+
+IAM limits policies to 5 versions. When adding permissions to an existing policy:
+
+```bash
+# Create new version and set as default
+aws iam create-policy-version \
+  --policy-arn arn:aws:iam::ACCOUNT_ID:policy/PolicyName \
+  --policy-document file://infra/iam-policy.json \
+  --set-as-default
+
+# Delete the oldest version to stay under the 5-version limit
+aws iam delete-policy-version \
+  --policy-arn arn:aws:iam::ACCOUNT_ID:policy/PolicyName \
+  --version-id v1  # delete the oldest, never the default
+```
+
+> **Note:** IAM policy changes take 5–15 seconds to propagate. If you update a policy and immediately run `terraform apply`, you may still get `AccessDenied`. Wait ~15 seconds before retrying.
+
+---
+
+## AWS Credentials with Named Profiles
+
+> **Gotcha #12 — Terraform does not use named AWS profiles automatically.** If your credentials are stored under a named profile (e.g. `[project-hammer]` in `~/.aws/credentials`) rather than `[default]`, Terraform will fail with `No valid credential sources found` even though `aws sts get-caller-identity --profile project-hammer` works fine.
+
+**Fix:** Set `AWS_PROFILE` before running any terraform command:
+
+```bash
+export AWS_PROFILE=project-hammer
+terraform init
+terraform plan
+terraform apply
+```
+
+Or inline:
+```bash
+AWS_PROFILE=project-hammer terraform apply -auto-approve
+```
+
+Alternatively, add a `profile` argument to both providers in `main.tf`:
+```hcl
+provider "aws" {
+  region  = "ca-central-1"
+  profile = "project-hammer"
+}
+```
+
+The env var approach is better for CI/CD (set `AWS_PROFILE` as a secret instead of hardcoding the profile name in Terraform config).
+
+---
+
 ## Outputs
 
 ```hcl
@@ -339,6 +480,10 @@ output "s3_bucket_name" {
 | 6 | Hosted zone for subdomain | Hosted zone must be for root domain (e.g. `example.com`) |
 | 7 | Single-pass S3 sync | Use two-pass: hashed assets first (immutable), HTML second (no-cache) |
 | 8 | Missing CloudFront invalidation | Always invalidate `/*` after deploy to purge edge cache |
+| 9 | `s3:GetAccelerateConfiguration` missing | Add full S3 read permission set — provider reads these on every plan |
+| 10 | `route53:ChangeTagsForResource` missing | Include both `ListTagsForResource` AND `ChangeTagsForResource` in Route53 statement |
+| 11 | S3 ARN pattern doesn't match bucket name | Use exact bucket name or ensure naming prefix matches policy pattern |
+| 12 | Named AWS profile not picked up by Terraform | Set `AWS_PROFILE=profile-name` env var before all terraform commands |
 
 ---
 
@@ -346,3 +491,8 @@ output "s3_bucket_name" {
 
 - `aws-cli` — AWS CLI setup and credentials
 - `flyio-deployment` — backend hosting on Fly.io
+
+---
+
+*Last updated: 2026-04-05*
+*Verified on: Terraform v1.14.8, AWS provider v5.100.0, Windows 10 (Git Bash)*
