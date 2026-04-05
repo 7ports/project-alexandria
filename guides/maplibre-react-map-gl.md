@@ -111,3 +111,114 @@ Load custom SVG/PNG icons via the `onLoad` map callback:
 - CSS import is required or map controls break
 - `cooperativeGestures={true}` is essential for full-bleed mobile maps (prevents page scroll hijack)
 - MapLibre v5 dropped support for older `expression` syntax from v3/v4 — use current expression syntax
+
+---
+
+## MapLibre GL JS v5 — Type Import Changes
+
+In MapLibre GL JS v5, layer specification types were moved out of the main `maplibre-gl` package and into `@maplibre/maplibre-gl-style-spec`. Using the old import path causes TypeScript errors.
+
+### What changed
+In v4 (old — will error in v5):
+```typescript
+import type { CircleLayer, SymbolLayer, LineLayer } from 'maplibre-gl'; // ❌ does not exist in v5
+```
+
+In v5 (correct):
+```typescript
+import type {
+  CircleLayerSpecification,
+  SymbolLayerSpecification,
+  LineLayerSpecification,
+  FilterSpecification,
+} from '@maplibre/maplibre-gl-style-spec'; // ✅
+```
+
+`@maplibre/maplibre-gl-style-spec` is a transitive dependency of `maplibre-gl` — it is already installed when you install `maplibre-gl`. You do not need to add it separately.
+
+### Types that remain in `maplibre-gl`
+These types did NOT move and are still imported from `maplibre-gl`:
+- `MapLibreEvent` — the `onLoad` callback event type
+- `MapLayerMouseEvent` — click/hover event on a layer
+- `Map` — the core map class (import as `type Map as MaplibreMap` to avoid collision with the global `Map`)
+
+### react-map-gl Layer props
+The `Layer` component from `react-map-gl/maplibre` accepts `LayerProps`, which is typed as `OptionalSource<OptionalId<LayerSpecification>>`. Spreading a full `*LayerSpecification` object (which includes `source` and `id`) is valid — the `source` field is optional and harmless when the `Layer` is a child of a `Source`.
+
+```typescript
+import type { CircleLayerSpecification } from '@maplibre/maplibre-gl-style-spec';
+import { Source, Layer } from 'react-map-gl/maplibre';
+
+const circleLayer: CircleLayerSpecification = {
+  id: 'my-layer',
+  type: 'circle',
+  paint: { 'circle-radius': 8, 'circle-color': '#00e5ff' },
+};
+
+// In JSX:
+<Source id="my-source" type="geojson" data={geojson}>
+  <Layer {...circleLayer} />
+</Source>
+```
+
+### FilterSpecification — array literal gotcha
+MapLibre filter expressions are typed as `ExpressionSpecification`, which is a wide variadic union. TypeScript cannot infer a plain array literal as a valid `FilterSpecification`. Use a type assertion:
+
+```typescript
+filter: ['==', ['get', 'mmsi'], selectedMmsi ?? -1] as FilterSpecification
+```
+
+### useMap() — imperative map access inside children
+To access the MapLibre `Map` instance from inside a child of `<Map>`, use the `useMap` hook:
+
+```typescript
+import { useMap } from 'react-map-gl/maplibre';
+
+function MyLayer() {
+  const { current: map } = useMap();
+
+  useEffect(() => {
+    if (!map) return;
+    map.on('click', 'my-layer', (e: MapLayerMouseEvent) => {
+      const feature = e.features?.[0];
+      // handle click...
+    });
+    return () => map.off('click', 'my-layer', handler);
+  }, [map]);
+}
+```
+
+---
+
+## MapTiler — Account Setup & API Key
+
+MapTiler provides map tile styles (including the Ocean style used in this project) via a CDN. You need an API key to use it.
+
+### Account creation
+1. Go to https://cloud.maptiler.com and sign up (free tier available)
+2. Free tier: **100,000 tile requests/month**, suitable for development and low-traffic apps
+3. Navigate to **Account → API Keys** to create a key
+
+### API Key setup
+Store the key as an environment variable — never hardcode it:
+```bash
+# .env (never commit this file)
+VITE_MAPTILER_API_KEY=your_key_here
+```
+
+In a Vite project, prefix with `VITE_` so it's available in the browser bundle via `import.meta.env.VITE_MAPTILER_API_KEY`.
+
+**Note:** MapTiler API keys are necessarily client-visible (embedded in tile requests). Mitigate this by restricting the key by HTTP referrer in the MapTiler dashboard: only allow requests from your production domain.
+
+### Ocean style URL
+```typescript
+const mapStyle = `https://api.maptiler.com/maps/ocean/style.json?key=${apiKey}`;
+```
+
+Other popular styles: `streets-v2`, `satellite`, `topo`, `basic-v2`.
+
+### Production security
+In the MapTiler dashboard, under your API key settings:
+- Add an **HTTP referrer restriction** (e.g. `https://yourdomain.com/*`)
+- This prevents others from using your key if they find it in your bundle
+- In development, also allow `http://localhost:5173/*`
