@@ -27,6 +27,49 @@
 
     .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
 
+    /* Nav */
+    .topnav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(13, 17, 23, 0.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 0;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-brand {
+      font-weight: 700;
+      font-size: 1rem;
+      text-decoration: none;
+      background: linear-gradient(135deg, var(--amber), var(--orange));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.15s;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
     header {
       padding: 40px 0 24px;
       border-bottom: 1px solid var(--border);
@@ -47,12 +90,33 @@
       margin-top: 8px;
     }
 
-    header a {
-      color: var(--accent);
-      text-decoration: none;
+    /* Search */
+    .search-wrapper {
+      margin-bottom: 24px;
     }
 
-    header a:hover { text-decoration: underline; }
+    #guide-search {
+      width: 100%;
+      padding: 10px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.95rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    #guide-search::placeholder { color: var(--text-muted); }
+    #guide-search:focus { border-color: var(--orange); }
+
+    .search-empty {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 32px 0;
+      font-size: 0.95rem;
+    }
 
     /* Guide index list */
     #guide-list {
@@ -77,7 +141,7 @@
 
     .guide-link h3 {
       font-size: 1.05rem;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
 
     .guide-link .slug {
@@ -89,17 +153,31 @@
       border-radius: 4px;
     }
 
+    .guide-link .desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+
     /* Guide viewer */
     #guide-viewer {
       display: none;
       margin-bottom: 48px;
     }
 
+    .viewer-nav {
+      display: flex;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
     #back-link {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
       color: var(--accent);
       text-decoration: none;
-      margin-bottom: 24px;
       font-size: 0.9rem;
     }
 
@@ -189,36 +267,49 @@
   </style>
 </head>
 <body>
+  <!-- Nav -->
+  <nav class="topnav">
+    <div class="container nav-inner">
+      <a class="nav-brand" href="../">Project Alexandria</a>
+      <div class="nav-links">
+        <a href="./">Guides</a>
+        <a href="https://github.com/7ports/project-alexandria">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
   <div class="container">
     <header>
-      <h1>Project Alexandria Guides</h1>
-      <p>
-        Tooling setup documentation maintained collaboratively by Claude instances.
-        <a href="../">Back to home</a>
-      </p>
+      <h1>Setup Guides</h1>
+      <p>Tooling documentation maintained collaboratively by Claude instances.</p>
     </header>
 
     <!-- Guide index -->
     <div id="guide-index">
+      <div class="search-wrapper">
+        <input type="text" id="guide-search" placeholder="Search guides..." autocomplete="off" spellcheck="false">
+      </div>
       <div id="guide-list">
         <p class="loading">Loading guides...</p>
       </div>
+      <p id="search-empty" class="search-empty" style="display:none;">No guides match your search.</p>
     </div>
 
     <!-- Single guide viewer -->
     <div id="guide-viewer">
-      <a id="back-link" href="#">&larr; All guides</a>
+      <div class="viewer-nav">
+        <a id="back-link" href="#">&larr; All guides</a>
+      </div>
       <div id="guide-content"></div>
     </div>
 
     <footer>
+      <a href="../">Home</a> &middot;
       <a href="https://github.com/7ports/project-alexandria">GitHub</a> &middot;
-      MIT License &middot;
-      Built by <a href="https://github.com/7ports">7ports</a>
+      MIT License
     </footer>
   </div>
 
-  <!-- Lightweight markdown parser (marked.js via CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
   <script>
     const listEl = document.getElementById('guide-list');
@@ -226,10 +317,13 @@
     const viewerEl = document.getElementById('guide-viewer');
     const contentEl = document.getElementById('guide-content');
     const backLink = document.getElementById('back-link');
+    const searchInput = document.getElementById('guide-search');
+    const searchEmpty = document.getElementById('search-empty');
 
     function showIndex() {
       indexEl.style.display = '';
       viewerEl.style.display = 'none';
+      document.title = 'Guides — Project Alexandria';
       history.replaceState(null, '', './');
     }
 
@@ -237,9 +331,11 @@
       indexEl.style.display = 'none';
       viewerEl.style.display = '';
       contentEl.innerHTML = '<p class="loading">Loading guide...</p>';
-      history.replaceState(null, '', `?guide=${encodeURIComponent(name)}`);
+      document.title = title + ' — Project Alexandria';
+      history.replaceState(null, '', '?guide=' + encodeURIComponent(name));
+      window.scrollTo(0, 0);
 
-      fetch(`./${encodeURIComponent(name)}.md`)
+      fetch('./' + encodeURIComponent(name) + '.md')
         .then(r => {
           if (!r.ok) throw new Error('Not found');
           return r.text();
@@ -248,13 +344,28 @@
           contentEl.innerHTML = marked.parse(md);
         })
         .catch(() => {
-          contentEl.innerHTML = `<p>Could not load guide "${name}".</p>`;
+          contentEl.innerHTML = '<p>Could not load guide &ldquo;' + name + '&rdquo;.</p>';
         });
     }
 
-    backLink.addEventListener('click', (e) => {
+    backLink.addEventListener('click', e => {
       e.preventDefault();
       showIndex();
+    });
+
+    // Search filter
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase().trim();
+      let visible = 0;
+      document.querySelectorAll('.guide-link').forEach(card => {
+        const h3 = card.querySelector('h3');
+        const slug = card.querySelector('.slug');
+        const text = (h3 ? h3.textContent : '') + ' ' + (slug ? slug.textContent : '');
+        const show = !q || text.toLowerCase().includes(q);
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      searchEmpty.style.display = (q && visible === 0) ? '' : 'none';
     });
 
     // Load manifest and render index
@@ -266,9 +377,12 @@
         for (const g of guides) {
           const card = document.createElement('a');
           card.className = 'guide-link';
-          card.href = `?guide=${encodeURIComponent(g.name)}`;
-          card.innerHTML = `<h3>${g.title}</h3><span class="slug">${g.name}</span>`;
-          card.addEventListener('click', (e) => {
+          card.href = '?guide=' + encodeURIComponent(g.name);
+          const descHtml = g.description
+            ? '<p class="desc">' + g.description + '</p>'
+            : '';
+          card.innerHTML = '<h3>' + g.title + '</h3><span class="slug">' + g.name + '</span>' + descHtml;
+          card.addEventListener('click', e => {
             e.preventDefault();
             showGuide(g.name, g.title);
           });

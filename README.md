@@ -6,6 +6,8 @@ A collaboratively maintained knowledge base of tooling setup guides, designed to
 
 Setting up development tools, MCP servers, and integrations is repetitive. Every time you configure a new tool, you (or your AI assistant) re-discovers the same installation steps, config quirks, and platform gotchas. Project Alexandria solves this by creating a persistent, queryable reference that Claude can consult and update automatically.
 
+**Live Docs:** [https://7ports.github.io/project-alexandria/](https://7ports.github.io/project-alexandria/)
+
 **The key idea:** every Claude instance that has Alexandria installed becomes both a consumer and a contributor. When one instance sets up a tool and documents the process, every other instance benefits. When an instance hits a setup problem and fixes it, the fix gets added to the guide for everyone.
 
 ## How It Works
@@ -36,7 +38,7 @@ Setting up development tools, MCP servers, and integrations is repetitive. Every
 ### 1. Clone the Repository
 
 ```bash
-git clone <your-repo-url> /path/to/project-alexandria
+git clone https://github.com/7ports/project-alexandria /path/to/project-alexandria
 cd project-alexandria/mcp-server
 npm install
 ```
@@ -77,6 +79,7 @@ In your first conversation after installing, ask Claude to call `get_onboarding`
 | Tool | Description |
 |------|-------------|
 | `list_guides` | List all available setup guides with summaries |
+| `quick_setup` | Extract actionable content only (commands, config, troubleshooting) — token-efficient |
 | `read_guide` | Read the full content of a specific guide |
 | `search_guides` | Search for keywords across all guides |
 | `update_guide` | Create or update a guide |
@@ -99,6 +102,8 @@ In your first conversation after installing, ask Claude to call `get_onboarding`
 | [Claude in Chrome](guides/claude-in-chrome.md) | Browser automation via Chrome extension |
 | [Claude Preview](guides/claude-preview-mcp-server.md) | Dev server preview and inspection |
 | [Beads](guides/beads.md) | Distributed graph issue tracker for AI agents |
+| [AWS CLI](guides/aws-cli.md) | AWS Command Line Interface setup and configuration |
+| [Claude Code GitHub Actions](guides/claude-code-github-actions.md) | Running Claude Code as a CI step in GitHub Actions |
 
 ## Contributing
 
@@ -143,6 +148,10 @@ Edit `recommendations.json` to add tools that should be recommended during proje
 project-alexandria/
 ├── README.md                  # This file
 ├── CLAUDE.md                  # Project conventions for Claude
+├── docs/                      # GitHub Pages site
+│   ├── index.html             # Landing page
+│   └── guides/
+│       └── index.html         # Interactive guide browser
 ├── guides/                    # Individual setup guides (one per tool)
 ├── templates/
 │   └── guide-template.md      # Standard format for new guides

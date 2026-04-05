@@ -31,6 +31,49 @@
 
     .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
 
+    /* Nav */
+    .topnav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(13, 17, 23, 0.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 0;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-brand {
+      font-weight: 700;
+      font-size: 1rem;
+      text-decoration: none;
+      background: linear-gradient(135deg, var(--amber), var(--orange));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.15s;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
     /* Hero */
     .hero {
       text-align: center;
@@ -60,6 +103,7 @@
       gap: 8px;
       justify-content: center;
       flex-wrap: wrap;
+      margin-bottom: 32px;
     }
 
     .badge {
@@ -70,6 +114,38 @@
       font-weight: 600;
       border: 1px solid var(--border);
       color: var(--text-muted);
+    }
+
+    .cta-row {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity 0.15s;
+    }
+
+    .cta-btn:hover { opacity: 0.85; }
+
+    .cta-btn.primary {
+      background: var(--orange);
+      color: #0d1117;
+    }
+
+    .cta-btn.secondary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
     }
 
     /* Concept */
@@ -148,16 +224,35 @@
       border-bottom: 1px solid var(--border);
     }
 
-    .guides h2 {
-      font-size: 1.75rem;
+    .section-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 16px;
       margin-bottom: 32px;
-      text-align: center;
     }
+
+    .section-header h2 { font-size: 1.75rem; }
+
+    .section-header a {
+      color: var(--orange);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .section-header a:hover { text-decoration: underline; }
 
     .guide-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 16px;
+    }
+
+    a.guide-card {
+      display: block;
+      text-decoration: none;
+      color: var(--text);
     }
 
     .guide-card {
@@ -166,6 +261,7 @@
       border-radius: 12px;
       padding: 24px;
       transition: border-color 0.2s;
+      height: 100%;
     }
 
     .guide-card:hover { border-color: var(--orange); }
@@ -405,10 +501,22 @@
       .hero p { font-size: 1rem; }
       .diagram-row { flex-direction: column; gap: 8px; }
       .diagram-arrow { transform: rotate(90deg); }
+      .section-header { flex-direction: column; gap: 4px; align-items: center; }
     }
   </style>
 </head>
 <body>
+
+  <!-- Nav -->
+  <nav class="topnav">
+    <div class="container nav-inner">
+      <a class="nav-brand" href="./">Project Alexandria</a>
+      <div class="nav-links">
+        <a href="./guides/">Browse Guides</a>
+        <a href="https://github.com/7ports/project-alexandria">GitHub</a>
+      </div>
+    </div>
+  </nav>
 
   <!-- Hero -->
   <section class="hero">
@@ -418,9 +526,13 @@
       <div class="badge-row">
         <span class="badge">MCP Server</span>
         <span class="badge">Claude Code</span>
-        <span class="badge">10 Guides</span>
+        <span class="badge">13 Guides</span>
         <span class="badge">Collaborative</span>
         <span class="badge">MIT License</span>
+      </div>
+      <div class="cta-row">
+        <a href="./guides/" class="cta-btn primary">Browse Guides &rarr;</a>
+        <a href="https://github.com/7ports/project-alexandria" class="cta-btn secondary">View on GitHub</a>
       </div>
     </div>
   </section>
@@ -464,58 +576,76 @@
   <!-- Guides -->
   <section class="guides">
     <div class="container">
-      <h2>Setup Guides</h2>
+      <div class="section-header">
+        <h2>Setup Guides</h2>
+        <a href="./guides/">View all &rarr;</a>
+      </div>
       <div class="guide-grid">
-        <div class="guide-card">
+        <a class="guide-card" href="guides/?guide=coplay-mcp-server">
           <h3>CoPlay MCP Server</h3>
           <span class="tag">unity</span>
           <p>Unity editor integration &mdash; scene hierarchy, prefabs, 3D model generation, animations, UI, and more.</p>
-        </div>
-        <div class="guide-card">
+        </a>
+        <a class="guide-card" href="guides/?guide=beads">
           <h3>Beads</h3>
           <span class="tag">required</span>
           <p>Distributed graph issue tracker for AI agents. Always use for complex projects.</p>
-        </div>
-        <div class="guide-card">
+        </a>
+        <a class="guide-card" href="guides/?guide=github-mcp-server">
           <h3>GitHub MCP Server</h3>
           <span class="tag">mcp</span>
           <p>GitHub API access &mdash; repos, issues, PRs, branches, releases, Copilot integration.</p>
-        </div>
-        <div class="guide-card">
+        </a>
+        <a class="guide-card" href="guides/?guide=git-mcp-server">
           <h3>Git MCP Server</h3>
           <span class="tag">mcp</span>
           <p>Git operations via MCP &mdash; status, diff, log, commit, branch management.</p>
-        </div>
-        <div class="guide-card">
+        </a>
+        <a class="guide-card" href="guides/?guide=firebase-mcp-server">
           <h3>Firebase MCP Server</h3>
           <span class="tag">mcp</span>
           <p>Firebase project management &mdash; Firestore, Auth, Hosting, Storage, Data Connect.</p>
-        </div>
-        <div class="guide-card">
+        </a>
+        <a class="guide-card" href="guides/?guide=claude-in-chrome">
           <h3>Claude in Chrome</h3>
           <span class="tag">browser</span>
           <p>Browser automation &mdash; screenshots, clicks, form filling, network monitoring.</p>
-        </div>
-        <div class="guide-card">
+        </a>
+        <a class="guide-card" href="guides/?guide=claude-preview-mcp-server">
           <h3>Claude Preview</h3>
           <span class="tag">built-in</span>
           <p>Dev server launcher &mdash; screenshots, element inspection, responsive testing.</p>
-        </div>
-        <div class="guide-card">
+        </a>
+        <a class="guide-card" href="guides/?guide=memory-mcp-server">
           <h3>Memory MCP Server</h3>
           <span class="tag">mcp</span>
           <p>Persistent knowledge graph &mdash; entities, observations, and relations across sessions.</p>
-        </div>
-        <div class="guide-card">
+        </a>
+        <a class="guide-card" href="guides/?guide=fetch-mcp-server">
           <h3>Fetch MCP Server</h3>
           <span class="tag">mcp</span>
           <p>Web content fetching &mdash; retrieve and process content from any public URL.</p>
-        </div>
-        <div class="guide-card">
+        </a>
+        <a class="guide-card" href="guides/?guide=alexandria-mcp-server">
           <h3>Alexandria MCP Server</h3>
           <span class="tag">meta</span>
           <p>This server &mdash; exposes all guides as searchable, queryable MCP tools.</p>
-        </div>
+        </a>
+        <a class="guide-card" href="guides/?guide=aws-cli">
+          <h3>AWS CLI</h3>
+          <span class="tag">cloud</span>
+          <p>AWS Command Line Interface &mdash; configure credentials, manage cloud resources, and automate deployments.</p>
+        </a>
+        <a class="guide-card" href="guides/?guide=github-cli">
+          <h3>GitHub CLI</h3>
+          <span class="tag">git</span>
+          <p>Terminal-based GitHub operations &mdash; PRs, issues, releases, and repo management via <code>gh</code>.</p>
+        </a>
+        <a class="guide-card" href="guides/?guide=claude-code-github-actions">
+          <h3>Claude Code in Actions</h3>
+          <span class="tag">ci/cd</span>
+          <p>Run Claude Code as a CI step &mdash; automated code review, implementation, and PR comments in GitHub Actions.</p>
+        </a>
       </div>
     </div>
   </section>
@@ -672,6 +802,7 @@ and save the maintenance contract."</code></pre>
   <footer>
     <div class="container">
       <p>
+        <a href="./guides/">Browse Guides</a> &middot;
         <a href="https://github.com/7ports/project-alexandria">GitHub</a> &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
