@@ -103,6 +103,65 @@ Always run winget from **PowerShell**, not Git Bash.
 
 ---
 
+## Confirmed Working State / Docker Build Gotchas
+
+These gotchas were discovered and fixed during a real build session (project-hammer, 2026-04-05, Windows 10 + WSL2 + Rancher Desktop 1.22.0).
+
+### Gotcha 1: `.dockerignore` must NOT exclude `src/`
+
+In a multi-stage Docker build, the builder stage runs `COPY . .` to get source files for TypeScript compilation. If `src` is listed in `.dockerignore`, the copy silently succeeds but the `dist/` output is empty — the build appears to succeed but the compiled output is missing.
+
+**Only exclude what you don't need in the build context:**
+```
+# .dockerignore — safe minimal set
+node_modules
+dist
+.env
+```
+
+Do NOT add `src` or `src/` to `.dockerignore` in projects where the builder stage compiles from source.
+
+### Gotcha 2: Test files must be excluded from `tsconfig.json`, not `.dockerignore`
+
+Test files that use top-level `await` (common in vitest) will fail TypeScript compilation when `"module": "CommonJS"` is set in `tsconfig.json`. The error looks like:
+
+```
+error TS1378: Top-level 'await' expressions are only allowed when the 'module' option is set to 'es2022', 'esnext', 'system', 'node16', 'node18', or 'nodenext', and the 'target' option is set to 'es2017' or higher.
+```
+
+**Fix:** Add test paths to the `exclude` array in `tsconfig.json`:
+```json
+{
+  "exclude": ["node_modules", "dist", "src/**/*.test.ts", "src/__tests__"]
+}
+```
+
+**Important:** vitest handles its own TypeScript transpilation and does NOT respect `tsconfig.json`'s `exclude` list for test execution — so excluding test files from tsconfig does not break your tests, only fixes the Docker build.
+
+### End-to-end confirmed working sequence (Windows 10 + WSL2 + Rancher Desktop)
+
+The full sequence that gets you from bare Windows to a working `docker build`:
+
+1. **BIOS:** Enable VT-x (Intel) or AMD-V (AMD) — Virtualization Technology setting
+2. **Windows features:** Enable Virtual Machine Platform
+   ```powershell
+   Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -NoRestart
+   ```
+   Then restart.
+3. **WSL:** Install and set default version to 2
+   ```powershell
+   wsl --install --no-distribution
+   wsl --set-default-version 2
+   ```
+4. **Rancher Desktop:** Download from [rancherdesktop.io](https://rancherdesktop.io), install, select **`dockerd (moby)`** engine on first launch.
+5. **Verify Docker works:**
+   ```bash
+   docker build -t myapp .
+   docker run --rm -p 3001:3001 -e KEY=val myapp
+   ```
+
+---
+
 ## Usage for this project (project-hammer)
 ```bash
 # Build the server image (from project root)
