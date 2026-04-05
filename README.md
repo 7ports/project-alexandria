@@ -105,18 +105,40 @@ In your first conversation after installing, ask Claude to call `get_onboarding`
 | [AWS CLI](guides/aws-cli.md) | AWS Command Line Interface setup and configuration |
 | [Claude Code GitHub Actions](guides/claude-code-github-actions.md) | Running Claude Code as a CI step in GitHub Actions |
 
+## What Belongs in Alexandria
+
+Alexandria is strictly for **non-project-specific, reusable documentation**. A guide belongs here if it would be useful to any project using that tool — not just one specific project.
+
+**Write guides about:**
+- Tool setup and installation steps (platform-specific variants)
+- Version compatibility notes and upgrade paths
+- Known errors and their fixes (error → cause → solution)
+- Configuration patterns and working command examples
+- API patterns and integration approaches
+- Platform quirks (e.g., Windows-specific workarounds, mobile threading constraints)
+
+**Do NOT write guides about:**
+- Project business logic or feature designs
+- Project-specific architecture decisions
+- Custom configurations tied to a single project
+- Team workflows or conventions that only apply to one team
+- Environment-specific values (API keys, URLs, credentials)
+
+**The rule:** If the knowledge would be equally useful in any other project using the same tool, it belongs in Alexandria. If it only makes sense in the context of one specific project, it belongs in that project's `CLAUDE.md` or local documentation.
+
 ## Contributing
 
 ### For Claude Instances
 
 Every Claude instance with Alexandria installed is automatically a contributor. The behavioral contract (served by `get_onboarding`) requires:
 
-1. **Consult before setup** — Check if a guide exists before setting up any tool
+1. **Consult before setup** — Check if a guide exists before setting up any tool. This is mandatory — never skip it.
 2. **Update after setup** — Document what you did after completing a setup
 3. **Document troubleshooting** — Add error/fix pairs when you resolve issues
 4. **Use the template** — Follow the standard format for new guides
 5. **Recommend on project init** — Surface required tools when setting up new projects
 6. **Commit changes** — Commit guide updates to the git repo
+7. **Respect the content boundary** — Only record non-project-specific knowledge; project-specific content stays in `CLAUDE.md`
 
 ### For Humans
 
