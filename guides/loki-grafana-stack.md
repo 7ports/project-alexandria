@@ -225,6 +225,28 @@ networks:
 
 ## Known Issues and Gotchas
 
+### Grafana admin password not updated on container recreate
+
+`GF_SECURITY_ADMIN_PASSWORD` is only applied on **first initialization** of the Grafana database. If the container is first started with an empty or wrong value (e.g. before a `.env` symlink is in place), Grafana initializes with the default `admin` password. Recreating the container with the correct env var does **not** change the existing stored password.
+
+**Fix:** Reset the admin password via the Grafana CLI after fixing the env:
+
+```bash
+docker exec grafana grafana cli admin reset-admin-password <new-password>
+```
+
+**Prevention:** Ensure the `.env` file is in place and readable by Docker Compose before the very first `docker compose up`. If running compose with `-f monitoring/docker-compose.yml` from the project root, the `.env` must be at the project root (not in the `monitoring/` subdirectory). Docker Compose V2 looks for `.env` in the directory of the compose file, not the CWD — use a symlink or `--env-file` flag to bridge them.
+
+### env() deprecation in Alloy River config
+
+As of Alloy v1.x+, the `env()` stdlib function is deprecated. Startup logs will show repeated warnings:
+
+```
+level=warn msg="this stdlib function is deprecated; please refer to the documentation for updated usage and alternatives" function=env
+```
+
+The config **still works** — these are warnings, not errors. Check the Alloy release notes for the replacement (`sys.env()` in newer versions). Safe to leave as-is until Alloy removes the function entirely.
+
 ### Loki "entry too far behind" errors on Alloy restart
 
 When Alloy restarts after being stopped for hours, it replays its WAL (write-ahead log) and attempts to push old log entries to Loki. Loki rejects entries older than its `reject_old_samples_max_age` (default: ~1h). These errors appear in Alloy logs as:
@@ -248,7 +270,7 @@ level=error msg="error inspecting Docker container" error="Error response from d
 
 ### Prometheus external_labels vs relabeling for client labels
 
-`prometheus.remote_write.endpoint.write_relabel_config` is the canonical place to add labels. However, the correct River pattern for adding `client` and `env` labels to metrics is to use a `prometheus.relabel` component between the scrape and the remote_write — NOT `external_labels` on the remote_write endpoint. The `external_labels` block on `prometheus.remote_write` is not supported in River config; use `prometheus.relabel` instead.
+The correct River pattern for adding `client` and `env` labels to metrics is to use a `prometheus.relabel` component between the scrape and the remote_write — NOT `external_labels` on the remote_write endpoint. The `external_labels` block on `prometheus.remote_write` is not supported in River config; use `prometheus.relabel` instead.
 
 For Loki logs, `external_labels` on `loki.write` IS supported and is the correct place.
 
@@ -265,12 +287,15 @@ networks:
 
 ### Querying Loki when port 3100 is not exposed to the host
 
-If Loki's port is internal-only (not exposed via `ports:` in compose), query it from within the Docker network:
+If Loki's port is internal-only (not exposed via `ports:` in compose), query it from within the Docker network using a temporary curl container:
 
 ```bash
-docker run --rm --network monitoring_monitoring alpine/curl \
-  -s -G 'http://loki:3100/loki/api/v1/label/client/values'
+# Use appropriate/curl (has curl) or alpine/curl
+docker run --rm --network monitoring_monitoring appropriate/curl:latest \
+  -s 'http://loki:3100/loki/api/v1/label/client/values'
 ```
+
+Note: Most Grafana/Prometheus/Loki images do not have `curl` or `wget` installed — exec into a purpose-built curl container instead.
 
 ### Alloy stability level flag
 
@@ -292,15 +317,19 @@ docker ps | grep alloy
 curl -s http://localhost:9090/api/v1/label/client/values
 
 # 3. Check Loki has received logs with client label (internal network)
-docker run --rm --network monitoring_monitoring alpine/curl \
+docker run --rm --network monitoring_monitoring appropriate/curl:latest \
   -s 'http://loki:3100/loki/api/v1/label/client/values'
 
 # 4. Query recent logs for a specific client
 NOW=$(date +%s)
 START=$((NOW - 600))
-docker run --rm --network monitoring_monitoring alpine/curl \
+docker run --rm --network monitoring_monitoring appropriate/curl:latest \
   -s -G 'http://loki:3100/loki/api/v1/query_range' \
   --data-urlencode 'query={client="sauron"}' \
   --data-urlencode 'limit=5' \
   --data-urlencode "start=${START}000000000"
+
+# 5. List Grafana dashboards (when Grafana port is internal-only)
+docker run --rm --network monitoring_monitoring appropriate/curl:latest \
+  -s -u admin:<password> 'http://grafana:3000/api/search?type=dash-db'
 ```
