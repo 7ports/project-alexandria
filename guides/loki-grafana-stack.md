@@ -1,11 +1,15 @@
-# Loki + Grafana Stack
+# Loki + Grafana Stack — Setup Guide
 
 ## Overview
-Running Grafana Loki alongside Prometheus + Grafana on a single Docker Compose host (tested on EC2 t3.small). Loki handles log aggregation; Grafana provides unified metrics + logs dashboards.
 
-## Quick Reference
+Grafana Loki is a log aggregation system optimized for storing and querying logs from cloud-native environments. It integrates natively with Grafana and works well alongside Prometheus.
+
+---
+
+## Quick Setup
 
 ### Recommended mode: Monolithic (single-binary)
+
 ```yaml
 services:
   loki:
@@ -24,6 +28,7 @@ services:
 ```
 
 ### Minimal loki.yml for single-tenant, filesystem storage
+
 ```yaml
 auth_enabled: false  # Single-tenant; no per-client auth needed
 
@@ -70,6 +75,7 @@ compactor:
 ```
 
 ### Grafana datasource provisioning for Loki
+
 ```yaml
 # grafana/provisioning/datasources/loki.yml
 apiVersion: 1
@@ -83,104 +89,218 @@ datasources:
       maxLines: 1000
 ```
 
-### Client log shipper: Grafana Alloy (replaces deprecated Promtail)
-```yaml
-# alloy/config.alloy — runs on the client side
-loki.source.file "app_logs" {
-  targets    = [{ __path__ = "/var/log/app/*.log", job = "app" }]
-  forward_to = [loki.write.sauron.receiver]
+---
+
+## Client log shipper: Grafana Alloy (replaces deprecated Promtail)
+
+**Note:** Promtail is EOL as of March 2026. Grafana Agent is EOL as of November 2025. Use Grafana Alloy for all new deployments.
+
+Alloy version in production as of 2026-04-06: **v1.15.0**
+
+### Complete Alloy River config for push-based client monitoring
+
+The config below is the canonical pattern for clients that push metrics and logs to a central Sauron hub via HTTPS + Bearer token. All values are injected from environment variables — no secrets in the config file.
+
+```river
+// 1. Host metrics via built-in unix exporter
+prometheus.exporter.unix "host" {
+  filesystem {
+    mount_points_exclude = "^/(sys|proc|dev|host|etc|run/secrets)($|/)"
+    fs_types_exclude     = "^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$"
+  }
 }
 
-loki.write "sauron" {
+// 2. Scrape host exporter + other local services
+prometheus.scrape "local_exporters" {
+  targets = concat(
+    prometheus.exporter.unix.host.targets,
+    [
+      {"__address__" = "node-exporter:9100"},
+    ],
+  )
+  scrape_interval = "60s"
+  scrape_timeout  = "10s"
+  forward_to = [prometheus.relabel.add_client_labels.receiver]
+}
+
+// 3. Add client/env labels via relabeling (correct River pattern — not external_labels)
+prometheus.relabel "add_client_labels" {
+  rule {
+    target_label = "client"
+    replacement  = env("CLIENT_NAME")
+  }
+  rule {
+    target_label = "env"
+    replacement  = env("CLIENT_ENV")
+  }
+  forward_to = [prometheus.remote_write.hub.receiver]
+}
+
+// 4. Remote-write to hub
+prometheus.remote_write "hub" {
   endpoint {
-    url = "https://sauron.7ports.ca/loki/api/v1/push"
-    bearer_token = env("SAURON_BEARER_TOKEN")
+    url          = env("SAURON_METRICS_URL")
+    bearer_token = env("PUSH_BEARER_TOKEN")
+    queue_config {
+      capacity             = 10000
+      max_samples_per_send = 2000
+    }
+  }
+}
+
+// 5. System log collection
+loki.source.file "system_logs" {
+  targets    = [{ __path__ = "/var/log/*.log", job = "system_logs" }]
+  forward_to = [loki.relabel.add_log_labels.receiver]
+}
+
+// 6. Container log collection via Docker socket
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+loki.source.docker "container_logs" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.docker.containers.targets
+  forward_to = [loki.relabel.add_log_labels.receiver]
+}
+
+// 7. Add client/env labels to log streams
+loki.relabel "add_log_labels" {
+  rule {
+    target_label = "client"
+    replacement  = env("CLIENT_NAME")
+  }
+  rule {
+    target_label = "env"
+    replacement  = env("CLIENT_ENV")
+  }
+  forward_to = [loki.write.hub.receiver]
+}
+
+// 8. Push logs to Loki
+loki.write "hub" {
+  endpoint {
+    url          = env("SAURON_LOKI_URL")
+    bearer_token = env("PUSH_BEARER_TOKEN")
   }
   external_labels = {
-    client  = env("CLIENT_NAME"),
-    env     = env("CLIENT_ENV"),
+    client = env("CLIENT_NAME"),
+    env    = env("CLIENT_ENV"),
   }
 }
 ```
 
-## Gotchas
+### Alloy Docker Compose service definition (compose override pattern)
 
-### Promtail is EOL March 2026
-- Use **Grafana Alloy** (`grafana/alloy`) for all new log shipping, not Promtail
-- Alloy is a drop-in replacement with the same log shipping API, plus OpenTelemetry support
-- Alloy also replaces Grafana Agent
+```yaml
+# docker-compose.monitoring.yml
+services:
+  alloy:
+    image: grafana/alloy:latest
+    container_name: alloy
+    restart: unless-stopped
+    command: run --stability.level=generally-available /etc/alloy/config.alloy
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/log:/var/log:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - PUSH_BEARER_TOKEN=${PUSH_BEARER_TOKEN_SAURON}
+      - SAURON_METRICS_URL=${SAURON_METRICS_URL}
+      - SAURON_LOKI_URL=${SAURON_LOKI_URL}
+      - CLIENT_NAME=${CLIENT_NAME}
+      - CLIENT_ENV=${CLIENT_ENV}
+    mem_limit: 256m
+    networks:
+      - monitoring
 
-### Memory cap is mandatory on t3.small
-- Set `mem_limit: 400m` in docker-compose.yml — Loki's default is unbounded and will OOM the host
-- If you see container restarts, check `docker stats` for memory pressure
-- Monolithic mode supports up to ~20 GB/day ingestion — personal projects stay well under this
-
-### auth_enabled: false for single-tenant
-- `auth_enabled: false` means Loki uses a hardcoded org ID of "fake"
-- For multi-tenant (multiple independent clients), set `auth_enabled: true` and have nginx inject `X-Scope-OrgID: <client_name>` per route
-- For simple personal use, single-tenant with a shared push URL + bearer token is sufficient
-
-### Filesystem storage is fine for personal use
-- S3 backend is only needed for HA or retention > ~30-60 days
-- Filesystem storage with the tsdb store (schema v13+) is stable and performant for small volumes
-- Keep retention at 7-14 days to control disk usage on a 20 GiB EC2 root volume
-
-### Schema version matters
-- Use schema `v13` with `store: tsdb` (current as of 2026)
-- Older schemas (v11, v12) still work but produce deprecation warnings
-
-### Port binding
-- Bind Loki to `127.0.0.1:3100` on the host — do not expose publicly
-- Access from Grafana over the Docker network via `http://loki:3100`
-- Remote clients push logs through nginx (HTTPS) which reverse-proxies to `http://loki:3100` internally
-
-## Security for Remote Push
-
-When accepting logs from remote clients over the internet:
-```nginx
-# nginx location for Loki push endpoint
-location /loki/api/v1/push {
-    auth_request /auth;
-    proxy_pass http://loki:3100;
-    proxy_set_header X-Scope-OrgID $arg_client;  # optional multi-tenant
-}
-location /auth {
-    internal;
-    if ($http_authorization != "Bearer YOUR_TOKEN") { return 401; }
-    return 200;
-}
+networks:
+  monitoring:
+    external: true
+    name: monitoring_monitoring  # Correct network name: <project_dir>_<network_name>
 ```
-Or use nginx `auth_basic` for simpler setup.
 
-## Comparison vs Alternatives
+---
 
-| Tool | Pros | Cons | Verdict |
-|---|---|---|---|
-| **Loki** | Native Grafana integration, same ecosystem as Prometheus, lightweight | LogQL learning curve, not full-text search | **Recommended** |
-| Graylog | Powerful search, web UI | Requires MongoDB + Elasticsearch — too heavy for t3.small | Rejected |
-| OpenSearch | Full-text search, rich ecosystem | Very heavy, separate UI from Grafana | Rejected |
-| VictoriaLogs | Very memory-efficient, compatible with Loki API | Newer, less community docs | Good alternative if Loki OOMs |
+## Known Issues and Gotchas
 
-## Testing
+### Loki "entry too far behind" errors on Alloy restart
+
+When Alloy restarts after being stopped for hours, it replays its WAL (write-ahead log) and attempts to push old log entries to Loki. Loki rejects entries older than its `reject_old_samples_max_age` (default: ~1h). These errors appear in Alloy logs as:
+
+```
+level=error msg="final error sending batch, no retries left, dropping data"
+status=400 error="entry too far behind, entry timestamp is: ..., oldest acceptable timestamp is: ..."
+```
+
+**This is expected and harmless.** The old entries are dropped and Alloy continues normally. Current log entries push without error. The errors self-clear within a few minutes.
+
+### "No such container" errors in loki.source.docker after restart
+
+After Alloy restarts, `loki.source.docker` may log errors for container IDs that existed during the previous run but no longer exist:
+
+```
+level=error msg="error inspecting Docker container" error="Error response from daemon: No such container: <id>"
+```
+
+**This is expected and harmless.** These are stale tailer references from the WAL. They self-clear as Alloy rediscovers the current container list.
+
+### Prometheus external_labels vs relabeling for client labels
+
+`prometheus.remote_write.endpoint.write_relabel_config` is the canonical place to add labels. However, the correct River pattern for adding `client` and `env` labels to metrics is to use a `prometheus.relabel` component between the scrape and the remote_write — NOT `external_labels` on the remote_write endpoint. The `external_labels` block on `prometheus.remote_write` is not supported in River config; use `prometheus.relabel` instead.
+
+For Loki logs, `external_labels` on `loki.write` IS supported and is the correct place.
+
+### Docker network name in compose override
+
+When using a compose override file that references an external network created by the main `docker-compose.yml`, the network name must match the Docker-created name exactly. Docker composes network names as `<project_name>_<network_name>`. When compose is run from a directory named `monitoring/`, the project name defaults to `monitoring`, so a network named `monitoring` in the compose file becomes `monitoring_monitoring` in Docker. Specify this explicitly in the override:
+
+```yaml
+networks:
+  monitoring:
+    external: true
+    name: monitoring_monitoring
+```
+
+### Querying Loki when port 3100 is not exposed to the host
+
+If Loki's port is internal-only (not exposed via `ports:` in compose), query it from within the Docker network:
 
 ```bash
-# Verify Loki is healthy
-curl http://localhost:3100/ready
-
-# Send a test log entry
-curl -H "Content-Type: application/json" \
-     -X POST http://localhost:3100/loki/api/v1/push \
-     --data-raw '{"streams": [{"stream": {"job": "test"}, "values": [["'"$(date +%s%N)"'", "hello loki"]]}]}'
-
-# Query it back
-curl http://localhost:3100/loki/api/v1/query_range \
-     --data-urlencode 'query={job="test"}' \
-     --data-urlencode 'start=1h'
+docker run --rm --network monitoring_monitoring alpine/curl \
+  -s -G 'http://loki:3100/loki/api/v1/label/client/values'
 ```
 
-## Useful Links
-- [Loki Deployment Modes](https://grafana.com/docs/loki/latest/get-started/deployment-modes/)
-- [Grafana Alloy — Send Logs to Loki](https://grafana.com/docs/alloy/latest/tutorials/send-logs-to-loki/)
-- [Loki Install with Docker Compose](https://grafana.com/docs/loki/latest/setup/install/docker/)
-- [Loki Authentication](https://grafana.com/docs/loki/latest/operations/authentication/)
-- [Prometheus Remote Write Spec](https://prometheus.io/docs/specs/prw/remote_write_spec/)
+### Alloy stability level flag
+
+As of Alloy v1.x, the `--stability.level` flag must be set to avoid warnings about experimental components. Use:
+
+```
+command: run --stability.level=generally-available /etc/alloy/config.alloy
+```
+
+---
+
+## Verifying the full push pipeline
+
+```bash
+# 1. Check Alloy is running
+docker ps | grep alloy
+
+# 2. Check Prometheus has received metrics with client label
+curl -s http://localhost:9090/api/v1/label/client/values
+
+# 3. Check Loki has received logs with client label (internal network)
+docker run --rm --network monitoring_monitoring alpine/curl \
+  -s 'http://loki:3100/loki/api/v1/label/client/values'
+
+# 4. Query recent logs for a specific client
+NOW=$(date +%s)
+START=$((NOW - 600))
+docker run --rm --network monitoring_monitoring alpine/curl \
+  -s -G 'http://loki:3100/loki/api/v1/query_range' \
+  --data-urlencode 'query={client="sauron"}' \
+  --data-urlencode 'limit=5' \
+  --data-urlencode "start=${START}000000000"
+```
