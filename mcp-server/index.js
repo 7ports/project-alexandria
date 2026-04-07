@@ -6,6 +6,13 @@ import { z } from "zod";
 import fs from "fs";
 import path from "path";
 import { execFile } from "child_process";
+import {
+  withMetrics,
+  guideReadsTotal,
+  guideUpdatesTotal,
+  searchQueriesTotal,
+  guidesTotal,
+} from './metrics.js';
 
 // Resolve guides directory relative to this script
 const SCRIPT_DIR = path.dirname(new URL(import.meta.url).pathname);
@@ -101,17 +108,20 @@ server.tool(
   "List all available tooling setup guides. Returns one line per guide (name + title). Use this first to see what exists, then read_guide or quick_setup for details.",
   {},
   async () => {
-    const guides = getGuideFiles();
-    if (guides.length === 0) {
-      return { content: [{ type: "text", text: "No guides found." }] };
-    }
-    const list = guides.map(g => {
-      const content = readGuide(g.filename);
-      const titleMatch = content?.match(/^#\s+(.+)$/m);
-      const title = titleMatch ? titleMatch[1] : g.name;
-      return `- ${g.name} — ${title}`;
-    }).join("\n");
-    return { content: [{ type: "text", text: list }] };
+    return withMetrics("list_guides", async () => {
+      const guides = getGuideFiles();
+      guidesTotal.set(guides.length);
+      if (guides.length === 0) {
+        return { content: [{ type: "text", text: "No guides found." }] };
+      }
+      const list = guides.map(g => {
+        const content = readGuide(g.filename);
+        const titleMatch = content?.match(/^#\s+(.+)$/m);
+        const title = titleMatch ? titleMatch[1] : g.name;
+        return `- ${g.name} — ${title}`;
+      }).join("\n");
+      return { content: [{ type: "text", text: list }] };
+    });
   }
 );
 
@@ -121,63 +131,67 @@ server.tool(
   "Get ONLY the actionable install commands, config snippets, and troubleshooting from a guide. Much cheaper than read_guide — use this when you already know what tool to install and just need the steps. Falls back to extracting code blocks if no Quick Reference section exists.",
   { name: z.string().describe("Guide name (e.g., 'coplay-mcp-server', 'beads')") },
   async ({ name }) => {
-    const content = readGuide(name);
-    if (!content) {
-      const guides = getGuideFiles();
-      return { content: [{ type: "text", text: `Guide '${name}' not found. Available: ${guides.map(g => g.name).join(", ")}` }] };
-    }
+    return withMetrics("quick_setup", async () => {
+      const content = readGuide(name);
+      if (!content) {
+        const guides = getGuideFiles();
+        return { content: [{ type: "text", text: `Guide '${name}' not found. Available: ${guides.map(g => g.name).join(", ")}` }] };
+      }
 
-    const sections = [];
+      guideReadsTotal.inc({ guide: name ?? 'unknown' });
 
-    // 1. Try Quick Reference block first (cheapest)
-    const qrMatch = content.match(/## Quick Reference\s*\n([\s\S]*?)(?=\n## (?!Quick Reference)|\n---|\n\*Last updated)/);
-    if (qrMatch) {
-      sections.push(qrMatch[1].trim());
-    } else {
-      // 2. Fallback: extract code blocks and their immediate headings
-      const lines = content.split("\n");
-      let inCodeBlock = false;
-      let codeBuffer = [];
-      let lastHeading = "";
+      const sections = [];
 
-      for (const line of lines) {
-        if (line.startsWith("```")) {
-          if (!inCodeBlock) {
-            inCodeBlock = true;
-            if (lastHeading && !codeBuffer.some(b => b.startsWith(lastHeading))) {
-              codeBuffer.push(lastHeading);
+      // 1. Try Quick Reference block first (cheapest)
+      const qrMatch = content.match(/## Quick Reference\s*\n([\s\S]*?)(?=\n## (?!Quick Reference)|\n---|\n\*Last updated)/);
+      if (qrMatch) {
+        sections.push(qrMatch[1].trim());
+      } else {
+        // 2. Fallback: extract code blocks and their immediate headings
+        const lines = content.split("\n");
+        let inCodeBlock = false;
+        let codeBuffer = [];
+        let lastHeading = "";
+
+        for (const line of lines) {
+          if (line.startsWith("```")) {
+            if (!inCodeBlock) {
+              inCodeBlock = true;
+              if (lastHeading && !codeBuffer.some(b => b.startsWith(lastHeading))) {
+                codeBuffer.push(lastHeading);
+              }
+              codeBuffer.push(line);
+            } else {
+              codeBuffer.push(line);
+              codeBuffer.push("");
+              inCodeBlock = false;
             }
+          } else if (inCodeBlock) {
             codeBuffer.push(line);
-          } else {
-            codeBuffer.push(line);
-            codeBuffer.push("");
-            inCodeBlock = false;
+          } else if (line.startsWith("#")) {
+            lastHeading = line;
           }
-        } else if (inCodeBlock) {
-          codeBuffer.push(line);
-        } else if (line.startsWith("#")) {
-          lastHeading = line;
+        }
+
+        if (codeBuffer.length > 0) {
+          sections.push(codeBuffer.join("\n").trim());
         }
       }
 
-      if (codeBuffer.length > 0) {
-        sections.push(codeBuffer.join("\n").trim());
+      // 3. Always include Troubleshooting table if present
+      const troubleMatch = content.match(/## Troubleshooting\s*\n([\s\S]*?)(?=\n## |\n---|\n\*Last updated|$)/);
+      if (troubleMatch) {
+        sections.push("## Troubleshooting\n" + troubleMatch[1].trim());
       }
-    }
 
-    // 3. Always include Troubleshooting table if present
-    const troubleMatch = content.match(/## Troubleshooting\s*\n([\s\S]*?)(?=\n## |\n---|\n\*Last updated|$)/);
-    if (troubleMatch) {
-      sections.push("## Troubleshooting\n" + troubleMatch[1].trim());
-    }
+      if (sections.length === 0) {
+        return { content: [{ type: "text", text: `No actionable content extracted from '${name}'. Use read_guide for full content.` }] };
+      }
 
-    if (sections.length === 0) {
-      return { content: [{ type: "text", text: `No actionable content extracted from '${name}'. Use read_guide for full content.` }] };
-    }
-
-    const titleMatch = content.match(/^#\s+(.+)$/m);
-    const title = titleMatch ? titleMatch[1] : name;
-    return { content: [{ type: "text", text: `# ${title} — Quick Setup\n\n${sections.join("\n\n---\n\n")}` }] };
+      const titleMatch = content.match(/^#\s+(.+)$/m);
+      const title = titleMatch ? titleMatch[1] : name;
+      return { content: [{ type: "text", text: `# ${title} — Quick Setup\n\n${sections.join("\n\n---\n\n")}` }] };
+    });
   }
 );
 
@@ -187,13 +201,16 @@ server.tool(
   "Read the FULL content of a guide. Prefer quick_setup when you just need install steps. Use read_guide only when troubleshooting, learning about a tool for the first time, or when quick_setup didn't have enough detail.",
   { name: z.string().describe("Guide name (e.g., 'coplay-mcp-server', 'beads', 'git-mcp-server')") },
   async ({ name }) => {
-    const content = readGuide(name);
-    if (!content) {
-      const guides = getGuideFiles();
-      const available = guides.map(g => g.name).join(", ");
-      return { content: [{ type: "text", text: `Guide '${name}' not found. Available guides: ${available}` }] };
-    }
-    return { content: [{ type: "text", text: content }] };
+    return withMetrics("read_guide", async () => {
+      const content = readGuide(name);
+      if (!content) {
+        const guides = getGuideFiles();
+        const available = guides.map(g => g.name).join(", ");
+        return { content: [{ type: "text", text: `Guide '${name}' not found. Available guides: ${available}` }] };
+      }
+      guideReadsTotal.inc({ guide: name ?? 'unknown' });
+      return { content: [{ type: "text", text: content }] };
+    });
   }
 );
 
@@ -203,47 +220,50 @@ server.tool(
   "Search for keywords across all tooling setup guides in Project Alexandria",
   { query: z.string().describe("Search term or phrase to find across all guides") },
   async ({ query }) => {
-    const guides = getGuideFiles();
-    const queryLower = query.toLowerCase();
-    const results = [];
+    return withMetrics("search_guides", async () => {
+      searchQueriesTotal.inc();
+      const guides = getGuideFiles();
+      const queryLower = query.toLowerCase();
+      const results = [];
 
-    for (const guide of guides) {
-      const content = readGuide(guide.filename);
-      if (!content) continue;
+      for (const guide of guides) {
+        const content = readGuide(guide.filename);
+        if (!content) continue;
 
-      const lines = content.split("\n");
-      const matches = [];
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i].toLowerCase().includes(queryLower)) {
-          // Include surrounding context (1 line before, 1 after)
-          const start = Math.max(0, i - 1);
-          const end = Math.min(lines.length - 1, i + 1);
-          const context = lines.slice(start, end + 1).join("\n");
-          matches.push({ line: i + 1, context });
+        const lines = content.split("\n");
+        const matches = [];
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].toLowerCase().includes(queryLower)) {
+            // Include surrounding context (1 line before, 1 after)
+            const start = Math.max(0, i - 1);
+            const end = Math.min(lines.length - 1, i + 1);
+            const context = lines.slice(start, end + 1).join("\n");
+            matches.push({ line: i + 1, context });
+          }
+        }
+
+        if (matches.length > 0) {
+          results.push({
+            guide: guide.name,
+            matchCount: matches.length,
+            matches: matches.slice(0, 5), // Limit to 5 matches per guide
+          });
         }
       }
 
-      if (matches.length > 0) {
-        results.push({
-          guide: guide.name,
-          matchCount: matches.length,
-          matches: matches.slice(0, 5), // Limit to 5 matches per guide
-        });
+      if (results.length === 0) {
+        return { content: [{ type: "text", text: `No results found for '${query}'.` }] };
       }
-    }
 
-    if (results.length === 0) {
-      return { content: [{ type: "text", text: `No results found for '${query}'.` }] };
-    }
+      const output = results.map(r => {
+        const matchText = r.matches.map(m =>
+          `  Line ${m.line}:\n${m.context.split("\n").map(l => `    ${l}`).join("\n")}`
+        ).join("\n\n");
+        return `## ${r.guide} (${r.matchCount} match${r.matchCount > 1 ? "es" : ""})\n\n${matchText}`;
+      }).join("\n\n---\n\n");
 
-    const output = results.map(r => {
-      const matchText = r.matches.map(m =>
-        `  Line ${m.line}:\n${m.context.split("\n").map(l => `    ${l}`).join("\n")}`
-      ).join("\n\n");
-      return `## ${r.guide} (${r.matchCount} match${r.matchCount > 1 ? "es" : ""})\n\n${matchText}`;
-    }).join("\n\n---\n\n");
-
-    return { content: [{ type: "text", text: `# Search Results for '${query}'\n\n${output}` }] };
+      return { content: [{ type: "text", text: `# Search Results for '${query}'\n\n${output}` }] };
+    });
   }
 );
 
@@ -256,26 +276,29 @@ server.tool(
     content: z.string().describe("Full markdown content for the guide"),
   },
   async ({ name, content }) => {
-    const filename = name.endsWith(".md") ? name : `${name}.md`;
-    const filepath = path.join(GUIDES_DIR, filename);
-    const existed = fs.existsSync(filepath);
+    return withMetrics("update_guide", async () => {
+      const filename = name.endsWith(".md") ? name : `${name}.md`;
+      const filepath = path.join(GUIDES_DIR, filename);
+      const existed = fs.existsSync(filepath);
 
-    try {
-      fs.mkdirSync(GUIDES_DIR, { recursive: true });
-      fs.writeFileSync(filepath, content, "utf-8");
+      try {
+        fs.mkdirSync(GUIDES_DIR, { recursive: true });
+        fs.writeFileSync(filepath, content, "utf-8");
+        guideUpdatesTotal.inc({ guide: name ?? 'unknown' });
 
-      // Fire-and-forget: auto-commit and push so GitHub Pages rebuilds
-      gitCommitAndPush(filename, existed);
+        // Fire-and-forget: auto-commit and push so GitHub Pages rebuilds
+        gitCommitAndPush(filename, existed);
 
-      return {
-        content: [{
-          type: "text",
-          text: `Guide '${filename}' ${existed ? "updated" : "created"} successfully at ${filepath}`,
-        }],
-      };
-    } catch (err) {
-      return { content: [{ type: "text", text: `Error writing guide: ${err.message}` }] };
-    }
+        return {
+          content: [{
+            type: "text",
+            text: `Guide '${filename}' ${existed ? "updated" : "created"} successfully at ${filepath}`,
+          }],
+        };
+      } catch (err) {
+        return { content: [{ type: "text", text: `Error writing guide: ${err.message}` }] };
+      }
+    });
   }
 );
 
@@ -285,13 +308,15 @@ server.tool(
   "Get the template for creating new tooling setup guides",
   {},
   async () => {
-    const templatePath = path.join(TEMPLATES_DIR, "guide-template.md");
-    try {
-      const content = fs.readFileSync(templatePath, "utf-8");
-      return { content: [{ type: "text", text: content }] };
-    } catch {
-      return { content: [{ type: "text", text: "Template not found." }] };
-    }
+    return withMetrics("get_guide_template", async () => {
+      const templatePath = path.join(TEMPLATES_DIR, "guide-template.md");
+      try {
+        const content = fs.readFileSync(templatePath, "utf-8");
+        return { content: [{ type: "text", text: content }] };
+      } catch {
+        return { content: [{ type: "text", text: "Template not found." }] };
+      }
+    });
   }
 );
 
@@ -303,51 +328,53 @@ server.tool(
     project_type: z.string().optional().describe("Type of project (e.g., 'unity', 'web', 'firebase', 'general'). Helps surface conditional recommendations. Omit for general recommendations."),
   },
   async ({ project_type }) => {
-    let recommendations;
-    try {
-      recommendations = JSON.parse(fs.readFileSync(RECOMMENDATIONS_PATH, "utf-8"));
-    } catch {
-      return { content: [{ type: "text", text: "Could not load recommendations.json" }] };
-    }
-
-    const setup = recommendations.project_setup;
-    const sections = [];
-
-    // Always-recommended tools
-    if (setup.always?.length > 0) {
-      const items = setup.always.map(r => {
-        const commands = r.setup_commands ? `\n  Setup: \`${r.setup_commands.join(" && ")}\`` : "";
-        return `- **[${r.priority.toUpperCase()}] ${r.tool}** — ${r.reason}${commands}\n  When: ${r.when}\n  Guide: \`read_guide("${r.guide}")\``;
-      }).join("\n\n");
-      sections.push(`## Always Required\n\n${items}`);
-    }
-
-    // Conditional tools matching project type
-    if (project_type && setup.conditional?.length > 0) {
-      const typeLower = project_type.toLowerCase();
-      const matching = setup.conditional.filter(r => typeLower.includes(r.condition));
-      if (matching.length > 0) {
-        const items = matching.map(r =>
-          `- **[${r.priority.toUpperCase()}] ${r.tool}** — ${r.reason}\n  Guide: \`read_guide("${r.guide}")\``
-        ).join("\n\n");
-        sections.push(`## Recommended for ${project_type} Projects\n\n${items}`);
+    return withMetrics("get_project_setup_recommendations", async () => {
+      let recommendations;
+      try {
+        recommendations = JSON.parse(fs.readFileSync(RECOMMENDATIONS_PATH, "utf-8"));
+      } catch {
+        return { content: [{ type: "text", text: "Could not load recommendations.json" }] };
       }
-    }
 
-    // Always show other conditional tools as "also available"
-    if (setup.conditional?.length > 0) {
-      const typeLower = (project_type || "").toLowerCase();
-      const others = setup.conditional.filter(r => !typeLower || !typeLower.includes(r.condition));
-      if (others.length > 0) {
-        const items = others.map(r =>
-          `- **${r.tool}** (for ${r.condition} projects) — ${r.reason}`
-        ).join("\n");
-        sections.push(`## Also Available\n\n${items}`);
+      const setup = recommendations.project_setup;
+      const sections = [];
+
+      // Always-recommended tools
+      if (setup.always?.length > 0) {
+        const items = setup.always.map(r => {
+          const commands = r.setup_commands ? `\n  Setup: \`${r.setup_commands.join(" && ")}\`` : "";
+          return `- **[${r.priority.toUpperCase()}] ${r.tool}** — ${r.reason}${commands}\n  When: ${r.when}\n  Guide: \`read_guide("${r.guide}")\``;
+        }).join("\n\n");
+        sections.push(`## Always Required\n\n${items}`);
       }
-    }
 
-    const output = `# Project Setup Recommendations\n\n${sections.join("\n\n---\n\n")}`;
-    return { content: [{ type: "text", text: output }] };
+      // Conditional tools matching project type
+      if (project_type && setup.conditional?.length > 0) {
+        const typeLower = project_type.toLowerCase();
+        const matching = setup.conditional.filter(r => typeLower.includes(r.condition));
+        if (matching.length > 0) {
+          const items = matching.map(r =>
+            `- **[${r.priority.toUpperCase()}] ${r.tool}** — ${r.reason}\n  Guide: \`read_guide("${r.guide}")\``
+          ).join("\n\n");
+          sections.push(`## Recommended for ${project_type} Projects\n\n${items}`);
+        }
+      }
+
+      // Always show other conditional tools as "also available"
+      if (setup.conditional?.length > 0) {
+        const typeLower = (project_type || "").toLowerCase();
+        const others = setup.conditional.filter(r => !typeLower || !typeLower.includes(r.condition));
+        if (others.length > 0) {
+          const items = others.map(r =>
+            `- **${r.tool}** (for ${r.condition} projects) — ${r.reason}`
+          ).join("\n");
+          sections.push(`## Also Available\n\n${items}`);
+        }
+      }
+
+      const output = `# Project Setup Recommendations\n\n${sections.join("\n\n---\n\n")}`;
+      return { content: [{ type: "text", text: output }] };
+    });
   }
 );
 
@@ -357,16 +384,17 @@ server.tool(
   "Get the full onboarding payload for a Claude instance that has Alexandria installed. This returns the behavioral contract, memory templates, and configuration that every Claude instance should adopt to collaboratively maintain this shared knowledge base. Call this when first discovering Alexandria is available, or when setting up Alexandria on a new machine.",
   {},
   async () => {
-    try {
-      const onboarding = JSON.parse(fs.readFileSync(ONBOARDING_PATH, "utf-8"));
-      const contract = onboarding.behavioral_contract;
-      const memories = onboarding.memory_templates;
+    return withMetrics("get_onboarding", async () => {
+      try {
+        const onboarding = JSON.parse(fs.readFileSync(ONBOARDING_PATH, "utf-8"));
+        const contract = onboarding.behavioral_contract;
+        const memories = onboarding.memory_templates;
 
-      const rules = contract.rules.map(r =>
-        `### ${r.id}\n**Rule:** ${r.rule}\n**Why:** ${r.why}`
-      ).join("\n\n");
+        const rules = contract.rules.map(r =>
+          `### ${r.id}\n**Rule:** ${r.rule}\n**Why:** ${r.why}`
+        ).join("\n\n");
 
-      const output = `# Alexandria Onboarding — Collaborative Maintenance Contract
+        const output = `# Alexandria Onboarding — Collaborative Maintenance Contract
 
 ${contract.summary}
 
@@ -416,13 +444,15 @@ Add to the \`permissions.allow\` array:
 \`\`\`
 `;
 
-      return { content: [{ type: "text", text: output }] };
-    } catch (err) {
-      return { content: [{ type: "text", text: `Could not load onboarding data: ${err.message}` }] };
-    }
+        return { content: [{ type: "text", text: output }] };
+      } catch (err) {
+        return { content: [{ type: "text", text: `Could not load onboarding data: ${err.message}` }] };
+      }
+    });
   }
 );
 
 // Start the server
+try { guidesTotal.set(getGuideFiles().length); } catch (_) {}
 const transport = new StdioServerTransport();
 await server.connect(transport);

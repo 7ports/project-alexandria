@@ -99,3 +99,28 @@ Title: `Helldiver re-onboarding request: project-alexandria`
 For questions about monitoring configuration or to request changes:
 - Open an issue at https://github.com/7ports/project-sauron
 - Contact Rajesh directly
+
+## Metrics
+
+When the following environment variables are set, the MCP server pushes Prometheus metrics to the Sauron observability platform every 30 seconds:
+
+| Variable | Value |
+|---|---|
+| `SAURON_PUSHGATEWAY_URL` | `https://sauron.7ports.ca/metrics/gateway` |
+| `PUSH_BEARER_TOKEN` | Obtain from Rajesh |
+| `CLIENT_NAME` | `alexandria` |
+| `CLIENT_ENV` | `production` |
+
+If these variables are absent the server starts normally — metrics are silently disabled.
+
+### Metrics emitted
+
+| Metric | Type | Labels | Description |
+|---|---|---|---|
+| `mcp_tool_calls_total` | Counter | `tool`, `status`, `client`, `env` | All tool invocations by name and outcome |
+| `mcp_tool_errors_total` | Counter | `tool`, `client`, `env` | Failed tool invocations |
+| `mcp_tool_duration_seconds` | Gauge | `tool`, `client`, `env` | Duration of last call per tool (seconds) |
+| `alexandria_guide_reads_total` | Counter | `guide`, `client`, `env` | Guide reads by name |
+| `alexandria_guide_updates_total` | Counter | `guide`, `client`, `env` | Guide writes by name |
+| `alexandria_search_queries_total` | Counter | `client`, `env` | Total search queries |
+| `alexandria_guides_total` | Gauge | `client`, `env` | Total guides in the knowledge base |
