@@ -91,19 +91,40 @@ In your first conversation after installing, ask Claude to call `get_onboarding`
 
 | Guide | Description |
 |-------|-------------|
-| [Alexandria MCP Server](guides/alexandria-mcp-server.md) | This server's own setup and maintenance docs |
-| [CoPlay MCP Server](guides/coplay-mcp-server.md) | Unity editor integration via MCP |
-| [Git MCP Server](guides/git-mcp-server.md) | Git operations via MCP |
-| [GitHub MCP Server](guides/github-mcp-server.md) | GitHub API access via MCP |
-| [GitHub CLI](guides/github-cli.md) | GitHub CLI (gh) for terminal-based GitHub operations |
-| [Memory MCP Server](guides/memory-mcp-server.md) | Persistent knowledge graph memory |
-| [Fetch MCP Server](guides/fetch-mcp-server.md) | Web content fetching via MCP |
-| [Firebase MCP Server](guides/firebase-mcp-server.md) | Firebase project management via MCP |
-| [Claude in Chrome](guides/claude-in-chrome.md) | Browser automation via Chrome extension |
-| [Claude Preview](guides/claude-preview-mcp-server.md) | Dev server preview and inspection |
-| [Beads](guides/beads.md) | Distributed graph issue tracker for AI agents |
-| [AWS CLI](guides/aws-cli.md) | AWS Command Line Interface setup and configuration |
-| [Claude Code GitHub Actions](guides/claude-code-github-actions.md) | Running Claude Code as a CI step in GitHub Actions |
+| [aisstream.io — Real-Time AIS WebSocket API](guides/aisstream-io.md) |  |
+| [Alexandria MCP Server](guides/alexandria-mcp-server.md) | A custom MCP server that exposes Project Alexandria's tooling setup guides as searchable, queryable resources. This allows Claude to access documentat |
+| [AWS CLI v2](guides/aws-cli.md) | AWS CLI v2 is the unified command-line tool for managing AWS services. Used in this ecosystem primarily for S3 static site deployments, CloudFront CDN |
+| [Beads — Distributed Graph Issue Tracker for AI Agents](guides/beads.md) | Beads (`bd` CLI) is a distributed graph issue tracker designed for AI coding agents, powered by Dolt (a version-controlled SQL database). It provides  |
+| [Claude Code in GitHub Actions](guides/claude-code-github-actions.md) |  |
+| [Claude in Chrome (Browser Automation)](guides/claude-in-chrome.md) | Claude in Chrome is a browser extension that allows Claude Code to control a Chrome browser — taking screenshots, clicking elements, filling forms, re |
+| [Claude Preview MCP Server](guides/claude-preview-mcp-server.md) | Claude Preview provides a built-in dev server launcher and browser preview for Claude Code. It can start local development servers, take screenshots,  |
+| [CoPlay MCP Server (Unity Integration)](guides/coplay-mcp-server.md) | CoPlay MCP Server provides deep Unity Editor integration via the Model Context Protocol. It allows AI assistants to read/write scene hierarchies, crea |
+| [Environment Canada Weather API (GeoMet OGC API)](guides/environment-canada-weather-api.md) | Environment Canada exposes real-time surface weather observations (SWOB) through the MSC GeoMet OGC API at `https://api.weather.gc.ca/`. No API key is |
+| [Express 5 + Node.js 20 + TypeScript](guides/express-5-node-typescript.md) |  |
+| [Fetch MCP Server](guides/fetch-mcp-server.md) | Provides web content fetching capabilities via MCP. Allows AI assistants to retrieve and process content from URLs, converting HTML to readable text.  |
+| [Firebase MCP Server](guides/firebase-mcp-server.md) | Provides Firebase project management via MCP. Allows AI assistants to manage Firebase projects, apps, authentication, Firestore, Realtime Database, Ho |
+| [Fly.io Deployment — Node.js / TypeScript](guides/flyio-deployment.md) |  |
+| [Git MCP Server](guides/git-mcp-server.md) | Provides Git repository operations via MCP. Allows AI assistants to perform git status, diff, log, commit, branch management, and other git operations |
+| [GitHub Actions — Deploy to EC2 via SSH](guides/github-actions-ec2-deploy.md) | Auto-deploy a Docker Compose stack to an EC2 instance on push to main, using the `appleboy/ssh-action` action. |
+| [GitHub CLI (gh)](guides/github-cli.md) | The GitHub CLI (`gh`) provides GitHub functionality directly from the terminal — pull requests, issues, releases, gists, GitHub Actions, Pages deploym |
+| [GitHub MCP Server](guides/github-mcp-server.md) | Provides GitHub API access via MCP, enabling AI assistants to interact with repositories, issues, pull requests, branches, releases, and more through  |
+| [GitHub Pages — Jekyll via GitHub Actions](guides/github-pages-jekyll-actions.md) | Deploy a Jekyll site from a `docs/` subdirectory using GitHub Actions (not the legacy "Deploy from branch" method). Required when using `actions/deplo |
+| [Loki + Grafana Stack (LGTM)](guides/loki-grafana-stack.md) |  |
+| [MapLibre GL JS + react-map-gl Setup Guide](guides/maplibre-react-map-gl.md) | MapLibre GL JS is an open-source fork of Mapbox GL JS. `react-map-gl` v8 provides a React adapter that works with both MapLibre and Mapbox. Together t |
+| [MapLibre Vessel Animation — lerp + requestAnimationFrame](guides/maplibre-vessel-animation.md) |  |
+| [Memory MCP Server](guides/memory-mcp-server.md) | Provides a persistent knowledge graph for AI assistants via MCP. Stores entities, observations, and relations that persist across conversations. Usefu |
+| [Project Voltron](guides/project-voltron.md) | Project Voltron is an MCP server that provides a team of specialized Claude Code subagents (`.claude/agents/`) along with CLAUDE.md project context te |
+| [Project Voltron — Docker Agent Setup](guides/project-voltron-docker.md) | Project Voltron runs specialist Claude Code agents inside Docker containers via `run_agent_in_docker`. The container mounts the project workspace and  |
+| [Prometheus + Grafana on Docker Compose](guides/prometheus-grafana-docker-compose.md) | Running a full observability stack (Prometheus, Grafana, exporters) via Docker Compose on a Linux host (tested on Amazon Linux 2023 on EC2 t3.small). |
+| [Rancher Desktop on Windows (Colima equivalent)](guides/rancher-desktop-windows.md) |  |
+| [Server-Sent Events (SSE)](guides/sse-server-sent-events.md) |  |
+| [Supertest](guides/supertest.md) |  |
+| [Terraform — AWS EC2 Setup](guides/terraform-aws-ec2.md) | Provisioning an EC2 instance with VPC, security groups, IAM role, and Elastic IP using Terraform >= 1.6 with the AWS provider ~> 5.0. |
+| [Terraform — AWS Frontend Hosting (S3 + CloudFront OAC + ACM + Route53)](guides/terraform-aws-frontend-hosting.md) |  |
+| [Toronto City Open Data — Ferry Service Status API](guides/toronto-city-open-data-ferry.md) | The City of Toronto publishes a live, no-auth JSON endpoint for ferry service status: |
+| [Vite Dev Server Proxy](guides/vite-dev-proxy.md) |  |
+| [vite-plugin-pwa — PWA Setup with Vite + Workbox](guides/vite-plugin-pwa.md) |  |
+| [Vitest](guides/vitest.md) |  |
 
 ## What Belongs in Alexandria
 

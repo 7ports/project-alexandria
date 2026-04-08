@@ -23,3 +23,29 @@ with open(out_path, 'w', encoding='utf-8') as f:
     json.dump(entries, f, indent=2, ensure_ascii=False)
 
 print(f'Generated {out_path} with {len(entries)} guides')
+
+# Update the ## Guides section in README.md
+readme_path = 'README.md'
+sorted_entries = sorted(entries, key=lambda e: e['title'].lower())
+table_lines = [
+    '| Guide | Description |',
+    '|-------|-------------|',
+]
+for e in sorted_entries:
+    table_lines.append(f"| [{e['title']}](guides/{e['name']}.md) | {e['description']} |")
+table = '\n'.join(table_lines)
+
+with open(readme_path, encoding='utf-8') as f:
+    readme = f.read()
+
+updated = re.sub(
+    r'(## Guides\n).*?(?=\n## )',
+    r'\1\n' + table + '\n',
+    readme,
+    flags=re.DOTALL,
+)
+
+with open(readme_path, 'w', encoding='utf-8') as f:
+    f.write(updated)
+
+print(f'Updated README.md with {len(sorted_entries)} guides in the Guides table')

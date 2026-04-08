@@ -1,0 +1,27 @@
+FROM node:20-slim
+
+# System tools for multi-language development
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    wget \
+    python3 \
+    python3-pip \
+    python3-venv \
+    ruby \
+    ruby-dev \
+    build-essential \
+    zip \
+    unzip \
+    jq \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Claude Code globally
+RUN npm install -g @anthropic-ai/claude-code
+
+# Non-root user for security
+RUN useradd -m -s /bin/bash voltron
+USER voltron
+WORKDIR /workspace
+ENTRYPOINT ["claude"]

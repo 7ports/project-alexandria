@@ -5,6 +5,7 @@ on:
     branches: [main]
 
 permissions:
+  contents: write   # needed to push the README sync commit
   pages: write
   id-token: write
 
@@ -29,6 +30,21 @@ jobs:
 
           # Generate a JSON manifest with name, title, and description for each guide
           python3 .github/gen_manifest.py
+
+      - name: Commit updated README
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+
+          # Only commit if gen_manifest.py actually changed README.md.
+          # `git diff --quiet` exits 0 (no diff) → skip; exits 1 (diff found) → commit.
+          # The [skip ci] tag in the commit message prevents this push from
+          # triggering another workflow run, which would cause an infinite loop.
+          git diff --quiet README.md || (
+            git add README.md &&
+            git commit -m "docs: sync README guides table [skip ci]" &&
+            git push
+          )
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

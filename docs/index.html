@@ -526,7 +526,7 @@
       <div class="badge-row">
         <span class="badge">MCP Server</span>
         <span class="badge">Claude Code</span>
-        <span class="badge">19 Guides</span>
+        <span class="badge" id="guide-count-badge">Loading...</span>
         <span class="badge">Collaborative</span>
         <span class="badge">MIT License</span>
       </div>
@@ -580,102 +580,8 @@
         <h2>Setup Guides</h2>
         <a href="./guides/">View all &rarr;</a>
       </div>
-      <div class="guide-grid">
-        <a class="guide-card" href="guides/?guide=coplay-mcp-server">
-          <h3>CoPlay MCP Server</h3>
-          <span class="tag">unity</span>
-          <p>Unity editor integration &mdash; scene hierarchy, prefabs, 3D model generation, animations, UI, and more.</p>
-        </a>
-        <a class="guide-card" href="guides/?guide=beads">
-          <h3>Beads</h3>
-          <span class="tag">required</span>
-          <p>Distributed graph issue tracker for AI agents. Always use for complex projects.</p>
-        </a>
-        <a class="guide-card" href="guides/?guide=github-mcp-server">
-          <h3>GitHub MCP Server</h3>
-          <span class="tag">mcp</span>
-          <p>GitHub API access &mdash; repos, issues, PRs, branches, releases, Copilot integration.</p>
-        </a>
-        <a class="guide-card" href="guides/?guide=git-mcp-server">
-          <h3>Git MCP Server</h3>
-          <span class="tag">mcp</span>
-          <p>Git operations via MCP &mdash; status, diff, log, commit, branch management.</p>
-        </a>
-        <a class="guide-card" href="guides/?guide=firebase-mcp-server">
-          <h3>Firebase MCP Server</h3>
-          <span class="tag">mcp</span>
-          <p>Firebase project management &mdash; Firestore, Auth, Hosting, Storage, Data Connect.</p>
-        </a>
-        <a class="guide-card" href="guides/?guide=claude-in-chrome">
-          <h3>Claude in Chrome</h3>
-          <span class="tag">browser</span>
-          <p>Browser automation &mdash; screenshots, clicks, form filling, network monitoring.</p>
-        </a>
-        <a class="guide-card" href="guides/?guide=claude-preview-mcp-server">
-          <h3>Claude Preview</h3>
-          <span class="tag">built-in</span>
-          <p>Dev server launcher &mdash; screenshots, element inspection, responsive testing.</p>
-        </a>
-        <a class="guide-card" href="guides/?guide=memory-mcp-server">
-          <h3>Memory MCP Server</h3>
-          <span class="tag">mcp</span>
-          <p>Persistent knowledge graph &mdash; entities, observations, and relations across sessions.</p>
-        </a>
-        <a class="guide-card" href="guides/?guide=fetch-mcp-server">
-          <h3>Fetch MCP Server</h3>
-          <span class="tag">mcp</span>
-          <p>Web content fetching &mdash; retrieve and process content from any public URL.</p>
-        </a>
-        <a class="guide-card" href="guides/?guide=alexandria-mcp-server">
-          <h3>Alexandria MCP Server</h3>
-          <span class="tag">meta</span>
-          <p>This server &mdash; exposes all guides as searchable, queryable MCP tools.</p>
-        </a>
-        <a class="guide-card" href="guides/?guide=aws-cli">
-          <h3>AWS CLI</h3>
-          <span class="tag">cloud</span>
-          <p>AWS Command Line Interface &mdash; configure credentials, manage cloud resources, and automate deployments.</p>
-        </a>
-        <a class="guide-card" href="guides/?guide=github-cli">
-          <h3>GitHub CLI</h3>
-          <span class="tag">git</span>
-          <p>Terminal-based GitHub operations &mdash; PRs, issues, releases, and repo management via <code>gh</code>.</p>
-        </a>
-        <a class="guide-card" href="guides/?guide=claude-code-github-actions">
-          <h3>Claude Code in Actions</h3>
-          <span class="tag">ci/cd</span>
-          <p>Run Claude Code as a CI step &mdash; automated code review, implementation, and PR comments in GitHub Actions.</p>
-        </a>
-        <a class="guide-card" href="guides/?guide=project-voltron">
-          <h3>Project Voltron</h3>
-          <span class="tag">agents</span>
-          <p>Specialized Claude Code agent teams for Unity, web, and fullstack projects &mdash; Alexandria-aware and self-improving.</p>
-        </a>
-        <a class="guide-card" href="guides/?guide=rancher-desktop-windows">
-          <h3>Rancher Desktop (Windows)</h3>
-          <span class="tag">docker</span>
-          <p>Docker-compatible container runtime for Windows 10/11 &mdash; the Colima equivalent for WSL2.</p>
-        </a>
-        <a class="guide-card" href="guides/?guide=maplibre-react-map-gl">
-          <h3>MapLibre + react-map-gl</h3>
-          <span class="tag">mapping</span>
-          <p>Open-source map rendering with React &mdash; vector tiles, custom layers, and real-time data.</p>
-        </a>
-        <a class="guide-card" href="guides/?guide=vitest">
-          <h3>Vitest</h3>
-          <span class="tag">testing</span>
-          <p>Fast unit testing for Vite projects &mdash; ESM-native, watch mode, coverage, and vi.mock.</p>
-        </a>
-        <a class="guide-card" href="guides/?guide=supertest">
-          <h3>Supertest</h3>
-          <span class="tag">testing</span>
-          <p>HTTP integration testing for Express &mdash; including the SSE-over-supertest hang workaround.</p>
-        </a>
-        <a class="guide-card" href="guides/?guide=environment-canada-weather-api">
-          <h3>Environment Canada Weather API</h3>
-          <span class="tag">api</span>
-          <p>GeoMet OGC API for weather data &mdash; METAR observations, bbox filter workaround for station queries.</p>
-        </a>
+      <div class="guide-grid" id="guide-grid">
+        <p class="loading" id="guides-loading" style="color: var(--text-muted); font-size: 0.95rem;">Loading guides...</p>
       </div>
     </div>
   </section>
@@ -853,6 +759,57 @@ and save the maintenance contract."</code></pre>
       </div>
     </div>
   </section>
+
+  <script>
+    (function () {
+      function getTag(name) {
+        if (name.includes('mcp')) return 'mcp';
+        if (name.includes('github') || name.includes('git-')) return 'git';
+        if (name.includes('aws') || name.includes('terraform') || name.includes('fly') || name.includes('ec2')) return 'cloud';
+        if (name.includes('vite') || name.includes('vitest') || name.includes('supertest') || name.includes('express')) return 'testing/build';
+        return 'guide';
+      }
+
+      fetch('./guides/manifest.json')
+        .then(function (res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        })
+        .then(function (guides) {
+          var badge = document.getElementById('guide-count-badge');
+          var grid = document.getElementById('guide-grid');
+          var loading = document.getElementById('guides-loading');
+
+          if (badge) badge.textContent = guides.length + ' Guides';
+          if (loading) loading.remove();
+
+          guides.forEach(function (guide) {
+            var a = document.createElement('a');
+            a.className = 'guide-card';
+            a.href = 'guides/?guide=' + guide.name;
+            a.innerHTML =
+              '<h3>' + escapeHtml(guide.title) + '</h3>' +
+              '<span class="tag">' + escapeHtml(getTag(guide.name)) + '</span>' +
+              '<p>' + escapeHtml(guide.description) + '</p>';
+            if (grid) grid.appendChild(a);
+          });
+        })
+        .catch(function () {
+          var badge = document.getElementById('guide-count-badge');
+          var loading = document.getElementById('guides-loading');
+          if (badge) badge.textContent = '? Guides';
+          if (loading) loading.textContent = 'Failed to load guides. Please try refreshing.';
+        });
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+    })();
+  </script>
 
   <!-- Footer -->
   <footer>

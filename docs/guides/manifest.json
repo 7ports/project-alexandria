@@ -1,0 +1,172 @@
+[
+  {
+    "name": "aisstream-io",
+    "title": "aisstream.io — Real-Time AIS WebSocket API",
+    "description": ""
+  },
+  {
+    "name": "alexandria-mcp-server",
+    "title": "Alexandria MCP Server",
+    "description": "A custom MCP server that exposes Project Alexandria's tooling setup guides as searchable, queryable resources. This allows Claude to access documentat"
+  },
+  {
+    "name": "aws-cli",
+    "title": "AWS CLI v2",
+    "description": "AWS CLI v2 is the unified command-line tool for managing AWS services. Used in this ecosystem primarily for S3 static site deployments, CloudFront CDN"
+  },
+  {
+    "name": "beads",
+    "title": "Beads — Distributed Graph Issue Tracker for AI Agents",
+    "description": "Beads (`bd` CLI) is a distributed graph issue tracker designed for AI coding agents, powered by Dolt (a version-controlled SQL database). It provides "
+  },
+  {
+    "name": "claude-code-github-actions",
+    "title": "Claude Code in GitHub Actions",
+    "description": ""
+  },
+  {
+    "name": "claude-in-chrome",
+    "title": "Claude in Chrome (Browser Automation)",
+    "description": "Claude in Chrome is a browser extension that allows Claude Code to control a Chrome browser — taking screenshots, clicking elements, filling forms, re"
+  },
+  {
+    "name": "claude-preview-mcp-server",
+    "title": "Claude Preview MCP Server",
+    "description": "Claude Preview provides a built-in dev server launcher and browser preview for Claude Code. It can start local development servers, take screenshots, "
+  },
+  {
+    "name": "coplay-mcp-server",
+    "title": "CoPlay MCP Server (Unity Integration)",
+    "description": "CoPlay MCP Server provides deep Unity Editor integration via the Model Context Protocol. It allows AI assistants to read/write scene hierarchies, crea"
+  },
+  {
+    "name": "environment-canada-weather-api",
+    "title": "Environment Canada Weather API (GeoMet OGC API)",
+    "description": "Environment Canada exposes real-time surface weather observations (SWOB) through the MSC GeoMet OGC API at `https://api.weather.gc.ca/`. No API key is"
+  },
+  {
+    "name": "express-5-node-typescript",
+    "title": "Express 5 + Node.js 20 + TypeScript",
+    "description": ""
+  },
+  {
+    "name": "fetch-mcp-server",
+    "title": "Fetch MCP Server",
+    "description": "Provides web content fetching capabilities via MCP. Allows AI assistants to retrieve and process content from URLs, converting HTML to readable text. "
+  },
+  {
+    "name": "firebase-mcp-server",
+    "title": "Firebase MCP Server",
+    "description": "Provides Firebase project management via MCP. Allows AI assistants to manage Firebase projects, apps, authentication, Firestore, Realtime Database, Ho"
+  },
+  {
+    "name": "flyio-deployment",
+    "title": "Fly.io Deployment — Node.js / TypeScript",
+    "description": ""
+  },
+  {
+    "name": "git-mcp-server",
+    "title": "Git MCP Server",
+    "description": "Provides Git repository operations via MCP. Allows AI assistants to perform git status, diff, log, commit, branch management, and other git operations"
+  },
+  {
+    "name": "github-actions-ec2-deploy",
+    "title": "GitHub Actions — Deploy to EC2 via SSH",
+    "description": "Auto-deploy a Docker Compose stack to an EC2 instance on push to main, using the `appleboy/ssh-action` action."
+  },
+  {
+    "name": "github-cli",
+    "title": "GitHub CLI (gh)",
+    "description": "The GitHub CLI (`gh`) provides GitHub functionality directly from the terminal — pull requests, issues, releases, gists, GitHub Actions, Pages deploym"
+  },
+  {
+    "name": "github-mcp-server",
+    "title": "GitHub MCP Server",
+    "description": "Provides GitHub API access via MCP, enabling AI assistants to interact with repositories, issues, pull requests, branches, releases, and more through "
+  },
+  {
+    "name": "github-pages-jekyll-actions",
+    "title": "GitHub Pages — Jekyll via GitHub Actions",
+    "description": "Deploy a Jekyll site from a `docs/` subdirectory using GitHub Actions (not the legacy \"Deploy from branch\" method). Required when using `actions/deplo"
+  },
+  {
+    "name": "loki-grafana-stack",
+    "title": "Loki + Grafana Stack (LGTM)",
+    "description": ""
+  },
+  {
+    "name": "maplibre-react-map-gl",
+    "title": "MapLibre GL JS + react-map-gl Setup Guide",
+    "description": "MapLibre GL JS is an open-source fork of Mapbox GL JS. `react-map-gl` v8 provides a React adapter that works with both MapLibre and Mapbox. Together t"
+  },
+  {
+    "name": "maplibre-vessel-animation",
+    "title": "MapLibre Vessel Animation — lerp + requestAnimationFrame",
+    "description": ""
+  },
+  {
+    "name": "memory-mcp-server",
+    "title": "Memory MCP Server",
+    "description": "Provides a persistent knowledge graph for AI assistants via MCP. Stores entities, observations, and relations that persist across conversations. Usefu"
+  },
+  {
+    "name": "project-voltron-docker",
+    "title": "Project Voltron — Docker Agent Setup",
+    "description": "Project Voltron runs specialist Claude Code agents inside Docker containers via `run_agent_in_docker`. The container mounts the project workspace and "
+  },
+  {
+    "name": "project-voltron",
+    "title": "Project Voltron",
+    "description": "Project Voltron is an MCP server that provides a team of specialized Claude Code subagents (`.claude/agents/`) along with CLAUDE.md project context te"
+  },
+  {
+    "name": "prometheus-grafana-docker-compose",
+    "title": "Prometheus + Grafana on Docker Compose",
+    "description": "Running a full observability stack (Prometheus, Grafana, exporters) via Docker Compose on a Linux host (tested on Amazon Linux 2023 on EC2 t3.small)."
+  },
+  {
+    "name": "rancher-desktop-windows",
+    "title": "Rancher Desktop on Windows (Colima equivalent)",
+    "description": ""
+  },
+  {
+    "name": "sse-server-sent-events",
+    "title": "Server-Sent Events (SSE)",
+    "description": ""
+  },
+  {
+    "name": "supertest",
+    "title": "Supertest",
+    "description": ""
+  },
+  {
+    "name": "terraform-aws-ec2",
+    "title": "Terraform — AWS EC2 Setup",
+    "description": "Provisioning an EC2 instance with VPC, security groups, IAM role, and Elastic IP using Terraform >= 1.6 with the AWS provider ~> 5.0."
+  },
+  {
+    "name": "terraform-aws-frontend-hosting",
+    "title": "Terraform — AWS Frontend Hosting (S3 + CloudFront OAC + ACM + Route53)",
+    "description": ""
+  },
+  {
+    "name": "toronto-city-open-data-ferry",
+    "title": "Toronto City Open Data — Ferry Service Status API",
+    "description": "The City of Toronto publishes a live, no-auth JSON endpoint for ferry service status:"
+  },
+  {
+    "name": "vite-dev-proxy",
+    "title": "Vite Dev Server Proxy",
+    "description": ""
+  },
+  {
+    "name": "vite-plugin-pwa",
+    "title": "vite-plugin-pwa — PWA Setup with Vite + Workbox",
+    "description": ""
+  },
+  {
+    "name": "vitest",
+    "title": "Vitest",
+    "description": ""
+  }
+]
