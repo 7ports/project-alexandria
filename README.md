@@ -109,6 +109,7 @@ In your first conversation after installing, ask Claude to call `get_onboarding`
 | [GitHub CLI (gh)](guides/github-cli.md) | The GitHub CLI (`gh`) provides GitHub functionality directly from the terminal — pull requests, issues, releases, gists, GitHub Actions, Pages deploym |
 | [GitHub MCP Server](guides/github-mcp-server.md) | Provides GitHub API access via MCP, enabling AI assistants to interact with repositories, issues, pull requests, branches, releases, and more through  |
 | [GitHub Pages — Jekyll via GitHub Actions](guides/github-pages-jekyll-actions.md) | Deploy a Jekyll site from a `docs/` subdirectory using GitHub Actions (not the legacy "Deploy from branch" method). Required when using `actions/deplo |
+| [Go + Stringer Setup (Windows)](guides/go-stringer.md) |  |
 | [Loki + Grafana Stack (LGTM)](guides/loki-grafana-stack.md) |  |
 | [MapLibre GL JS + react-map-gl Setup Guide](guides/maplibre-react-map-gl.md) | MapLibre GL JS is an open-source fork of Mapbox GL JS. `react-map-gl` v8 provides a React adapter that works with both MapLibre and Mapbox. Together t |
 | [MapLibre Vessel Animation — lerp + requestAnimationFrame](guides/maplibre-vessel-animation.md) |  |
