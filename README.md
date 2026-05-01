@@ -124,6 +124,7 @@ In your first conversation after installing, ask Claude to call `get_onboarding`
 | [Terraform — AWS Frontend Hosting (S3 + CloudFront OAC + ACM + Route53)](guides/terraform-aws-frontend-hosting.md) |  |
 | [Toronto City Open Data — Ferry Service Status API](guides/toronto-city-open-data-ferry.md) | The City of Toronto publishes a live, no-auth JSON endpoint for ferry service status: |
 | [Trello MCP Server](guides/trello-mcp-server.md) |  |
+| [Unity asmdef: Referencing Assembly-CSharp from Test Assemblies](guides/unity-asmdef-assembly-csharp-reference.md) |  |
 | [Vite Dev Server Proxy](guides/vite-dev-proxy.md) |  |
 | [vite-plugin-pwa — PWA Setup with Vite + Workbox](guides/vite-plugin-pwa.md) |  |
 | [Vitest](guides/vitest.md) |  |
