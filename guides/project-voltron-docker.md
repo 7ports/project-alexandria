@@ -79,6 +79,8 @@ if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
 }
 ```
 
+> **Note on the host pre-flight check:** A `Token: NO` result from a pre-flight script run via the Bash tool can be a **false negative** — the bash-spawned subshell does not source the user's interactive shell profile, whereas the Voltron MCP server (spawned by Claude Code itself) does have the token. The real test of auth is the first `run_agent_in_docker` dispatch: if the agent runs Claude successfully, auth is fine regardless of what the subshell pre-flight reported.
+
 ---
 
 ### 4. Agent hits max_turns before committing
@@ -88,7 +90,43 @@ if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
 **Fixes:**
 - Increase `max_turns` to 40–50 for complex tasks
 - Scope the task prompt tightly — pre-read files for the agent so it doesn't spend turns doing that itself
-- As a fallback, implement the task directly from the host (the scrum-master can write code directly when Docker agents are unreliable)
+- Split the commit into a **separate** dispatch from the edit (commit-budgeting), so an edit that exhausts its turn budget does not also lose the commit
+
+---
+
+### 5. Push / PR fail inside Docker ("could not read Username" / "gh: not authenticated" / HTTP 401)
+
+**Root cause:** The container mounts the *Claude* OAuth token (issue #3) but has **no GitHub credentials** — no `gh` auth state, no git credential helper, no `GITHUB_TOKEN`/`GH_TOKEN`. So publish agents (`pr-opener`, and any `git push` from `committer`/`branch-manager`) fail the moment they touch `origin`:
+
+```
+fatal: could not read Username for 'https://github.com': No such device or address
+gh: To get started with GitHub CLI, please run:  gh auth login   (HTTP 401)
+```
+
+Editing and committing **locally** work fine inside Docker (issues #1–#2); only operations that talk to the GitHub remote fail.
+
+**Fix / workflow:** Do the network publish step from the **host** session, where `gh` is already authenticated (e.g. via `gh auth login` in the user's shell):
+
+1. Let the Docker `committer` create the commit locally on a feature branch (this works in-container).
+2. From the host, push the branch and open the PR:
+   ```bash
+   git push -u origin <feature-branch>
+   gh pr create --base main --head <feature-branch> --title "..." --body-file <body.md>
+   ```
+3. Instruct the `pr-opener` task to **detect** the auth failure and report the exact error rather than emitting a false `[DONE]`, so the orchestrator knows to take over the push on the host.
+
+**Related — `main` is branch-protected (GH013):** On repos with a ruleset requiring PRs, a direct `git push origin main` is rejected:
+```
+remote: error: GH013: Repository rule violations found for refs/heads/main.
+remote: - Changes must be made through a pull request.
+```
+Always land changes via a feature branch + PR. If local `main` is ahead of `origin/main` by unrelated commits (e.g. reflection-add commits), rebase your fix branch directly onto `origin/main` so the PR is a single clean commit:
+```bash
+git rebase --onto origin/main main <feature-branch>
+```
+(Stash any stray working-tree edits first — EOL/autocrlf drift on a tracked file will block the rebase with "cannot rebase: You have unstaged changes".)
+
+**Future hardening:** to make in-container publish work, pass a `GH_TOKEN`/`GITHUB_TOKEN` env var into the container (mirroring the `CLAUDE_CODE_OAUTH_TOKEN` pattern in issue #3) and configure git to use it as a credential helper. Until that is implemented, host-side push is the supported path.
 
 ---
 
@@ -111,11 +149,10 @@ ENTRYPOINT ["claude"]
 
 ## Parallel Execution Strategy
 
-When multiple independent tasks need to run in parallel:
+For independent tasks that should run concurrently, use the **`run_agent_in_docker_batch`** MCP tool (Voltron v3.x): one MCP call with 2–8 `dispatches` entries fans out to N parallel containers and returns a single batch result. This is the supported parallel path and is immune to the main-session tool-call serializer.
 
-1. Create separate git branches (one per parallel workstream)
-2. Use the **Agent tool** (not `run_agent_in_docker`) for parallel execution — the Agent tool runs on the host with full filesystem access and reliable git
-3. Assign each agent to a different branch to avoid commit conflicts
-4. QA agent merges all branches at the end
+- Verified parallel in practice: two `harness-engineer` dispatches on disjoint files started within the same second (`[entry]` timestamps identical) and ran concurrently.
+- Keep parallel dispatches on **disjoint file sets** to avoid working-tree races; the containers share the mounted workspace.
+- The batch result can be very large (full per-agent transcripts) and may overflow the tool-result limit — it is saved to a file. Extract just the signal (`[DONE]`, `PASS`/`FAIL`, `"outcome"`, `[exit]`) with `grep` rather than reading the whole file.
 
-`run_agent_in_docker` is inherently serial (one container at a time via `spawnSync`). For true parallelism, use the Agent tool.
+> Historical note: older guidance here said `run_agent_in_docker` is strictly serial (`spawnSync`) and recommended the host `Agent` tool for parallelism. The `run_agent_in_docker_batch` tool supersedes that for in-Docker parallel work.
