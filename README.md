@@ -117,6 +117,7 @@ In your first conversation after installing, ask Claude to call `get_onboarding`
 | [Project Voltron](guides/project-voltron.md) | Project Voltron is an MCP server that provides a team of specialized Claude Code subagents (`.claude/agents/`) along with CLAUDE.md project context te |
 | [Project Voltron — Docker Agent Setup](guides/project-voltron-docker.md) | Project Voltron runs specialist Claude Code agents inside Docker containers via `run_agent_in_docker`. The container mounts the project workspace and  |
 | [Prometheus + Grafana on Docker Compose](guides/prometheus-grafana-docker-compose.md) | Running a full observability stack (Prometheus, Grafana, exporters) via Docker Compose on a Linux host (tested on Amazon Linux 2023 on EC2 t3.small). |
+| [R / Rscript on Windows — Setup Guide](guides/r-windows-setup.md) |  |
 | [Rancher Desktop on Windows (Colima equivalent)](guides/rancher-desktop-windows.md) |  |
 | [Server-Sent Events (SSE)](guides/sse-server-sent-events.md) |  |
 | [Supertest](guides/supertest.md) |  |
