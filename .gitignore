@@ -1,3 +1,14 @@
 node_modules/
 .claude/
 *.log
+
+# ── Voltron managed ─────────────────────────────────────────────
+# Claude Code — machine-specific session settings
+.claude/settings.local.json
+.claude/worktrees/
+
+# Voltron — ephemeral runtime artifacts
+.voltron/logs/
+.voltron/progress.json
+.voltron/screenshots/staged/
+# ── end Voltron managed ─────────────────────────────────────────
