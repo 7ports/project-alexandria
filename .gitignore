@@ -12,3 +12,8 @@ node_modules/
 .voltron/progress.json
 .voltron/screenshots/staged/
 # ── end Voltron managed ─────────────────────────────────────────
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
