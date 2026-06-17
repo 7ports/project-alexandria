@@ -1,3 +1,15 @@
+---
+id: express-5-node-typescript
+type: guide
+title: "Express 5 + Node.js 20 + TypeScript"
+summary: ""
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Express 5 + Node.js 20 + TypeScript
 
 ## Why Express 5

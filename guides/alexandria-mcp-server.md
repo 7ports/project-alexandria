@@ -1,3 +1,16 @@
+---
+id: alexandria-mcp-server
+type: guide
+title: "Alexandria MCP Server"
+summary: >
+  A custom MCP server that exposes Project Alexandria's tooling setup guides as searchable, queryable resources.
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Alexandria MCP Server
 
 ## Quick Reference

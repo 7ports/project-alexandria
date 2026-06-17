@@ -1,3 +1,15 @@
+---
+id: go-stringer
+type: guide
+title: "Go + Stringer Setup (Windows)"
+summary: ""
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Go + Stringer Setup (Windows)
 
 Setup notes for Go toolchain and the `stringer` tools on Windows.

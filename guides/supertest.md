@@ -1,3 +1,15 @@
+---
+id: supertest
+type: guide
+title: "Supertest"
+summary: ""
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Supertest
 
 HTTP integration testing library for Node.js. Works with any `http.Server` or Express/Koa/Fastify app.

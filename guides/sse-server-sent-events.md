@@ -1,3 +1,15 @@
+---
+id: sse-server-sent-events
+type: guide
+title: "Server-Sent Events (SSE)"
+summary: ""
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Server-Sent Events (SSE)
 
 > Real-world experience from the Toronto Island Ferry Tracker v2 project.

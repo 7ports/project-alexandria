@@ -1,3 +1,15 @@
+---
+id: vite-dev-proxy
+type: guide
+title: "Vite Dev Server Proxy"
+summary: ""
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Vite Dev Server Proxy
 
 ## The Problem

@@ -70,7 +70,7 @@ You do not need to change how you start Claude Code. Run it normally on your des
 - **github** — PR/issue management
 - **memory** — persist decisions and patterns across sessions
 - **fetch** — docs, changelogs, API references
-- **alexandria** — tooling setup guides; **mandatory** — call `quick_setup` before installing any tool (no exceptions), `update_guide` after. Alexandria is for non-project-specific documentation only (tool setup, platform quirks, version notes) — project-specific knowledge stays in CLAUDE.md
+- **alexandria** — shared, project-agnostic knowledge base. Record ONLY general, reusable knowledge that would help an unrelated project; **never** machine/host names, paths, secrets, credentials, or any client-/project-specific detail (those stay in this CLAUDE.md). Positive test before writing: *"Would this help any unrelated project?"* If no, don't write it to Alexandria. Call `recall_context` before any tool setup or non-trivial technical decision, and `write_knowledge` after to record reusable learnings.
 
 ---
 

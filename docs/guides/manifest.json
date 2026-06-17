@@ -40,6 +40,11 @@
     "description": "CoPlay MCP Server provides deep Unity Editor integration via the Model Context Protocol. It allows AI assistants to read/write scene hierarchies, crea"
   },
   {
+    "name": "embeddings-local-vs-hosted",
+    "title": "Local vs Hosted Embeddings for Semantic Search",
+    "description": "Embedding models turn text into dense vectors so you can do semantic similarity search — \"find docs that mean the same thing as this query\" even when "
+  },
+  {
     "name": "environment-canada-weather-api",
     "title": "Environment Canada Weather API (GeoMet OGC API)",
     "description": "Environment Canada exposes real-time surface weather observations (SWOB) through the MSC GeoMet OGC API at `https://api.weather.gc.ca/`. No API key is"
@@ -90,6 +95,11 @@
     "description": "Deploy a Jekyll site from a `docs/` subdirectory using GitHub Actions (not the legacy \"Deploy from branch\" method). Required when using `actions/deplo"
   },
   {
+    "name": "go-stringer",
+    "title": "Go + Stringer Setup (Windows)",
+    "description": ""
+  },
+  {
     "name": "loki-grafana-stack",
     "title": "Loki + Grafana Stack (LGTM)",
     "description": ""
@@ -110,6 +120,11 @@
     "description": "Provides a persistent knowledge graph for AI assistants via MCP. Stores entities, observations, and relations that persist across conversations. Usefu"
   },
   {
+    "name": "npm-publish-2fa-tokens",
+    "title": "Publishing to npm — 2FA / access token gotcha",
+    "description": ""
+  },
+  {
     "name": "project-voltron-docker",
     "title": "Project Voltron — Docker Agent Setup",
     "description": "Project Voltron runs specialist Claude Code agents inside Docker containers via `run_agent_in_docker`. The container mounts the project workspace and "
@@ -123,6 +138,11 @@
     "name": "prometheus-grafana-docker-compose",
     "title": "Prometheus + Grafana on Docker Compose",
     "description": "Running a full observability stack (Prometheus, Grafana, exporters) via Docker Compose on a Linux host (tested on Amazon Linux 2023 on EC2 t3.small)."
+  },
+  {
+    "name": "r-windows-setup",
+    "title": "R / Rscript on Windows — Setup Guide",
+    "description": ""
   },
   {
     "name": "rancher-desktop-windows",
@@ -153,6 +173,21 @@
     "name": "toronto-city-open-data-ferry",
     "title": "Toronto City Open Data — Ferry Service Status API",
     "description": "The City of Toronto publishes a live, no-auth JSON endpoint for ferry service status:"
+  },
+  {
+    "name": "trello-mcp-server",
+    "title": "Trello MCP Server",
+    "description": ""
+  },
+  {
+    "name": "unity-asmdef-assembly-csharp-reference",
+    "title": "Unity asmdef: Referencing Assembly-CSharp from Test Assemblies",
+    "description": ""
+  },
+  {
+    "name": "vector-db-options",
+    "title": "Vector Database Options: Embedded vs Managed",
+    "description": "Vector databases store embeddings alongside metadata and answer \"nearest neighbor\" queries efficiently. The key fork in the road is **embedded vs. ser"
   },
   {
     "name": "vite-dev-proxy",

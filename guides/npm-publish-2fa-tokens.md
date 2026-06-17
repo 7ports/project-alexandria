@@ -1,3 +1,15 @@
+---
+id: npm-publish-2fa-tokens
+type: guide
+title: "Publishing to npm — 2FA / access token gotcha"
+summary: ""
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Publishing to npm — 2FA / access token gotcha
 
 How to publish a package to the public npm registry **non-interactively** (CI, agents, or a CLI session where you can't paste a live OTP).

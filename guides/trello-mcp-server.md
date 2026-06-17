@@ -1,3 +1,15 @@
+---
+id: trello-mcp-server
+type: guide
+title: "Trello MCP Server"
+summary: ""
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Trello MCP Server
 
 Researched: 2026-04-09

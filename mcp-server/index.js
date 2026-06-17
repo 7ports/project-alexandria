@@ -6,6 +6,7 @@ import { z } from "zod";
 import fs from "fs";
 import path from "path";
 import { execFile } from "child_process";
+import { createRequire } from "module";
 import {
   withMetrics,
   guideReadsTotal,
@@ -13,6 +14,98 @@ import {
   searchQueriesTotal,
   guidesTotal,
 } from './metrics.js';
+
+// lib/ is CommonJS (lib/package.json "type":"commonjs"); load it from this ESM
+// module via createRequire. Wrapped so a missing native dep (better-sqlite3 /
+// sqlite-vec) degrades gracefully instead of crashing the server at boot.
+const require = createRequire(import.meta.url);
+let indexStore = null;   // CJS module: openIndex/upsertDoc/knn/close
+let reindexLib = null;   // CJS module: reindexAll/reconcileIndex/manifestHash
+let searchLib = null;    // CJS module: searchKnowledge (semantic + lexical fallback)
+try {
+  indexStore = require('./lib/index-store');
+  reindexLib = require('./lib/reindex');
+} catch (err) {
+  console.error(`[alexandria] vector index unavailable (lexical fallback only): ${err.message}`);
+}
+// search.js depends only on embedder + index-store + frontmatter; load it
+// separately so the lexical fallback stays available even if the native index
+// modules above fail to load.
+try {
+  searchLib = require('./lib/search');
+} catch (err) {
+  console.error(`[alexandria] search module unavailable: ${err.message}`);
+}
+// knowledge.js generalizes read/write/list across all content types (guide |
+// concept | article | reference) with embed-on-write + git sync. It pulls in
+// index-store/embedder, so guard the require so a missing native dep degrades
+// to the legacy guide-only tools rather than crashing boot.
+let knowledgeLib = null;   // CJS module: writeKnowledge/readKnowledge/listKnowledge
+try {
+  knowledgeLib = require('./lib/knowledge');
+} catch (err) {
+  console.error(`[alexandria] knowledge module unavailable: ${err.message}`);
+}
+// refresh.js provides the TTL refresh-on-read trigger (maybeRefresh) and the
+// non-blocking background pull+reconcile (refreshFromRemote). It pulls in
+// reindex/index-store (native deps), so guard the require — without it, reads
+// simply skip the freshness check and serve the local index as before.
+let refreshLib = null;     // CJS module: getLastSyncOk/setLastSyncOk/maybeRefresh/refreshFromRemote
+try {
+  refreshLib = require('./lib/refresh');
+} catch (err) {
+  console.error(`[alexandria] refresh module unavailable (no TTL refresh-on-read): ${err.message}`);
+}
+
+// Refresh-on-read TTL: how long since the last successful sync before a read
+// kicks a background refresh. Default 120 s; override via SYNC_TTL (seconds)
+// or SYNC_TTL_MS (milliseconds).
+const SYNC_TTL_MS = process.env.SYNC_TTL_MS
+  ? Number(process.env.SYNC_TTL_MS)
+  : process.env.SYNC_TTL
+    ? Number(process.env.SYNC_TTL) * 1000
+    : 120000;
+
+/**
+ * Non-blocking refresh-on-read gate. Called at the top of every READ tool: if
+ * the index is staler than SYNC_TTL it fires a background git fetch + reconcile
+ * and returns immediately, so the query always serves the current index without
+ * waiting on the network. No-op when the refresh module failed to load.
+ */
+function triggerRefreshOnRead() {
+  if (!refreshLib) return;
+  try {
+    refreshLib.maybeRefresh({
+      ttlMs: SYNC_TTL_MS,
+      now: Date.now(),
+      trigger: () =>
+        refreshLib
+          .refreshFromRemote({ store: getStore() })
+          .catch((err) => console.error(`[alexandria] background refresh failed: ${err.message}`)),
+    });
+  } catch (err) {
+    console.error(`[alexandria] refresh-on-read gate failed: ${err.message}`);
+  }
+}
+
+// Lazy singleton index-store handle — opened on first use so server boot never
+// blocks on the native module or DB file creation.
+let knowledgeStore = null;
+function getStore() {
+  if (!indexStore) return null;
+  if (knowledgeStore) return knowledgeStore;
+  try {
+    knowledgeStore = indexStore.openIndex();
+  } catch (err) {
+    console.error(`[alexandria] failed to open vector index: ${err.message}`);
+    knowledgeStore = null;
+  }
+  return knowledgeStore;
+}
+
+const CONTENT_DIRS = (reindexLib && reindexLib.DEFAULT_CONTENT_DIRS) || [
+  'guides', 'concepts', 'articles', 'references',
+];
 
 // Resolve guides directory relative to this script
 const SCRIPT_DIR = path.dirname(new URL(import.meta.url).pathname);
@@ -452,7 +545,259 @@ Add to the \`permissions.allow\` array:
   }
 );
 
+// Tool: Rebuild the vector knowledge index from the markdown source-of-record
+server.tool(
+  "reindex_knowledge",
+  "Rebuild the semantic vector index from the markdown source-of-record (guides/concepts/articles/references). Idempotent: docs whose content is unchanged are skipped unless force=true. Returns a summary of docs indexed, chunks embedded, and docs skipped.",
+  {
+    force: z.boolean().optional().describe("Re-embed every doc even if its content is unchanged (default false)"),
+  },
+  async ({ force }) => {
+    return withMetrics("reindex_knowledge", async () => {
+      const store = getStore();
+      if (!store || !reindexLib) {
+        return { content: [{ type: "text", text: "Vector index unavailable — reindex skipped. (Install better-sqlite3 + sqlite-vec to enable semantic search.)" }] };
+      }
+      try {
+        const r = await reindexLib.reindexAll(store, {
+          contentDirs: CONTENT_DIRS,
+          force: !!force,
+        });
+        return {
+          content: [{
+            type: "text",
+            text: `Reindex complete: ${r.docs} docs scanned, ${r.chunksEmbedded} chunks embedded, ${r.skipped} skipped${force ? " (forced)" : ""}.`,
+          }],
+        };
+      } catch (err) {
+        return { content: [{ type: "text", text: `Reindex failed: ${err.message}` }] };
+      }
+    });
+  }
+);
+
+// Tool: Semantic search across the whole knowledge base (with lexical fallback)
+server.tool(
+  "search_knowledge",
+  "PRIMARY search. Semantic (vector) search across all knowledge — guides, concepts, articles, references — returning the most relevant CHUNKS, not whole docs. Use this before acting to recall what Alexandria already knows. Filter by type, cap with top_k, set min_score to drop weak hits. Pass lexical:true (or when the index is unavailable it degrades automatically) to force the legacy substring scan for exact-string lookups.",
+  {
+    query: z.string().describe("Natural-language query or topic to search for"),
+    type: z.enum(["guide", "concept", "article", "reference"]).optional()
+      .describe("Restrict results to a single content type"),
+    top_k: z.number().int().positive().optional().describe("Max hits to return (default 8)"),
+    min_score: z.number().optional().describe("Drop semantic hits below this cosine score (default 0)"),
+    lexical: z.boolean().optional().describe("Force the substring fallback instead of semantic search (default false)"),
+  },
+  async ({ query, type, top_k, min_score, lexical }) => {
+    return withMetrics("search_knowledge", async () => {
+      searchQueriesTotal.inc();
+      triggerRefreshOnRead(); // non-blocking; serves the current index immediately
+
+      if (!searchLib) {
+        return { content: [{ type: "text", text: "Search module unavailable." }] };
+      }
+
+      let result;
+      try {
+        result = await searchLib.searchKnowledge(getStore(), query, {
+          type,
+          top_k,
+          min_score,
+          lexical,
+        });
+      } catch (err) {
+        return { content: [{ type: "text", text: `Search failed: ${err.message}` }] };
+      }
+
+      const { mode, hits } = result;
+      if (!hits || hits.length === 0) {
+        return { content: [{ type: "text", text: `No results found for '${query}' (mode: ${mode}).` }] };
+      }
+
+      const body = hits.map((h, i) => {
+        const heading = h.heading_path ? ` › ${h.heading_path}` : "";
+        const score = typeof h.score === "number" ? h.score.toFixed(3) : String(h.score);
+        return `${i + 1}. [${h.type}] ${h.title} (${h.doc_id})${heading} — score ${score}\n   ${h.snippet}`;
+      }).join("\n\n");
+
+      return { content: [{ type: "text", text: `# search_knowledge — ${mode}\nResults for '${query}':\n\n${body}` }] };
+    });
+  }
+);
+
+// Tool: Recall prior knowledge about a topic — multi-type, deduped-by-doc briefing
+server.tool(
+  "recall_context",
+  "Recall what Alexandria already knows about a TOPIC, as a compact briefing. Runs a semantic search across all content types (or just `types`), deduplicated to the single best chunk per doc, returned best-first — one entry per doc. Call this at task start to pull prior learnings into context. Wrapper over search_knowledge; degrades to the lexical fallback when the index is unavailable.",
+  {
+    topic: z.string().describe("Topic or question to recall prior knowledge about"),
+    top_k: z.number().int().positive().optional().describe("Max docs to brief on (default 12)"),
+    types: z.array(z.enum(["guide", "concept", "article", "reference"])).optional()
+      .describe("Restrict recall to these content types (default: all types)"),
+  },
+  async ({ topic, top_k, types }) => {
+    return withMetrics("recall_context", async () => {
+      searchQueriesTotal.inc();
+      triggerRefreshOnRead(); // non-blocking; serves the current index immediately
+
+      if (!searchLib || typeof searchLib.recallContext !== "function") {
+        return { content: [{ type: "text", text: "Search module unavailable." }] };
+      }
+
+      let briefing;
+      try {
+        briefing = await searchLib.recallContext(getStore(), topic, { top_k, types });
+      } catch (err) {
+        return { content: [{ type: "text", text: `Recall failed: ${err.message}` }] };
+      }
+
+      if (!briefing || briefing.length === 0) {
+        return { content: [{ type: "text", text: `No prior knowledge found for '${topic}'.` }] };
+      }
+
+      const body = briefing.map((b, i) => {
+        const score = typeof b.score === "number" ? b.score.toFixed(3) : String(b.score);
+        return `${i + 1}. [${b.type}] ${b.title} (${b.doc_id}) — score ${score}\n   ${b.snippet}\n   → read_knowledge("${b.doc_id}")`;
+      }).join("\n\n");
+
+      return { content: [{ type: "text", text: `# recall_context — '${topic}'\n${briefing.length} doc(s):\n\n${body}` }] };
+    });
+  }
+);
+
+// Tool: Write (create/update) a knowledge doc of any content type
+server.tool(
+  "write_knowledge",
+  "Create or update a knowledge doc of ANY type (guide|concept|article|reference). Composes YAML frontmatter from metadata, writes <type-dir>/<name>.md as the source-of-record, embeds it into the semantic index immediately (embed-on-write), then commits & syncs to git asynchronously. Prefer this over update_guide for non-guide content.",
+  {
+    name: z.string().describe("Slug (filename without .md), e.g. 'embed-on-write'"),
+    type: z.enum(["guide", "concept", "article", "reference"]).describe("Content type → target directory"),
+    content: z.string().describe("Markdown body only — frontmatter is composed for you from metadata"),
+    metadata: z
+      .object({
+        title: z.string().optional(),
+        summary: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        source_urls: z.array(z.string()).optional(),
+        supersedes: z.string().optional(),
+        status: z.string().optional(),
+      })
+      .optional()
+      .describe("Frontmatter fields (id and type are set automatically)"),
+  },
+  async ({ name, type, content, metadata }) => {
+    return withMetrics("write_knowledge", async () => {
+      if (!knowledgeLib) {
+        return { content: [{ type: "text", text: "Knowledge module unavailable." }] };
+      }
+      try {
+        const r = await knowledgeLib.writeKnowledge(
+          { name, type, content, metadata },
+          { store: getStore() }
+        );
+        guideUpdatesTotal.inc({ guide: name ?? "unknown" });
+        return {
+          content: [{
+            type: "text",
+            text: `Wrote ${r.path} — ${r.chunks} chunk(s) embedded${r.committed ? ", git sync enqueued" : ""}.`,
+          }],
+        };
+      } catch (err) {
+        return { content: [{ type: "text", text: `Error writing knowledge: ${err.message}` }] };
+      }
+    });
+  }
+);
+
+// Tool: Read the full markdown of a knowledge doc (rare full-text fallback)
+server.tool(
+  "read_knowledge",
+  "Read the FULL markdown of a knowledge doc directly from disk (the source-of-record). This is the rare full-text fallback — prefer search_knowledge for routine recall. Pass raw:true to strip YAML frontmatter and return only the body.",
+  {
+    name: z.string().describe("Doc slug (filename without .md)"),
+    type: z.enum(["guide", "concept", "article", "reference"]).optional()
+      .describe("Restrict the lookup to a single content type"),
+    raw: z.boolean().optional().describe("Strip frontmatter, returning only the body (default false)"),
+  },
+  async ({ name, type, raw }) => {
+    return withMetrics("read_knowledge", async () => {
+      triggerRefreshOnRead(); // non-blocking; serves the current source-of-record immediately
+      if (!knowledgeLib) {
+        return { content: [{ type: "text", text: "Knowledge module unavailable." }] };
+      }
+      const text = await knowledgeLib.readKnowledge({ name, type, raw: !!raw });
+      if (text == null) {
+        return { content: [{ type: "text", text: `Knowledge doc '${name}' not found${type ? ` (type ${type})` : ""}.` }] };
+      }
+      guideReadsTotal.inc({ guide: name ?? "unknown" });
+      return { content: [{ type: "text", text }] };
+    });
+  }
+);
+
+// Tool: List knowledge docs across all content types
+server.tool(
+  "list_knowledge",
+  "List knowledge docs across all content types (or one type). Returns one line per doc: 'slug — title [type]'. Use this to see what knowledge exists, then search_knowledge or read_knowledge for detail.",
+  {
+    type: z.enum(["guide", "concept", "article", "reference"]).optional()
+      .describe("Restrict the listing to a single content type"),
+  },
+  async ({ type }) => {
+    return withMetrics("list_knowledge", async () => {
+      triggerRefreshOnRead(); // non-blocking; serves the current listing immediately
+      if (!knowledgeLib) {
+        return { content: [{ type: "text", text: "Knowledge module unavailable." }] };
+      }
+      const lines = knowledgeLib.listKnowledge({ type });
+      if (!lines.length) {
+        return { content: [{ type: "text", text: "No knowledge docs found." }] };
+      }
+      return { content: [{ type: "text", text: lines.join("\n") }] };
+    });
+  }
+);
+
+/**
+ * Startup self-heal: compare a manifest hash of the content dirs against the
+ * indexed `docs` table. If the DB is missing/empty or has drifted (files added,
+ * changed, or removed out-of-band — e.g. after a git pull), kick a background
+ * reindex. Non-blocking: server init never waits on this.
+ */
+function startupSelfHeal() {
+  if (!indexStore || !reindexLib) return;
+  (async () => {
+    try {
+      const store = getStore();
+      if (!store) return;
+
+      // Hash the docs table the same way manifestHash() hashes the disk:
+      // sorted `path:content_hash` lines → sha256.
+      const crypto = require("crypto");
+      const rows = store.db.prepare("SELECT path, content_hash FROM docs").all();
+      const dbHash = crypto
+        .createHash("sha256")
+        .update(rows.map((r) => `${r.path}:${r.content_hash}`).sort().join("\n"))
+        .digest("hex");
+      const diskHash = reindexLib.manifestHash(CONTENT_DIRS);
+
+      if (dbHash === diskHash) return; // index already matches the markdown
+
+      console.error("[alexandria] index drift detected — rebuilding in background…");
+      const r = await reindexLib.reindexAll(store, { contentDirs: CONTENT_DIRS });
+      console.error(`[alexandria] background reindex done: ${r.docs} docs, ${r.chunksEmbedded} chunks, ${r.skipped} skipped.`);
+    } catch (err) {
+      console.error(`[alexandria] startup self-heal failed (lexical fallback remains): ${err.message}`);
+    }
+  })();
+}
+
 // Start the server
 try { guidesTotal.set(getGuideFiles().length); } catch (_) {}
+// Initialize the refresh-on-read TTL clock: the startup self-heal already
+// reconciles against the markdown source-of-record, so treat boot as a fresh
+// sync and let the TTL elapse before the first background refresh-on-read.
+if (refreshLib) { try { refreshLib.setLastSyncOk(Date.now()); } catch (_) {} }
+startupSelfHeal(); // fire-and-forget; does not block server.connect
 const transport = new StdioServerTransport();
 await server.connect(transport);

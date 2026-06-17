@@ -1,3 +1,16 @@
+---
+id: firebase-mcp-server
+type: guide
+title: "Firebase MCP Server"
+summary: >
+  Provides Firebase project management via MCP.
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Firebase MCP Server
 
 ## Quick Reference

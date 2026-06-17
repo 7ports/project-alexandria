@@ -1,3 +1,15 @@
+---
+id: r-windows-setup
+type: guide
+title: "R / Rscript on Windows — Setup Guide"
+summary: ""
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # R / Rscript on Windows — Setup Guide
 
 Setting up R so `Rscript` can run scripts (e.g. data-cleanup scripts using

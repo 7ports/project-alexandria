@@ -9,7 +9,7 @@
  *   CLIENT_ENV               production  (default)
  */
 
-import { Registry, Counter, Gauge } from 'prom-client';
+import { Registry, Counter, Gauge, Histogram } from 'prom-client';
 
 const CLIENT = process.env.CLIENT_NAME ?? 'alexandria';
 const ENV    = process.env.CLIENT_ENV  ?? 'production';
@@ -65,6 +65,82 @@ export const guidesTotal = new Gauge({
   help: 'Current number of guides in the knowledge base',
   registers: [registry],
 });
+
+// ── Vector-DB / sync metrics (Phase 8) ────────────────────────────────────
+export const embedLatencySeconds = new Histogram({
+  name: 'embed_latency_seconds',
+  help: 'Seconds to embed a single chunk (passage or query) via the local model',
+  buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+  registers: [registry],
+});
+
+export const knowledgeIndexSize = new Gauge({
+  name: 'knowledge_index_size',
+  help: 'Current count of documents or chunks in the sqlite-vec knowledge index',
+  labelNames: ['kind'],
+  registers: [registry],
+});
+
+export const semanticQueryTotal = new Counter({
+  name: 'semantic_query_total',
+  help: 'Total semantic (KNN) search_knowledge queries executed',
+  registers: [registry],
+});
+
+export const lexicalFallbackTotal = new Counter({
+  name: 'lexical_fallback_total',
+  help: 'Total times search degraded to lexical (substring) fallback',
+  registers: [registry],
+});
+
+export const syncPushRetriesTotal = new Counter({
+  name: 'sync_push_retries_total',
+  help: 'Total non-fast-forward push retries inside syncCommitAndPush',
+  registers: [registry],
+});
+
+export const syncPushFailuresTotal = new Counter({
+  name: 'sync_push_failures_total',
+  help: 'Total push sequences that exhausted all retries without a successful push',
+  registers: [registry],
+});
+
+export const syncConflictsTotal = new Counter({
+  name: 'sync_conflicts_total',
+  help: 'Total rebase conflicts aborted during sync (requires manual reconciliation)',
+  registers: [registry],
+});
+
+// Tracks the epoch-ms of the last successful push so collect() can derive age.
+let _lastSyncOkMs = null;
+export const lastSyncAgeSeconds = new Gauge({
+  name: 'last_sync_age_seconds',
+  help: 'Seconds since the last successful git push (unset until first push succeeds)',
+  registers: [registry],
+  collect() {
+    if (_lastSyncOkMs !== null) {
+      this.set((Date.now() - _lastSyncOkMs) / 1000);
+    }
+  },
+});
+
+export const reconcileDocsReembeddedTotal = new Counter({
+  name: 'reconcile_docs_reembedded_total',
+  help: 'Total documents re-embedded during incremental index reconciliation after a pull',
+  registers: [registry],
+});
+
+// ── Phase-8 helper functions (called by CJS lib modules via metrics-hooks.js) ─
+export function recordEmbedLatency(seconds) { embedLatencySeconds.observe(seconds); }
+export function incSemanticQuery()           { semanticQueryTotal.inc(); }
+export function incLexicalFallback()         { lexicalFallbackTotal.inc(); }
+export function incSyncRetry()               { syncPushRetriesTotal.inc(); }
+export function incSyncFailure()             { syncPushFailuresTotal.inc(); }
+export function incSyncConflict()            { syncConflictsTotal.inc(); }
+/** Record the epoch-ms of the last successful push; the gauge auto-computes age at scrape time. */
+export function setLastSyncAge(epochMs)      { _lastSyncOkMs = epochMs; }
+export function addReembedded(n)             { reconcileDocsReembeddedTotal.inc(n ?? 1); }
+export function setIndexSize(kind, count)    { knowledgeIndexSize.set({ kind }, count); }
 
 // ── Pushgateway ────────────────────────────────────────────────────────────
 const PUSH_URL   = process.env.SAURON_PUSHGATEWAY_URL;

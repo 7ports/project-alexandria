@@ -1,3 +1,15 @@
+---
+id: unity-asmdef-assembly-csharp-reference
+type: guide
+title: "Unity asmdef: Referencing Assembly-CSharp from Test Assemblies"
+summary: ""
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Unity asmdef: Referencing Assembly-CSharp from Test Assemblies
 
 ## Problem

@@ -1,3 +1,15 @@
+---
+id: flyio-deployment
+type: guide
+title: "Fly.io Deployment — Node.js / TypeScript"
+summary: ""
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Fly.io Deployment — Node.js / TypeScript
 
 > Based on real-world deployment of a Node.js/Express SSE server (project-hammer-api, April 2026).

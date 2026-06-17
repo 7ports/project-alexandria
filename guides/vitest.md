@@ -1,3 +1,15 @@
+---
+id: vitest
+type: guide
+title: "Vitest"
+summary: ""
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Vitest
 
 Fast unit/integration test runner built on Vite. Native TypeScript support, compatible with Jest API.

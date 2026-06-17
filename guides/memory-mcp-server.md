@@ -1,3 +1,16 @@
+---
+id: memory-mcp-server
+type: guide
+title: "Memory MCP Server"
+summary: >
+  Provides a persistent knowledge graph for AI assistants via MCP.
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Memory MCP Server
 
 ## Quick Reference
