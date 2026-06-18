@@ -1,3 +1,15 @@
+---
+id: aisstream-io
+type: guide
+title: "aisstream.io — Real-Time AIS WebSocket API"
+summary: ""
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # aisstream.io — Real-Time AIS WebSocket API
 
 **Website:** https://aisstream.io

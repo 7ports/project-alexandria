@@ -3,6 +3,13 @@
     "description": "Recommendations that should be surfaced when setting up or initializing a new coding project.",
     "always": [
       {
+        "tool": "alexandria",
+        "guide": "alexandria-mcp-server",
+        "reason": "Equipped agents should `recall_context` before acting and `write_knowledge` after — Alexandria is a living source of truth, not a write-once doc set. New durable learnings go in as `concept`/`article`, not only `guide`.",
+        "priority": "required",
+        "when": "Every project where the Alexandria MCP server is installed. Recall existing knowledge before tool setup or non-trivial technical decisions; record reusable learnings afterward."
+      },
+      {
         "tool": "beads",
         "guide": "beads",
         "reason": "Beads should always be used for any complex project to track issues, tasks, and dependencies. It provides structured, dependency-aware task management purpose-built for AI-assisted workflows. Run `bd init` in the project root and `bd setup claude` to wire up Claude Code hooks.",

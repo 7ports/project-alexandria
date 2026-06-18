@@ -1,3 +1,16 @@
+---
+id: coplay-mcp-server
+type: guide
+title: "CoPlay MCP Server (Unity Integration)"
+summary: >
+  CoPlay MCP Server provides deep Unity Editor integration via the Model Context Protocol.
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # CoPlay MCP Server (Unity Integration)
 
 ## Quick Reference

@@ -1,3 +1,16 @@
+---
+id: github-pages-jekyll-actions
+type: guide
+title: "GitHub Pages — Jekyll via GitHub Actions"
+summary: >
+  Deploy a Jekyll site from a `docs/` subdirectory using GitHub Actions (not the legacy "Deploy from branch" method).
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # GitHub Pages — Jekyll via GitHub Actions
 
 ## Overview

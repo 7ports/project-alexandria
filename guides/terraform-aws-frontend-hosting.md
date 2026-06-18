@@ -1,3 +1,15 @@
+---
+id: terraform-aws-frontend-hosting
+type: guide
+title: "Terraform — AWS Frontend Hosting (S3 + CloudFront OAC + ACM + Route53)"
+summary: ""
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Terraform — AWS Frontend Hosting (S3 + CloudFront OAC + ACM + Route53)
 
 > Based on real-world Terraform deployment for a React SPA at a custom domain (April 2026).

@@ -1,3 +1,16 @@
+---
+id: git-mcp-server
+type: guide
+title: "Git MCP Server"
+summary: >
+  Provides Git repository operations via MCP.
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Git MCP Server
 
 ## Quick Reference

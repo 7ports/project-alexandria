@@ -1,3 +1,16 @@
+---
+id: toronto-city-open-data-ferry
+type: guide
+title: "Toronto City Open Data — Ferry Service Status API"
+summary: >
+  The City of Toronto publishes a live, no-auth JSON endpoint for ferry service status:
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Toronto City Open Data — Ferry Service Status API
 
 > Discovered during the Toronto Island Ferry Tracker v2 project (project-hammer).

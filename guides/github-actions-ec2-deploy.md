@@ -1,3 +1,16 @@
+---
+id: github-actions-ec2-deploy
+type: guide
+title: "GitHub Actions — Deploy to EC2 via SSH"
+summary: >
+  Auto-deploy a Docker Compose stack to an EC2 instance on push to main, using the `appleboy/ssh-action` action.
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # GitHub Actions — Deploy to EC2 via SSH
 
 ## Overview

@@ -1,3 +1,16 @@
+---
+id: claude-in-chrome
+type: guide
+title: "Claude in Chrome (Browser Automation)"
+summary: >
+  Claude in Chrome is a browser extension that allows Claude Code to control a Chrome browser — taking screenshots, clicking elements, filling forms, reading page content, navigating, and more.
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Claude in Chrome (Browser Automation)
 
 ## Quick Reference

@@ -1,3 +1,15 @@
+---
+id: loki-grafana-stack
+type: guide
+title: "Loki + Grafana Stack (LGTM)"
+summary: ""
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Loki + Grafana Stack (LGTM)
 
 Setup guide for running Grafana + Prometheus + Loki via Docker Compose, including provisioning, dashboards, and Alloy self-monitoring.

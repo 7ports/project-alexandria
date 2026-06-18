@@ -1,3 +1,15 @@
+---
+id: vite-plugin-pwa
+type: guide
+title: "vite-plugin-pwa — PWA Setup with Vite + Workbox"
+summary: ""
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # vite-plugin-pwa — PWA Setup with Vite + Workbox
 
 > Based on real-world integration with Vite 5 (React + TypeScript) in April 2026.

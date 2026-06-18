@@ -1,3 +1,15 @@
+---
+id: maplibre-vessel-animation
+type: guide
+title: "MapLibre Vessel Animation — lerp + requestAnimationFrame"
+summary: ""
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # MapLibre Vessel Animation — lerp + requestAnimationFrame
 
 Smooth real-time marker movement for GPS/AIS position updates on MapLibre GL JS maps.

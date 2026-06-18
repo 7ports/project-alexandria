@@ -1,3 +1,15 @@
+---
+id: claude-code-github-actions
+type: guide
+title: "Claude Code in GitHub Actions"
+summary: ""
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Claude Code in GitHub Actions
 
 ## Installation

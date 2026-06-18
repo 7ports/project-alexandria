@@ -1,3 +1,16 @@
+---
+id: terraform-aws-ec2
+type: guide
+title: "Terraform — AWS EC2 Setup"
+summary: >
+  Provisioning an EC2 instance with VPC, security groups, IAM role, and Elastic IP using Terraform >= 1.6 with the AWS provider ~> 5.0.
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Terraform — AWS EC2 Setup
 
 ## Overview

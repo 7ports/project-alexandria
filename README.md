@@ -110,6 +110,7 @@ In your first conversation after installing, ask Claude to call `get_onboarding`
 | [GitHub MCP Server](guides/github-mcp-server.md) | Provides GitHub API access via MCP, enabling AI assistants to interact with repositories, issues, pull requests, branches, releases, and more through  |
 | [GitHub Pages — Jekyll via GitHub Actions](guides/github-pages-jekyll-actions.md) | Deploy a Jekyll site from a `docs/` subdirectory using GitHub Actions (not the legacy "Deploy from branch" method). Required when using `actions/deplo |
 | [Go + Stringer Setup (Windows)](guides/go-stringer.md) |  |
+| [Local vs Hosted Embeddings for Semantic Search](guides/embeddings-local-vs-hosted.md) | Embedding models turn text into dense vectors so you can do semantic similarity search — "find docs that mean the same thing as this query" even when  |
 | [Loki + Grafana Stack (LGTM)](guides/loki-grafana-stack.md) |  |
 | [MapLibre GL JS + react-map-gl Setup Guide](guides/maplibre-react-map-gl.md) | MapLibre GL JS is an open-source fork of Mapbox GL JS. `react-map-gl` v8 provides a React adapter that works with both MapLibre and Mapbox. Together t |
 | [MapLibre Vessel Animation — lerp + requestAnimationFrame](guides/maplibre-vessel-animation.md) |  |
@@ -117,6 +118,7 @@ In your first conversation after installing, ask Claude to call `get_onboarding`
 | [Project Voltron](guides/project-voltron.md) | Project Voltron is an MCP server that provides a team of specialized Claude Code subagents (`.claude/agents/`) along with CLAUDE.md project context te |
 | [Project Voltron — Docker Agent Setup](guides/project-voltron-docker.md) | Project Voltron runs specialist Claude Code agents inside Docker containers via `run_agent_in_docker`. The container mounts the project workspace and  |
 | [Prometheus + Grafana on Docker Compose](guides/prometheus-grafana-docker-compose.md) | Running a full observability stack (Prometheus, Grafana, exporters) via Docker Compose on a Linux host (tested on Amazon Linux 2023 on EC2 t3.small). |
+| [Publishing to npm — 2FA / access token gotcha](guides/npm-publish-2fa-tokens.md) |  |
 | [R / Rscript on Windows — Setup Guide](guides/r-windows-setup.md) |  |
 | [Rancher Desktop on Windows (Colima equivalent)](guides/rancher-desktop-windows.md) |  |
 | [Server-Sent Events (SSE)](guides/sse-server-sent-events.md) |  |
@@ -126,6 +128,7 @@ In your first conversation after installing, ask Claude to call `get_onboarding`
 | [Toronto City Open Data — Ferry Service Status API](guides/toronto-city-open-data-ferry.md) | The City of Toronto publishes a live, no-auth JSON endpoint for ferry service status: |
 | [Trello MCP Server](guides/trello-mcp-server.md) |  |
 | [Unity asmdef: Referencing Assembly-CSharp from Test Assemblies](guides/unity-asmdef-assembly-csharp-reference.md) |  |
+| [Vector Database Options: Embedded vs Managed](guides/vector-db-options.md) | Vector databases store embeddings alongside metadata and answer "nearest neighbor" queries efficiently. The key fork in the road is **embedded vs. ser |
 | [Vite Dev Server Proxy](guides/vite-dev-proxy.md) |  |
 | [vite-plugin-pwa — PWA Setup with Vite + Workbox](guides/vite-plugin-pwa.md) |  |
 | [Vitest](guides/vitest.md) |  |

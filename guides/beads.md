@@ -1,3 +1,16 @@
+---
+id: beads
+type: guide
+title: "Beads — Distributed Graph Issue Tracker for AI Agents"
+summary: >
+  Beads (`bd` CLI) is a distributed graph issue tracker designed for AI coding agents, powered by Dolt (a version-controlled SQL database).
+tags: []
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
 # Beads — Distributed Graph Issue Tracker for AI Agents
 
 ## Quick Reference
