@@ -98,6 +98,7 @@ In your first conversation after installing, ask Claude to call `get_onboarding`
 | [Claude Code in GitHub Actions](guides/claude-code-github-actions.md) |  |
 | [Claude in Chrome (Browser Automation)](guides/claude-in-chrome.md) | Claude in Chrome is a browser extension that allows Claude Code to control a Chrome browser — taking screenshots, clicking elements, filling forms, re |
 | [Claude Preview MCP Server](guides/claude-preview-mcp-server.md) | Claude Preview provides a built-in dev server launcher and browser preview for Claude Code. It can start local development servers, take screenshots,  |
+| [Configuring Widget Caching with Redis](guides/widget-redis-cache.md) | Configure Redis caching for widget performance |
 | [CoPlay MCP Server (Unity Integration)](guides/coplay-mcp-server.md) | CoPlay MCP Server provides deep Unity Editor integration via the Model Context Protocol. It allows AI assistants to read/write scene hierarchies, crea |
 | [Environment Canada Weather API (GeoMet OGC API)](guides/environment-canada-weather-api.md) | Environment Canada exposes real-time surface weather observations (SWOB) through the MSC GeoMet OGC API at `https://api.weather.gc.ca/`. No API key is |
 | [Express 5 + Node.js 20 + TypeScript](guides/express-5-node-typescript.md) |  |

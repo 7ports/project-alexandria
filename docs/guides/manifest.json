@@ -203,5 +203,10 @@
     "name": "vitest",
     "title": "Vitest",
     "description": ""
+  },
+  {
+    "name": "widget-redis-cache",
+    "title": "Configuring Widget Caching with Redis",
+    "description": "Configure Redis caching for widget performance"
   }
 ]
