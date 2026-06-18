@@ -30,3 +30,29 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp-server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: mcp-server/package-lock.json
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Restore embedding model cache
+        uses: actions/cache@v4
+        with:
+          path: mcp-server/.models
+          key: embeddings-bge-small-en-v1.5-cache
+
+      - name: Run integration tests
+        run: npm run test:integration

@@ -7,6 +7,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['test/**/*.test.js'],
+    exclude: ['test/**/*.integration.test.js'],
     testTimeout: 120000,
     hookTimeout: 120000,
     pool: 'forks',
