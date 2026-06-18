@@ -3,7 +3,7 @@ id: terraform-aws-frontend-hosting
 type: guide
 title: "Terraform — AWS Frontend Hosting (S3 + CloudFront OAC + ACM + Route53)"
 summary: ""
-tags: []
+tags: [cloud-iac]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

@@ -3,7 +3,7 @@ id: maplibre-vessel-animation
 type: guide
 title: "MapLibre Vessel Animation — lerp + requestAnimationFrame"
 summary: ""
-tags: []
+tags: [frontend-web]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

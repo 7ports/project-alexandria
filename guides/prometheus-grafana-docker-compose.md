@@ -4,7 +4,7 @@ type: guide
 title: "Prometheus + Grafana on Docker Compose"
 summary: >
   Running a full observability stack (Prometheus, Grafana, exporters) via Docker Compose on a Linux host (tested on Amazon Linux 2023 on EC2 t3.small).
-tags: []
+tags: [observability]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

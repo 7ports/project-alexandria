@@ -3,7 +3,7 @@ id: loki-grafana-stack
 type: guide
 title: "Loki + Grafana Stack (LGTM)"
 summary: ""
-tags: []
+tags: [observability]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

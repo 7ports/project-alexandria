@@ -4,7 +4,7 @@ type: guide
 title: "MapLibre GL JS + react-map-gl Setup Guide"
 summary: >
   MapLibre GL JS is an open-source fork of Mapbox GL JS.
-tags: []
+tags: [frontend-web]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

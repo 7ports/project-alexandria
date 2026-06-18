@@ -3,7 +3,7 @@ id: vite-dev-proxy
 type: guide
 title: "Vite Dev Server Proxy"
 summary: ""
-tags: []
+tags: [frontend-web]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

@@ -3,7 +3,7 @@ id: vitest
 type: guide
 title: "Vitest"
 summary: ""
-tags: []
+tags: [testing]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

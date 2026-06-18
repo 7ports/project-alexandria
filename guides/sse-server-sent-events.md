@@ -3,7 +3,7 @@ id: sse-server-sent-events
 type: guide
 title: "Server-Sent Events (SSE)"
 summary: ""
-tags: []
+tags: [frontend-web]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

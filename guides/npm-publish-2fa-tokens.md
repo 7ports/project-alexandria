@@ -3,7 +3,7 @@ id: npm-publish-2fa-tokens
 type: guide
 title: "Publishing to npm — 2FA / access token gotcha"
 summary: ""
-tags: []
+tags: [dev-tooling]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

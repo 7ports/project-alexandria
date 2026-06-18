@@ -13,5 +13,7 @@ fi
 echo "Project Alexandria — Syncing docs..."
 
 python3 .github/gen_manifest.py
+echo "Regenerating embedding map (3D visualizer data)..."
+node scripts/build-embedding-map.mjs
 
 echo "Done. Review changes with: git diff README.md docs/guides/manifest.json"

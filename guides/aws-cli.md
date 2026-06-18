@@ -4,7 +4,7 @@ type: guide
 title: "AWS CLI v2"
 summary: >
   AWS CLI v2 is the unified command-line tool for managing AWS services.
-tags: []
+tags: [cloud-iac]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

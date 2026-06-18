@@ -3,7 +3,7 @@ id: express-5-node-typescript
 type: guide
 title: "Express 5 + Node.js 20 + TypeScript"
 summary: ""
-tags: []
+tags: [frontend-web]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

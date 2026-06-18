@@ -3,9 +3,16 @@ name: Deploy GitHub Pages
 on:
   push:
     branches: [main]
+  pull_request:
+    paths:
+      - 'guides/**'
+      - 'scripts/build-embedding-map.mjs'
+      - 'docs/data/**'
+      - 'mcp-server/**'
+      - '.github/workflows/deploy-pages.yml'
 
 permissions:
-  contents: write   # needed to push the README sync commit
+  contents: write   # needed to push the README + embedding-map sync commit
   pages: write
   id-token: write
 
@@ -15,6 +22,8 @@ concurrency:
 
 jobs:
   deploy:
+    # Build + commit refreshed artifacts + publish Pages only on pushes to main.
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -31,18 +40,47 @@ jobs:
           # Generate a JSON manifest with name, title, and description for each guide
           python3 .github/gen_manifest.py
 
-      - name: Commit updated README
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: mcp-server/package-lock.json
+
+      - name: Install build dependencies
+        working-directory: mcp-server
+        run: npm install
+
+      - name: Restore embedding model cache
+        uses: actions/cache@v4
+        with:
+          path: mcp-server/.models
+          key: embeddings-bge-small-en-v1.5-cache
+
+      - name: Rebuild sqlite-vec knowledge index from guides
+        # The reducer reads mcp-server/.index/knowledge.db, which is gitignored and
+        # absent on a fresh checkout. Rebuild it from guides/ (downloads the bge-small
+        # model on a cache miss) so the 3D map reflects the current guide set.
+        run: |
+          node -e "const idx=require('./mcp-server/lib/index-store'); const {reindexAll}=require('./mcp-server/lib/reindex'); (async()=>{const s=idx.openIndex(); const r=await reindexAll(s,{force:true}); console.log('reindexed '+JSON.stringify(r)); idx.close(s);})().catch(e=>{console.error(e);process.exit(1);});"
+
+      - name: Regenerate 3D embedding map
+        run: node scripts/build-embedding-map.mjs
+
+      - name: Commit updated README and embedding map
         run: |
           git config user.email "actions@github.com"
           git config user.name "GitHub Actions"
 
-          # Only commit if gen_manifest.py actually changed README.md.
-          # `git diff --quiet` exits 0 (no diff) → skip; exits 1 (diff found) → commit.
-          # The [skip ci] tag in the commit message prevents this push from
-          # triggering another workflow run, which would cause an infinite loop.
-          git diff --quiet README.md || (
-            git add README.md &&
-            git commit -m "docs: sync README guides table [skip ci]" &&
+          # Stage the manifest-synced README and the regenerated visualizer artifacts.
+          # docs/data/* comes from build-embedding-map.mjs run against the freshly
+          # rebuilt index, so newly added guides appear in the map served by Pages.
+          git add README.md docs/data/embedding-map.json docs/data/guide-vectors.bin docs/data/chunk-vectors.bin
+
+          # Only commit when something actually changed. The [skip ci] tag prevents
+          # this push from retriggering the workflow (infinite-loop guard).
+          git diff --cached --quiet || (
+            git commit -m "docs: sync README + embedding map [skip ci]" &&
             git push
           )
 
@@ -57,3 +95,39 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  embedding-drift-check:
+    # PR guard: fail when guides change but the committed docs/data/* artifacts
+    # were not regenerated. Mirrors how a stale manifest would be caught.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: mcp-server/package-lock.json
+
+      - name: Install build dependencies
+        working-directory: mcp-server
+        run: npm install
+
+      - name: Restore embedding model cache
+        uses: actions/cache@v4
+        with:
+          path: mcp-server/.models
+          key: embeddings-bge-small-en-v1.5-cache
+
+      - name: Rebuild sqlite-vec knowledge index from guides
+        run: |
+          node -e "const idx=require('./mcp-server/lib/index-store'); const {reindexAll}=require('./mcp-server/lib/reindex'); (async()=>{const s=idx.openIndex(); const r=await reindexAll(s,{force:true}); console.log('reindexed '+JSON.stringify(r)); idx.close(s);})().catch(e=>{console.error(e);process.exit(1);});"
+
+      - name: Check embedding map is up to date
+        # Exits non-zero if committed docs/data/* differ from a fresh build —
+        # i.e. a PR edited guides without regenerating the visualizer artifacts.
+        run: node scripts/build-embedding-map.mjs --check

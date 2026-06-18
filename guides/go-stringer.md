@@ -3,7 +3,7 @@ id: go-stringer
 type: guide
 title: "Go + Stringer Setup (Windows)"
 summary: ""
-tags: []
+tags: [languages-build]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

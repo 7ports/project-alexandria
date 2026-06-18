@@ -4,7 +4,7 @@ type: guide
 title: "Vector Database Options: Embedded vs Managed"
 summary: >
   Vector databases store embeddings alongside metadata and answer "nearest neighbor" queries efficiently.
-tags: []
+tags: [ai-ml]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

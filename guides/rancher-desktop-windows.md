@@ -3,7 +3,7 @@ id: rancher-desktop-windows
 type: guide
 title: "Rancher Desktop on Windows (Colima equivalent)"
 summary: ""
-tags: []
+tags: [dev-tooling]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

@@ -4,7 +4,7 @@ type: guide
 title: "Local vs Hosted Embeddings for Semantic Search"
 summary: >
   Embedding models turn text into dense vectors so you can do semantic similarity search — "find docs that mean the same thing as this query" even when keywords don't match.
-tags: []
+tags: [ai-ml]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

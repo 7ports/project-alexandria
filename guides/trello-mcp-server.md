@@ -3,7 +3,7 @@ id: trello-mcp-server
 type: guide
 title: "Trello MCP Server"
 summary: ""
-tags: []
+tags: [mcp-server]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

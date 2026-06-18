@@ -4,7 +4,7 @@ type: guide
 title: "Project Voltron — Docker Agent Setup"
 summary: >
   Project Voltron runs specialist Claude Code agents inside Docker containers via `run_agent_in_docker`.
-tags: []
+tags: [claude-agents]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

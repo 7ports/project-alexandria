@@ -4,7 +4,7 @@ type: guide
 title: "Project Voltron"
 summary: >
   Project Voltron is an MCP server that provides a team of specialized Claude Code subagents (`.claude/agents/`) along with CLAUDE.md project context templates.
-tags: []
+tags: [claude-agents]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

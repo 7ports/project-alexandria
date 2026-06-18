@@ -4,7 +4,7 @@ type: guide
 title: "Fetch MCP Server"
 summary: >
   Provides web content fetching capabilities via MCP.
-tags: []
+tags: [mcp-server]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

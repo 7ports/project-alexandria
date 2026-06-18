@@ -4,7 +4,7 @@ type: guide
 title: "Claude Preview MCP Server"
 summary: >
   Claude Preview provides a built-in dev server launcher and browser preview for Claude Code.
-tags: []
+tags: [mcp-server]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

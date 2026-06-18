@@ -4,7 +4,7 @@ type: guide
 title: "Memory MCP Server"
 summary: >
   Provides a persistent knowledge graph for AI assistants via MCP.
-tags: []
+tags: [mcp-server]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

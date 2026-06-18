@@ -3,7 +3,7 @@ id: r-windows-setup
 type: guide
 title: "R / Rscript on Windows — Setup Guide"
 summary: ""
-tags: []
+tags: [languages-build]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

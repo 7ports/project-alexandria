@@ -4,7 +4,7 @@ type: guide
 title: "Alexandria MCP Server"
 summary: >
   A custom MCP server that exposes Project Alexandria's tooling setup guides as searchable, queryable resources.
-tags: []
+tags: [mcp-server]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

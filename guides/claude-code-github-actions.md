@@ -3,7 +3,7 @@ id: claude-code-github-actions
 type: guide
 title: "Claude Code in GitHub Actions"
 summary: ""
-tags: []
+tags: [claude-agents]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

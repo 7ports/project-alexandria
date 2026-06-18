@@ -3,7 +3,7 @@ id: unity-asmdef-assembly-csharp-reference
 type: guide
 title: "Unity asmdef: Referencing Assembly-CSharp from Test Assemblies"
 summary: ""
-tags: []
+tags: [languages-build]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

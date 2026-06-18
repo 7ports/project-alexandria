@@ -3,7 +3,7 @@ id: flyio-deployment
 type: guide
 title: "Fly.io Deployment — Node.js / TypeScript"
 summary: ""
-tags: []
+tags: [deployment-ci]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

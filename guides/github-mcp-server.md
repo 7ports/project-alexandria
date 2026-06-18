@@ -4,7 +4,7 @@ type: guide
 title: "GitHub MCP Server"
 summary: >
   Provides GitHub API access via MCP, enabling AI assistants to interact with repositories, issues, pull requests, branches, releases, and more through structured tool calls.
-tags: []
+tags: [mcp-server]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

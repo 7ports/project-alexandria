@@ -3,7 +3,7 @@ id: vite-plugin-pwa
 type: guide
 title: "vite-plugin-pwa — PWA Setup with Vite + Workbox"
 summary: ""
-tags: []
+tags: [frontend-web]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

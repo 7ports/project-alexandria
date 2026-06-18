@@ -4,7 +4,7 @@ type: guide
 title: "GitHub CLI (gh)"
 summary: >
   The GitHub CLI (`gh`) provides GitHub functionality directly from the terminal — pull requests, issues, releases, gists, GitHub Actions, Pages deployment, and raw API access.
-tags: []
+tags: [dev-tooling]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

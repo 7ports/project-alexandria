@@ -3,7 +3,7 @@ id: aisstream-io
 type: guide
 title: "aisstream.io — Real-Time AIS WebSocket API"
 summary: ""
-tags: []
+tags: [data-apis]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

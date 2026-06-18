@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Explore Map — Project Alexandria</title>
+  <script src="https://cdn.plot.ly/plotly-gl3d-3.0.1.min.js"
+          integrity="sha384-A0EijT3kCTyfFJW/IaRTp9a7KrbnGdkMQ8sI48OOWTSd8rFkQ7D5V6SMdssJN7W4"
+          crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-subtle: #1f6feb22;
+      --amber: #e3b341;
+      --orange: #d29922;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+    .topnav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13, 17, 23, 0.92);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border); padding: 12px 0;
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; }
+    .nav-brand {
+      font-weight: 700; font-size: 1rem; text-decoration: none;
+      background: linear-gradient(135deg, var(--amber), var(--orange));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .nav-links a { color: var(--text-muted); text-decoration: none; margin-left: 20px; font-size: 0.9rem; }
+    .nav-links a:hover { color: var(--text); }
+    header.page-head { padding: 28px 0 8px; }
+    header.page-head h1 { font-size: 1.6rem; margin-bottom: 4px; }
+    header.page-head p { color: var(--text-muted); font-size: 0.95rem; }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 20px; align-items: center;
+      padding: 16px 0; border-bottom: 1px solid var(--border); margin-bottom: 16px;
+    }
+    .control-group { display: flex; align-items: center; gap: 8px; }
+    .control-group .label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .seg button {
+      background: var(--surface); color: var(--text-muted); border: none;
+      padding: 7px 14px; font-size: 0.85rem; cursor: pointer; font-family: inherit;
+    }
+    .seg button:hover { color: var(--text); }
+    .seg button.active { background: var(--accent-subtle); color: var(--accent); font-weight: 600; }
+    .meta-note { margin-left: auto; font-size: 0.8rem; color: var(--text-muted); }
+    #plot { width: 100%; height: 72vh; min-height: 480px; }
+    .msg { padding: 40px 0; color: var(--text-muted); font-size: 0.95rem; }
+    .msg.error { color: #f85149; }
+    .hint { font-size: 0.8rem; color: var(--text-muted); padding: 10px 0 24px; }
+    .fallback {
+      display: none; margin: 40px 0; padding: 24px; border: 1px solid var(--border);
+      border-radius: 10px; background: var(--surface);
+    }
+    .fallback h2 { font-size: 1.1rem; margin-bottom: 8px; }
+    .fallback a { color: var(--accent); }
+    .search-bar {
+      display: none; flex-wrap: wrap; gap: 12px; align-items: center;
+      padding: 14px 0; border-bottom: 1px solid var(--border); margin-bottom: 16px;
+    }
+    .search-bar.show { display: flex; }
+    .btn {
+      background: var(--accent-subtle); color: var(--accent); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 16px; font-size: 0.85rem; cursor: pointer;
+      font-family: inherit; font-weight: 600;
+    }
+    .btn:hover:not(:disabled) { background: #1f6feb33; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #search-input {
+      flex: 1; min-width: 220px; background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px;
+      font-size: 0.9rem; font-family: inherit;
+    }
+    #search-input:disabled { opacity: 0.5; }
+    .search-status { font-size: 0.8rem; color: var(--text-muted); }
+    .search-status.error { color: #f85149; }
+    .results {
+      display: none; margin-bottom: 24px; border: 1px solid var(--border);
+      border-radius: 10px; background: var(--surface); overflow: hidden;
+    }
+    .results.show { display: block; }
+    .results-head {
+      padding: 10px 16px; font-size: 0.8rem; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border);
+    }
+    .result-row {
+      display: flex; justify-content: space-between; gap: 12px; padding: 9px 16px;
+      cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.9rem;
+    }
+    .result-row:last-child { border-bottom: none; }
+    .result-row:hover { background: var(--accent-subtle); }
+    .result-row .rank { color: var(--accent); font-weight: 600; margin-right: 8px; }
+    .result-row .score { color: var(--text-muted); font-size: 0.8rem; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <nav class="topnav">
+    <div class="container nav-inner">
+      <a class="nav-brand" href="./">Project Alexandria</a>
+      <div class="nav-links">
+        <a href="./guides/">Browse Guides</a>
+        <a href="./explore.html">Explore Map</a>
+        <a href="https://github.com/7ports/project-alexandria">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="page-head">
+    <div class="container">
+      <h1>Explore Map</h1>
+      <p>An interactive 3D map of the knowledge base. Each point is a guide (or chunk), positioned by semantic similarity.</p>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="controls" id="controls" style="display:none;">
+      <div class="control-group">
+        <span class="label">Granularity</span>
+        <div class="seg" id="seg-gran">
+          <button data-gran="doc" class="active">Guides</button>
+          <button data-gran="chunk">Chunks</button>
+        </div>
+      </div>
+      <div class="control-group">
+        <span class="label">Color by</span>
+        <div class="seg" id="seg-color">
+          <button data-color="cluster" class="active">Cluster</button>
+          <button data-color="tag">Tag</button>
+        </div>
+      </div>
+      <span class="meta-note" id="meta-note"></span>
+    </div>
+
+    <div class="search-bar" id="search-bar">
+      <button class="btn" id="enable-search">Enable search</button>
+      <input type="text" id="search-input" placeholder="Type a query, e.g. deploy to aws" disabled />
+      <span class="search-status" id="search-status"></span>
+    </div>
+    <div class="results" id="results"></div>
+
+    <div id="status" class="msg">Loading embedding map&hellip;</div>
+    <div id="plot"></div>
+    <div class="hint" id="hint" style="display:none;">
+      Drag to orbit &middot; scroll to zoom &middot; hover for details &middot; click a point to open its guide.
+    </div>
+
+    <div class="fallback" id="fallback">
+      <h2>3D view unavailable</h2>
+      <p>Your browser or device does not support WebGL, which is required for the interactive 3D map.
+         You can still <a href="./guides/">browse all guides</a> as a list.</p>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    "use strict";
+
+    function hasWebGL() {
+      try {
+        var c = document.createElement("canvas");
+        return !!(window.WebGLRenderingContext &&
+          (c.getContext("webgl") || c.getContext("experimental-webgl")));
+      } catch (e) { return false; }
+    }
+
+    var statusEl = document.getElementById("status");
+    var plotEl = document.getElementById("plot");
+    var controlsEl = document.getElementById("controls");
+    var hintEl = document.getElementById("hint");
+    var metaNote = document.getElementById("meta-note");
+
+    if (!hasWebGL()) {
+      statusEl.style.display = "none";
+      plotEl.style.display = "none";
+      document.getElementById("fallback").style.display = "block";
+      return;
+    }
+
+    // Fallback categorical palette for clusters (Plotly/Vega "Tableau10"-ish).
+    var CLUSTER_PALETTE = [
+      "#4C78A8", "#F58518", "#54A24B", "#E45756", "#72B7B2",
+      "#EECA3B", "#B279A2", "#FF9DA6", "#9D755D", "#BAB0AC", "#1F77B4"
+    ];
+
+    var state = { gran: "doc", color: "cluster" };
+    var DATA = null;
+    var tagById = {};
+    var searchHighlight = [];
+
+    function pointSet() { return state.gran === "doc" ? DATA.docs : DATA.chunks; }
+
+    function colorForGroup(key) {
+      if (state.color === "tag") {
+        var t = tagById[key];
+        return (t && t.color) || "#888";
+      }
+      return CLUSTER_PALETTE[(Number(key) || 0) % CLUSTER_PALETTE.length];
+    }
+
+    function groupName(key) {
+      if (state.color === "tag") {
+        var t = tagById[key];
+        return (t && t.label) || String(key);
+      }
+      return "Cluster " + key;
+    }
+
+    function buildTraces() {
+      var pts = pointSet();
+      var groups = {};
+      var order = [];
+      for (var i = 0; i < pts.length; i++) {
+        var p = pts[i];
+        var key = state.color === "tag" ? p.tag : p.cluster;
+        if (!(key in groups)) { groups[key] = []; order.push(key); }
+        groups[key].push(p);
+      }
+      // stable, readable legend order
+      order.sort(function (a, b) {
+        if (state.color === "tag") return String(groupName(a)).localeCompare(String(groupName(b)));
+        return Number(a) - Number(b);
+      });
+
+      var traces = [];
+      for (var g = 0; g < order.length; g++) {
+        var key = order[g];
+        var arr = groups[key];
+        var x = [], y = [], z = [], custom = [];
+        for (var j = 0; j < arr.length; j++) {
+          var d = arr[j];
+          x.push(d.pos[0]); y.push(d.pos[1]); z.push(d.pos[2]);
+          var tagLabel = (tagById[d.tag] && tagById[d.tag].label) || d.tag;
+          // customdata: [url, title, tagLabel, cluster, heading]
+          custom.push([d.url, d.title, tagLabel, d.cluster, d.heading || ""]);
+        }
+        var isChunk = state.gran === "chunk";
+        var hover = isChunk
+          ? "<b>%{customdata[1]}</b><br>%{customdata[4]}<br>Tag: %{customdata[2]}<br>Cluster: %{customdata[3]}<extra></extra>"
+          : "<b>%{customdata[1]}</b><br>Tag: %{customdata[2]}<br>Cluster: %{customdata[3]}<extra></extra>";
+        traces.push({
+          type: "scatter3d",
+          mode: "markers",
+          name: groupName(key),
+          x: x, y: y, z: z,
+          customdata: custom,
+          hovertemplate: hover,
+          marker: {
+            size: isChunk ? 3 : 6,
+            color: colorForGroup(key),
+            opacity: isChunk ? 0.7 : 0.9,
+            line: { width: 0 }
+          }
+        });
+      }
+      if (searchHighlight.length && DATA && DATA.docs) {
+        var hx = [], hy = [], hz = [], hcustom = [];
+        for (var h = 0; h < searchHighlight.length; h++) {
+          var hd = DATA.docs[searchHighlight[h].docIndex];
+          if (!hd) continue;
+          hx.push(hd.pos[0]); hy.push(hd.pos[1]); hz.push(hd.pos[2]);
+          hcustom.push([hd.url, hd.title, "", "", ""]);
+        }
+        traces.push({
+          type: "scatter3d",
+          mode: "markers",
+          name: "Search matches",
+          x: hx, y: hy, z: hz,
+          customdata: hcustom,
+          hovertemplate: "<b>%{customdata[1]}</b><br>search match<extra></extra>",
+          marker: {
+            size: 12,
+            color: "#e3b341",
+            symbol: "circle-open",
+            opacity: 1,
+            line: { width: 2, color: "#e3b341" }
+          }
+        });
+      }
+      return traces;
+    }
+
+    function layout() {
+      var ax = {
+        showgrid: true, gridcolor: "#21262d", zeroline: false,
+        showticklabels: false, title: "",
+        backgroundcolor: "#0d1117", showbackground: true
+      };
+      return {
+        paper_bgcolor: "#0d1117",
+        plot_bgcolor: "#0d1117",
+        font: { color: "#e6edf3", family: "-apple-system, Segoe UI, sans-serif" },
+        margin: { l: 0, r: 0, t: 0, b: 0 },
+        showlegend: true,
+        legend: { bgcolor: "rgba(22,27,34,0.7)", bordercolor: "#30363d", borderwidth: 1, font: { size: 11 } },
+        scene: {
+          xaxis: ax, yaxis: Object.assign({}, ax), zaxis: Object.assign({}, ax),
+          aspectmode: "cube"
+        }
+      };
+    }
+
+    var CONFIG = { responsive: true, displaylogo: false,
+      modeBarButtonsToRemove: ["toImage"] };
+
+    function render() {
+      var pts = pointSet();
+      metaNote.textContent = pts.length + " " + (state.gran === "doc" ? "guides" : "chunks") +
+        " · colored by " + state.color;
+      Plotly.react(plotEl, buildTraces(), layout(), CONFIG);
+    }
+
+    function wireSeg(id, attr, key) {
+      var seg = document.getElementById(id);
+      seg.addEventListener("click", function (e) {
+        var btn = e.target.closest("button");
+        if (!btn) return;
+        var val = btn.getAttribute(attr);
+        if (!val || state[key] === val) return;
+        state[key] = val;
+        var btns = seg.querySelectorAll("button");
+        for (var i = 0; i < btns.length; i++) btns[i].classList.remove("active");
+        btn.classList.add("active");
+        render();
+      });
+    }
+
+    // ---- live semantic search (button-gated, lazy Transformers.js) ----
+    var TRANSFORMERS_CDN = "https://esm.sh/@huggingface/transformers@3.6.3";
+    var SEARCH_TOP_N = 8;
+    var GUIDE_DIM = 384;
+    var embedder = null;    // feature-extraction pipeline, loaded only on "Enable search"
+    var guideVecs = null;   // Float32Array of shipped doc-centroid vectors
+    var searchReady = false;
+
+    function searchSupported() {
+      var hasWasm = (typeof WebAssembly === "object" && typeof WebAssembly.instantiate === "function");
+      var hasGPU = (typeof navigator !== "undefined" && !!navigator.gpu);
+      return hasWasm || hasGPU;
+    }
+
+    function dotAt(buf, off, q) {
+      var s = 0;
+      for (var i = 0; i < GUIDE_DIM; i++) s += buf[off + i] * q[i];
+      return s;
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+
+    function renderResults(list) {
+      var el = document.getElementById("results");
+      var html = '<div class="results-head">Nearest guides</div>';
+      for (var i = 0; i < list.length; i++) {
+        var d = DATA.docs[list[i].docIndex];
+        html += '<div class="result-row" data-url="' + escapeHtml(d.url) + '">' +
+          '<span><span class="rank">' + (i + 1) + '</span>' + escapeHtml(d.title) + '</span>' +
+          '<span class="score">' + list[i].score.toFixed(3) + '</span></div>';
+      }
+      el.innerHTML = html;
+      el.classList.add("show");
+      var rows = el.querySelectorAll(".result-row");
+      for (var j = 0; j < rows.length; j++) {
+        rows[j].addEventListener("click", function () {
+          var u = this.getAttribute("data-url");
+          if (u) window.location.href = u;
+        });
+      }
+    }
+
+    function runQuery(q) {
+      var st = document.getElementById("search-status");
+      q = (q || "").trim();
+      if (!q) {
+        searchHighlight = [];
+        document.getElementById("results").classList.remove("show");
+        render();
+        return;
+      }
+      if (!searchReady || !embedder || !guideVecs) return;
+      st.className = "search-status";
+      st.textContent = "Searching…";
+      Promise.resolve()
+        .then(function () {
+          // query: prefix — passages were embedded with passage:, queries MUST use query:
+          return embedder("query: " + q, { pooling: "mean", normalize: true });
+        })
+        .then(function (out) {
+          var qv = out.data; // Float32Array(384), L2-normalized → cosine == dot product
+          var scored = [];
+          for (var r = 0; r < DATA.docs.length; r++) {
+            var idx = DATA.docs[r].vecIndex;
+            scored.push({ docIndex: r, score: dotAt(guideVecs, idx * GUIDE_DIM, qv) });
+          }
+          scored.sort(function (a, b) { return b.score - a.score; });
+          searchHighlight = scored.slice(0, SEARCH_TOP_N);
+          // live search operates on doc granularity — switch the view so ring positions match
+          if (state.gran !== "doc") {
+            state.gran = "doc";
+            var gseg = document.getElementById("seg-gran");
+            var gb = gseg.querySelectorAll("button");
+            for (var i = 0; i < gb.length; i++) {
+              gb[i].classList.toggle("active", gb[i].getAttribute("data-gran") === "doc");
+            }
+          }
+          renderResults(searchHighlight);
+          render();
+          st.textContent = "Top " + searchHighlight.length + " matches for “" + q + "”";
+        })
+        .catch(function (err) {
+          st.className = "search-status error";
+          st.textContent = "Search failed: " + err.message;
+        });
+    }
+
+    function enableSearch() {
+      var btn = document.getElementById("enable-search");
+      var input = document.getElementById("search-input");
+      var st = document.getElementById("search-status");
+      btn.disabled = true;
+      st.className = "search-status";
+      st.textContent = "Loading model… 0%";
+
+      var vecsP = fetch("./data/guide-vectors.bin")
+        .then(function (r) { if (!r.ok) throw new Error("vectors HTTP " + r.status); return r.arrayBuffer(); })
+        .then(function (buf) { guideVecs = new Float32Array(buf); });
+
+      var modelP = import(TRANSFORMERS_CDN)
+        .then(function (mod) {
+          return mod.pipeline("feature-extraction", "Xenova/bge-small-en-v1.5", {
+            progress_callback: function (p) {
+              if (p && p.status === "progress" && typeof p.progress === "number") {
+                st.textContent = "Loading model… " + Math.round(p.progress) + "%";
+              } else if (p && p.status) {
+                st.textContent = "Loading model… " + p.status;
+              }
+            }
+          });
+        })
+        .then(function (pipe) { embedder = pipe; });
+
+      Promise.all([vecsP, modelP])
+        .then(function () {
+          searchReady = true;
+          input.disabled = false;
+          input.focus();
+          st.textContent = "Ready — type a query and press Enter.";
+        })
+        .catch(function (err) {
+          btn.disabled = false;
+          st.className = "search-status error";
+          st.textContent = "Could not enable search: " + err.message;
+        });
+    }
+
+    function initSearch() {
+      var bar = document.getElementById("search-bar");
+      var btn = document.getElementById("enable-search");
+      var input = document.getElementById("search-input");
+      var st = document.getElementById("search-status");
+      bar.classList.add("show");
+      if (!searchSupported()) {
+        btn.disabled = true;
+        input.disabled = true;
+        st.className = "search-status error";
+        st.textContent = "Live search unavailable: this browser lacks WebAssembly/WebGPU support.";
+        return;
+      }
+      btn.addEventListener("click", enableSearch);
+      var t = null;
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { if (t) clearTimeout(t); runQuery(input.value); }
+      });
+      input.addEventListener("input", function () {
+        if (t) clearTimeout(t);
+        t = setTimeout(function () { runQuery(input.value); }, 450);
+      });
+    }
+
+    fetch("./data/embedding-map.json")
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (json) {
+        DATA = json;
+        (json.tags || []).forEach(function (t) { tagById[t.id] = t; });
+
+        statusEl.style.display = "none";
+        controlsEl.style.display = "flex";
+        hintEl.style.display = "block";
+
+        Plotly.newPlot(plotEl, buildTraces(), layout(), CONFIG).then(function () {
+          plotEl.on("plotly_click", function (ev) {
+            if (!ev || !ev.points || !ev.points.length) return;
+            var cd = ev.points[0].customdata;
+            var url = cd && cd[0];
+            if (url) window.location.href = url;
+          });
+        });
+
+        wireSeg("seg-gran", "data-gran", "gran");
+        wireSeg("seg-color", "data-color", "color");
+        initSearch();
+        render();
+      })
+      .catch(function (err) {
+        statusEl.className = "msg error";
+        statusEl.textContent = "Failed to load embedding map: " + err.message;
+      });
+  })();
+  </script>
+</body>
+</html>

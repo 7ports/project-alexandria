@@ -4,7 +4,7 @@ type: guide
 title: "Environment Canada Weather API (GeoMet OGC API)"
 summary: >
   Environment Canada exposes real-time surface weather observations (SWOB) through the MSC GeoMet OGC API at `https://api.weather.gc.ca/`.
-tags: []
+tags: [data-apis]
 status: active
 created: 2026-06-17
 updated: 2026-06-17

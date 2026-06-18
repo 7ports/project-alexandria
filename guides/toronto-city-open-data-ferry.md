@@ -4,7 +4,7 @@ type: guide
 title: "Toronto City Open Data — Ferry Service Status API"
 summary: >
   The City of Toronto publishes a live, no-auth JSON endpoint for ferry service status:
-tags: []
+tags: [data-apis]
 status: active
 created: 2026-06-17
 updated: 2026-06-17
