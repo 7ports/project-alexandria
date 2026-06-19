@@ -51,6 +51,12 @@ const K_MIN = 4;
 const K_MAX = 10;
 const POS_PRECISION = 6; // decimals for stored coords (diff stability)
 
+// --- Relational edge computation (DOC-granularity only) ---
+const KNN_K = 4;                          // top-K neighbours per node (kNN edge set)
+const EDGE_THRESHOLD_MODE = 'percentile'; // 'percentile' | 'absolute'
+const EDGE_THRESHOLD_PERCENTILE = 0.12;   // percentile mode: keep top 12% strongest pairs
+const EDGE_W_PRECISION = 3;               // decimals for edge weights (diff stability)
+
 // --- Curated tag taxonomy: ids/labels come from the project plan; the front-matter
 // `tags:` value is the single source of truth for assignment. Order here == legend
 // color order. ---
@@ -263,6 +269,95 @@ function buildTagLegend(usedTags) {
   return legend;
 }
 
+// --- Relational edges over DOC centroids. Vectors are already L2-normalized, so
+// cosine similarity == dot product. Emits two canonical, sorted, undirected edge
+// sets (kNN + threshold) plus provenance meta. Doc-granularity only. ---
+function computeEdges(docCentroids) {
+  const n = docCentroids.length;
+
+  // Symmetric cosine matrix via dot product; track observed range.
+  const cos = Array.from({ length: n }, () => new Float64Array(n));
+  let minCos = Infinity;
+  let maxCos = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const vi = docCentroids[i];
+    for (let j = i + 1; j < n; j++) {
+      const vj = docCentroids[j];
+      let s = 0;
+      for (let d = 0; d < DIM; d++) s += vi[d] * vj[d];
+      cos[i][j] = s;
+      cos[j][i] = s;
+      if (s < minCos) minCos = s;
+      if (s > maxCos) maxCos = s;
+    }
+  }
+
+  // kNN: for each node, top-K by cosine (exclude self); add undirected (min,max)
+  // to a Set keyed "s-t" (symmetric union — a node's degree may exceed K).
+  const knnKeys = new Set();
+  const k = Math.min(KNN_K, Math.max(0, n - 1));
+  for (let i = 0; i < n; i++) {
+    const order = [];
+    for (let j = 0; j < n; j++) if (j !== i) order.push(j);
+    order.sort((a, b) => cos[i][b] - cos[i][a]);
+    for (let t = 0; t < k; t++) {
+      const j = order[t];
+      knnKeys.add(`${Math.min(i, j)}-${Math.max(i, j)}`);
+    }
+  }
+
+  // Threshold: all C(n,2) pair cosines, sorted desc. Percentile mode keeps the
+  // top `percentile` fraction; cutoff = cosine of the last kept pair. Absolute
+  // mode keeps pairs with cosine >= EDGE_THRESHOLD_PERCENTILE (used as a constant).
+  const pairs = [];
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) pairs.push({ s: i, t: j, c: cos[i][j] });
+  }
+  pairs.sort((a, b) => b.c - a.c);
+
+  let cutoff;
+  let thresholdPairs;
+  if (EDGE_THRESHOLD_MODE === 'percentile') {
+    const keep = Math.max(1, Math.round(pairs.length * EDGE_THRESHOLD_PERCENTILE));
+    thresholdPairs = pairs.slice(0, Math.min(keep, pairs.length));
+    cutoff = thresholdPairs.length ? thresholdPairs[thresholdPairs.length - 1].c : 1;
+  } else {
+    cutoff = EDGE_THRESHOLD_PERCENTILE; // absolute cosine cutoff
+    thresholdPairs = pairs.filter((p) => p.c >= cutoff);
+  }
+
+  // Canonicalize (s < t — already guaranteed by construction) and sort by (s, t).
+  const byST = (a, b) => (a.s - b.s) || (a.t - b.t);
+
+  const knn = [...knnKeys]
+    .map((key) => {
+      const [s, t] = key.split('-').map(Number);
+      return { s, t, w: round(cos[s][t], EDGE_W_PRECISION) };
+    })
+    .sort(byST);
+
+  const threshold = thresholdPairs
+    .map((p) => ({ s: p.s, t: p.t, w: round(p.c, EDGE_W_PRECISION) }))
+    .sort(byST);
+
+  const meta = {
+    knn: { k, count: knn.length },
+    threshold: {
+      mode: EDGE_THRESHOLD_MODE,
+      percentile: EDGE_THRESHOLD_PERCENTILE,
+      cutoff: round(cutoff, EDGE_W_PRECISION),
+      count: threshold.length,
+    },
+    nodes: n,
+    cosineRange: [
+      round(Number.isFinite(minCos) ? minCos : 0, EDGE_W_PRECISION),
+      round(Number.isFinite(maxCos) ? maxCos : 0, EDGE_W_PRECISION),
+    ],
+  };
+
+  return { knn, threshold, meta };
+}
+
 function build() {
   // Belt-and-suspenders determinism: reset the global RNG at the start of every
   // build so write-mode and --check-mode draw the identical sequence. UMAP also
@@ -330,8 +425,11 @@ function build() {
   const usedTags = new Set(docs.map((d) => d.tag).filter(Boolean));
   const tags = buildTagLegend(usedTags);
 
+  // Relational edges over the doc centroids (doc-granularity only).
+  const edges = computeEdges(docCentroids);
+
   const map = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     model: MODEL,
     dim: DIM,
     generatedFrom: { guides: docs.length, chunks: chunkPoints.length },
@@ -340,6 +438,7 @@ function build() {
     tags,
     docs,
     chunks: chunkPoints,
+    edges,
   };
 
   // Binary vector buffers (row-major little-endian Float32, row r == vecIndex r).
@@ -393,6 +492,7 @@ function main() {
   console.log(
     `[build-embedding-map] wrote docs/data/embedding-map.json ` +
       `(docs=${map.docs.length}, chunks=${map.chunks.length}, k=${map.clustering.k}); ` +
+      `edges(knn=${map.edges.knn.length}, thr=${map.edges.threshold.length}@cos\u2265${map.edges.meta.threshold.cutoff}); ` +
       `guide-vectors.bin=${artifacts.guideBin.length}B, chunk-vectors.bin=${artifacts.chunkBin.length}B`
   );
 }
