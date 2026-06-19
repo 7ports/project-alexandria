@@ -13,6 +13,9 @@ fi
 echo "Project Alexandria — Syncing docs..."
 
 python3 .github/gen_manifest.py
+echo "Publishing guides to docs/guides/..."
+mkdir -p docs/guides
+cp guides/*.md docs/guides/
 echo "Regenerating embedding map (3D visualizer data)..."
 echo "Reindexing knowledge base (embeddings)..."
 node -e "const idx=require('./mcp-server/lib/index-store'); const {reindexAll}=require('./mcp-server/lib/reindex'); (async()=>{const s=idx.openIndex(); const r=await reindexAll(s,{force:true}); console.log('reindexed '+JSON.stringify(r)); idx.close(s);})().catch(e=>{console.error(e);process.exit(1);});"

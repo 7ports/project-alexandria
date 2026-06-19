@@ -402,7 +402,7 @@ function build() {
   const docs = docOrder.map((d, i) => ({
     id: d.id,
     title: guideDocs.get(d.id).title,
-    url: `./guides/${d.id}.md`,
+    url: `./guides/?guide=${d.id}`,
     tag: tagOf.get(d.id) || '',
     cluster: docClus.clusters[i],
     pos: [round(docPos[i][0], POS_PRECISION), round(docPos[i][1], POS_PRECISION), round(docPos[i][2], POS_PRECISION)],
@@ -415,7 +415,7 @@ function build() {
     guide: c.doc_id,
     title: guideDocs.get(c.doc_id).title,
     heading: c.heading,
-    url: `./guides/${c.doc_id}.md`,
+    url: `./guides/?guide=${c.doc_id}`,
     tag: tagOf.get(c.doc_id) || '',
     cluster: chunkClus.clusters[i],
     pos: [round(chunkPos[i][0], POS_PRECISION), round(chunkPos[i][1], POS_PRECISION), round(chunkPos[i][2], POS_PRECISION)],

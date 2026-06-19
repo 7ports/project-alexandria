@@ -75,12 +75,12 @@ jobs:
           # Stage the manifest-synced README and the regenerated visualizer artifacts.
           # docs/data/* comes from build-embedding-map.mjs run against the freshly
           # rebuilt index, so newly added guides appear in the map served by Pages.
-          git add README.md docs/data/embedding-map.json docs/data/guide-vectors.bin docs/data/chunk-vectors.bin
+          git add README.md docs/guides/*.md docs/.nojekyll docs/data/embedding-map.json docs/data/guide-vectors.bin docs/data/chunk-vectors.bin
 
           # Only commit when something actually changed. The [skip ci] tag prevents
           # this push from retriggering the workflow (infinite-loop guard).
           git diff --cached --quiet || (
-            git commit -m "docs: sync README + embedding map [skip ci]" &&
+            git commit -m "docs: sync README + guides + embedding map [skip ci]" &&
             git push
           )
 
