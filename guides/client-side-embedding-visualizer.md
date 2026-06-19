@@ -1,3 +1,16 @@
+---
+id: client-side-embedding-visualizer
+type: guide
+title: "Client-Side Embedding Visualizer (Static Site / GitHub Pages)"
+summary: >
+  Add an interactive 2D/3D scatter of a vector/embedding space to a fully static site with offline dimensionality reduction shipped as static JSON and in-browser Plotly rendering.
+tags: [ai-ml]
+status: active
+created: 2026-06-18
+updated: 2026-06-18
+embedding_version: 1
+---
+
 # Client-Side Embedding Visualizer (static site / GitHub Pages)
 
 How to add an interactive 2D/3D scatter of a vector/embedding space to a **fully static** site (GitHub Pages, S3, any CDN) — no server, no serverless. Verified 2026-06.

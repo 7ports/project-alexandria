@@ -53,9 +53,11 @@ const GUIDE_TAGS = {
   'aisstream-io': 'data-apis',
   'environment-canada-weather-api': 'data-apis',
   'toronto-city-open-data-ferry': 'data-apis',
-  // ai-ml (2)
+  // ai-ml (4)
   'embeddings-local-vs-hosted': 'ai-ml',
   'vector-db-options': 'ai-ml',
+  'client-side-embedding-visualizer': 'ai-ml',
+  'transformers-js-browser-embeddings': 'ai-ml',
   // observability (2)
   'loki-grafana-stack': 'observability',
   'prometheus-grafana-docker-compose': 'observability',

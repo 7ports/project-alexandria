@@ -1,3 +1,16 @@
+---
+id: transformers-js-browser-embeddings
+type: guide
+title: "Transformers.js — In-Browser Embeddings (No Backend)"
+summary: >
+  Run a sentence-embedding model entirely in the browser with @huggingface/transformers for live semantic search on a static site, covering lazy gated loading and query/passage prefix discipline.
+tags: [ai-ml]
+status: active
+created: 2026-06-18
+updated: 2026-06-18
+embedding_version: 1
+---
+
 # Transformers.js — In-Browser Embeddings (no backend)
 
 Run a sentence-embedding model **entirely in the browser** with `@huggingface/transformers` (Transformers.js) — useful for live semantic search on a static site with no server. Verified 2026-06 with `@huggingface/transformers@3.6.x` and `Xenova/bge-small-en-v1.5` (384-dim).

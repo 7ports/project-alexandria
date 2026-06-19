@@ -35,6 +35,11 @@
     "description": "Claude Preview provides a built-in dev server launcher and browser preview for Claude Code. It can start local development servers, take screenshots, "
   },
   {
+    "name": "client-side-embedding-visualizer",
+    "title": "Client-Side Embedding Visualizer (static site / GitHub Pages)",
+    "description": ">"
+  },
+  {
     "name": "coplay-mcp-server",
     "title": "CoPlay MCP Server (Unity Integration)",
     "description": "CoPlay MCP Server provides deep Unity Editor integration via the Model Context Protocol. It allows AI assistants to read/write scene hierarchies, crea"
@@ -173,6 +178,11 @@
     "name": "toronto-city-open-data-ferry",
     "title": "Toronto City Open Data — Ferry Service Status API",
     "description": "The City of Toronto publishes a live, no-auth JSON endpoint for ferry service status:"
+  },
+  {
+    "name": "transformers-js-browser-embeddings",
+    "title": "Transformers.js — In-Browser Embeddings (no backend)",
+    "description": ">"
   },
   {
     "name": "trello-mcp-server",
