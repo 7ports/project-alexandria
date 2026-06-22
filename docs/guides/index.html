@@ -337,14 +337,22 @@
 
       fetch('./' + encodeURIComponent(name) + '.md')
         .then(r => {
-          if (!r.ok) throw new Error('Not found');
+          if (!r.ok) throw new Error('HTTP ' + r.status);
           return r.text();
         })
         .then(md => {
-          contentEl.innerHTML = marked.parse(md);
+          // Strip leading YAML front-matter (--- ... ---) so it is not rendered as guide content
+          const body = md.replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---[ \t]*\r?\n/, '');
+          if (typeof marked !== 'undefined' && marked.parse) {
+            contentEl.innerHTML = marked.parse(body);
+          } else {
+            // Markdown renderer unavailable (e.g. CDN blocked) - show raw text instead of a blank page
+            const esc = body.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+            contentEl.innerHTML = '<pre>' + esc + '</pre>';
+          }
         })
-        .catch(() => {
-          contentEl.innerHTML = '<p>Could not load guide &ldquo;' + name + '&rdquo;.</p>';
+        .catch(err => {
+          contentEl.innerHTML = '<p>Could not load guide &ldquo;' + name + '&rdquo; (' + err.message + ').</p>';
         });
     }
 
