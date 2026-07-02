@@ -321,7 +321,7 @@
     const searchEmpty = document.getElementById('search-empty');
 
     function showIndex() {
-      indexEl.style.display = '';
+      indexEl.style.display = 'block';
       viewerEl.style.display = 'none';
       document.title = 'Guides — Project Alexandria';
       history.replaceState(null, '', './');
@@ -329,7 +329,7 @@
 
     function showGuide(name, title) {
       indexEl.style.display = 'none';
-      viewerEl.style.display = '';
+      viewerEl.style.display = 'block';
       contentEl.innerHTML = '<p class="loading">Loading guide...</p>';
       document.title = title + ' — Project Alexandria';
       history.replaceState(null, '', '?guide=' + encodeURIComponent(name));
@@ -337,14 +337,22 @@
 
       fetch('./' + encodeURIComponent(name) + '.md')
         .then(r => {
-          if (!r.ok) throw new Error('Not found');
+          if (!r.ok) throw new Error('HTTP ' + r.status);
           return r.text();
         })
         .then(md => {
-          contentEl.innerHTML = marked.parse(md);
+          // Strip leading YAML front-matter (--- ... ---) so it is not rendered as guide content
+          const body = md.replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---[ \t]*\r?\n/, '');
+          if (typeof marked !== 'undefined' && marked.parse) {
+            contentEl.innerHTML = marked.parse(body);
+          } else {
+            // Markdown renderer unavailable (e.g. CDN blocked) - show raw text instead of a blank page
+            const esc = body.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+            contentEl.innerHTML = '<pre>' + esc + '</pre>';
+          }
         })
-        .catch(() => {
-          contentEl.innerHTML = '<p>Could not load guide &ldquo;' + name + '&rdquo;.</p>';
+        .catch(err => {
+          contentEl.innerHTML = '<p>Could not load guide &ldquo;' + name + '&rdquo; (' + err.message + ').</p>';
         });
     }
 
@@ -368,7 +376,16 @@
       searchEmpty.style.display = (q && visible === 0) ? '' : 'none';
     });
 
-    // Load manifest and render index
+    // Read the ?guide= deep-link param FIRST so a single guide renders
+    // INDEPENDENTLY of the manifest fetch. A slow or failed manifest must
+    // never block or blank the deep-linked guide.
+    const deepLinkName = new URLSearchParams(location.search).get('guide');
+    if (deepLinkName) {
+      showGuide(deepLinkName, deepLinkName);
+    }
+
+    // Load manifest and render the guide LIST (index view). Its success or
+    // failure does NOT gate the single-guide deep-link handled above.
     fetch('./manifest.json')
       .then(r => r.json())
       .then(guides => {
@@ -389,16 +406,19 @@
           listEl.appendChild(card);
         }
 
-        // Handle deep-link via ?guide=name
-        const params = new URLSearchParams(location.search);
-        const guideName = params.get('guide');
-        if (guideName) {
-          const match = guides.find(g => g.name === guideName);
-          showGuide(guideName, match ? match.title : guideName);
+        // If a deep-link is active, refine its document title now that the
+        // proper title is known from the manifest (guide already rendering).
+        if (deepLinkName) {
+          const match = guides.find(g => g.name === deepLinkName);
+          if (match) document.title = match.title + ' \u2014 Project Alexandria';
         }
       })
       .catch(() => {
-        listEl.innerHTML = '<p>Could not load guide list.</p>';
+        // Manifest failed: only surface a list error when NOT in deep-link
+        // mode, so the deep-linked single guide still renders.
+        if (!deepLinkName) {
+          listEl.innerHTML = '<p>Could not load guide list.</p>';
+        }
       });
   </script>
 </body>

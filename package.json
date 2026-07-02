@@ -1,0 +1,7 @@
+{
+  "name": "alexandria-docs",
+  "private": true,
+  "scripts": {
+    "preview": "node scripts/preview.mjs"
+  }
+}

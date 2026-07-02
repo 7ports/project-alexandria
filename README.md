@@ -74,6 +74,20 @@ The `alexandria` MCP server will now be available in all conversations.
 
 In your first conversation after installing, ask Claude to call `get_onboarding`. This returns the collaborative maintenance contract and memory templates. Claude should save these to its memory system so the maintenance behavior persists across conversations.
 
+## Local preview
+
+Preview the docs site locally exactly as it appears on GitHub Pages (with `docs/` as the web root) using the bundled zero-dependency Node server:
+
+```bash
+npm run preview
+```
+
+Then open **http://localhost:8000/** in your browser. Guide viewer deep-links work too, e.g. http://localhost:8000/guides/?guide=aws-cli
+
+Override the port with the `PORT` env var (e.g. `PORT=3000 npm run preview`).
+
+> **Windows note:** do **not** use `python3 -m http.server` — `python3` often isn't on `PATH` on Windows, and common Node static servers (`serve`, `http-server`) return 404 for directory URLs like `/guides/?guide=aws-cli`. `npm run preview` handles this correctly and needs only Node (already required for the MCP server).
+
 ## Available Tools
 
 | Tool | Description |
@@ -98,6 +112,7 @@ In your first conversation after installing, ask Claude to call `get_onboarding`
 | [Claude Code in GitHub Actions](guides/claude-code-github-actions.md) |  |
 | [Claude in Chrome (Browser Automation)](guides/claude-in-chrome.md) | Claude in Chrome is a browser extension that allows Claude Code to control a Chrome browser — taking screenshots, clicking elements, filling forms, re |
 | [Claude Preview MCP Server](guides/claude-preview-mcp-server.md) | Claude Preview provides a built-in dev server launcher and browser preview for Claude Code. It can start local development servers, take screenshots,  |
+| [Client-Side Embedding Visualizer (static site / GitHub Pages)](guides/client-side-embedding-visualizer.md) | > |
 | [CoPlay MCP Server (Unity Integration)](guides/coplay-mcp-server.md) | CoPlay MCP Server provides deep Unity Editor integration via the Model Context Protocol. It allows AI assistants to read/write scene hierarchies, crea |
 | [Environment Canada Weather API (GeoMet OGC API)](guides/environment-canada-weather-api.md) | Environment Canada exposes real-time surface weather observations (SWOB) through the MSC GeoMet OGC API at `https://api.weather.gc.ca/`. No API key is |
 | [Express 5 + Node.js 20 + TypeScript](guides/express-5-node-typescript.md) |  |
@@ -126,6 +141,7 @@ In your first conversation after installing, ask Claude to call `get_onboarding`
 | [Terraform — AWS EC2 Setup](guides/terraform-aws-ec2.md) | Provisioning an EC2 instance with VPC, security groups, IAM role, and Elastic IP using Terraform >= 1.6 with the AWS provider ~> 5.0. |
 | [Terraform — AWS Frontend Hosting (S3 + CloudFront OAC + ACM + Route53)](guides/terraform-aws-frontend-hosting.md) |  |
 | [Toronto City Open Data — Ferry Service Status API](guides/toronto-city-open-data-ferry.md) | The City of Toronto publishes a live, no-auth JSON endpoint for ferry service status: |
+| [Transformers.js — In-Browser Embeddings (no backend)](guides/transformers-js-browser-embeddings.md) | > |
 | [Trello MCP Server](guides/trello-mcp-server.md) |  |
 | [Unity asmdef: Referencing Assembly-CSharp from Test Assemblies](guides/unity-asmdef-assembly-csharp-reference.md) |  |
 | [Vector Database Options: Embedded vs Managed](guides/vector-db-options.md) | Vector databases store embeddings alongside metadata and answer "nearest neighbor" queries efficiently. The key fork in the road is **embedded vs. ser |
