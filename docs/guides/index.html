@@ -321,7 +321,7 @@
     const searchEmpty = document.getElementById('search-empty');
 
     function showIndex() {
-      indexEl.style.display = '';
+      indexEl.style.display = 'block';
       viewerEl.style.display = 'none';
       document.title = 'Guides — Project Alexandria';
       history.replaceState(null, '', './');
@@ -329,7 +329,7 @@
 
     function showGuide(name, title) {
       indexEl.style.display = 'none';
-      viewerEl.style.display = '';
+      viewerEl.style.display = 'block';
       contentEl.innerHTML = '<p class="loading">Loading guide...</p>';
       document.title = title + ' — Project Alexandria';
       history.replaceState(null, '', '?guide=' + encodeURIComponent(name));
