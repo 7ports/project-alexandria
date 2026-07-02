@@ -74,6 +74,20 @@ The `alexandria` MCP server will now be available in all conversations.
 
 In your first conversation after installing, ask Claude to call `get_onboarding`. This returns the collaborative maintenance contract and memory templates. Claude should save these to its memory system so the maintenance behavior persists across conversations.
 
+## Local preview
+
+Preview the docs site locally exactly as it appears on GitHub Pages (with `docs/` as the web root) using the bundled zero-dependency Node server:
+
+```bash
+npm run preview
+```
+
+Then open **http://localhost:8000/** in your browser. Guide viewer deep-links work too, e.g. http://localhost:8000/guides/?guide=aws-cli
+
+Override the port with the `PORT` env var (e.g. `PORT=3000 npm run preview`).
+
+> **Windows note:** do **not** use `python3 -m http.server` — `python3` often isn't on `PATH` on Windows, and common Node static servers (`serve`, `http-server`) return 404 for directory URLs like `/guides/?guide=aws-cli`. `npm run preview` handles this correctly and needs only Node (already required for the MCP server).
+
 ## Available Tools
 
 | Tool | Description |
