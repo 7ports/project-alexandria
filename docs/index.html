@@ -4,20 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Project Alexandria — Collaborative Tooling Knowledge Base for Claude</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
   <style>
     :root {
-      --bg: #0d1117;
-      --surface: #161b22;
-      --border: #30363d;
-      --text: #e6edf3;
-      --text-muted: #8b949e;
-      --accent: #58a6ff;
-      --accent-subtle: #1f6feb22;
+      --bg: #080b14;
+      --surface: #11161f;
+      --border: rgba(255,255,255,0.08);
+      --text: #e8edf4;
+      --text-muted: #8b97a8;
+      --accent: #22d3ee;
+      --accent-subtle: rgba(34,211,238,0.13);
       --green: #3fb950;
-      --purple: #bc8cff;
-      --orange: #d29922;
+      --purple: #d946ef;
+      --orange: #f59e0b;
       --red: #f85149;
-      --amber: #e3b341;
+      --amber: #f59e0b;
+      --surface-2: #1a2230;
+      --code-bg: #080b14;
+      --brand-gradient: linear-gradient(135deg, #22d3ee, #f59e0b);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -36,7 +40,7 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(13, 17, 23, 0.92);
+      background: rgba(8, 11, 20, 0.92);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
       border-bottom: 1px solid var(--border);
@@ -53,7 +57,7 @@
       font-weight: 700;
       font-size: 1rem;
       text-decoration: none;
-      background: linear-gradient(135deg, var(--amber), var(--orange));
+      background: var(--brand-gradient);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -85,7 +89,7 @@
       font-size: 3rem;
       font-weight: 800;
       margin-bottom: 16px;
-      background: linear-gradient(135deg, var(--amber), var(--orange));
+      background: var(--brand-gradient);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -139,7 +143,7 @@
 
     .cta-btn.primary {
       background: var(--orange);
-      color: #0d1117;
+      color: var(--bg);
     }
 
     .cta-btn.secondary {
@@ -275,7 +279,7 @@
       font-size: 0.7rem;
       color: var(--orange);
       font-family: monospace;
-      background: rgba(227, 179, 65, 0.12);
+      background: rgba(245, 158, 11, 0.12);
       padding: 2px 8px;
       border-radius: 4px;
       display: inline-block;
@@ -330,7 +334,7 @@
     .step p { color: var(--text-muted); font-size: 0.9rem; }
 
     pre {
-      background: #0d1117;
+      background: var(--code-bg);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 16px;
@@ -369,7 +373,7 @@
     }
 
     th {
-      background: #1c2128;
+      background: var(--surface-2);
       font-size: 0.85rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -378,7 +382,7 @@
 
     td code {
       color: var(--orange);
-      background: rgba(227, 179, 65, 0.12);
+      background: rgba(245, 158, 11, 0.12);
       padding: 2px 6px;
       border-radius: 4px;
       font-size: 0.85rem;
@@ -394,8 +398,8 @@
     }
 
     td .cost.low { background: rgba(63, 185, 80, 0.15); color: var(--green); }
-    td .cost.med { background: rgba(210, 153, 34, 0.15); color: var(--orange); }
-    td .cost.high { background: rgba(188, 140, 255, 0.15); color: var(--purple); }
+    td .cost.med { background: rgba(245, 158, 11, 0.15); color: var(--orange); }
+    td .cost.high { background: rgba(217, 70, 239, 0.15); color: var(--purple); }
 
     /* Efficiency */
     .efficiency {
@@ -558,7 +562,7 @@
       border: 1px solid var(--border); border-radius: 8px; padding: 8px 16px;
       font-size: 0.9rem; font-weight: 600; text-decoration: none;
     }
-    .map-hero-fallback .btn:hover { background: #1f6feb33; }
+    .map-hero-fallback .btn:hover { background: rgba(34, 211, 238, 0.2); }
 
     /* Small screens: swap the interactive canvas for a CTA card (avoids 3D scroll-trap) */
     @media (max-width: 600px) {
@@ -575,7 +579,7 @@
   <!-- Nav -->
   <nav class="topnav">
     <div class="container nav-inner">
-      <a class="nav-brand" href="./">Project Alexandria</a>
+      <a class="nav-brand" href="./"><img src="./assets/logo.svg" alt="" width="24" height="24" style="vertical-align:-5px;margin-right:8px">Project Alexandria</a>
       <div class="nav-links">
         <a href="./guides/">Browse Guides</a>
         <a href="./explore.html">Explore Map</a>
