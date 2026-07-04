@@ -190,10 +190,18 @@ function readGuide(filename) {
   return fs.readFileSync(filepath, "utf-8");
 }
 
-const server = new McpServer({
-  name: "alexandria",
-  version: "1.0.0",
-});
+// Surfaced to every client on `initialize` (SDK: server/index.js returns options.instructions).
+// Universal push of Alexandria's recall-before / record-after / boundary contract.
+const ALEXANDRIA_INSTRUCTIONS =
+  "Alexandria is a shared, project-agnostic knowledge base. **Recall before acting:** call `recall_context`/`search_knowledge` before any tool setup or non-trivial technical decision. **Record after:** after (1) setting up a tool, (2) fixing a non-obvious error, (3) finding a version/platform gotcha, (4) getting a tricky config/command/API right, or (5) at session close, call `write_knowledge`/`update_guide` — recording is the default, not an afterthought. **Boundary:** record ONLY general knowledge that would help an unrelated project. If a finding names a host/path/secret/client/project, genericise it (`<your-project>`, `<API_KEY>`, `<path/to/repo>`) and record the general lesson; never record the specifics — those stay in the project's CLAUDE.md.";
+
+const server = new McpServer(
+  {
+    name: "alexandria",
+    version: "1.0.0",
+  },
+  { instructions: ALEXANDRIA_INSTRUCTIONS }
+);
 
 // Tool: List all available guides (compact — one line per guide)
 server.tool(
@@ -363,7 +371,7 @@ server.tool(
 // Tool: Update or create a guide
 server.tool(
   "update_guide",
-  "Update an existing guide or create a new one in Project Alexandria. Use this to keep documentation current as you learn new things about tool setup.",
+  "Update an existing guide or create a new one in Project Alexandria. Use this to keep documentation current as you learn new things about tool setup. Call this after any write-back trigger (tool setup, non-obvious fix, version/platform gotcha, tricky config, or session close). Record ONLY general, project-agnostic knowledge; genericise host/path/secret/client/project specifics first.",
   {
     name: z.string().describe("Guide name (e.g., 'my-new-tool'). Will create/overwrite guides/<name>.md"),
     content: z.string().describe("Full markdown content for the guide"),
@@ -611,7 +619,7 @@ server.tool(
 
       const { mode, hits } = result;
       if (!hits || hits.length === 0) {
-        return { content: [{ type: "text", text: `No results found for '${query}' (mode: ${mode}).` }] };
+        return { content: [{ type: "text", text: `No results found for '${query}' (mode: ${mode}). No guide covers this yet — if you work on '${query}', you are the agent who should write_knowledge a general, project-agnostic guide once you solve it.` }] };
       }
 
       const body = hits.map((h, i) => {
@@ -652,7 +660,7 @@ server.tool(
       }
 
       if (!briefing || briefing.length === 0) {
-        return { content: [{ type: "text", text: `No prior knowledge found for '${topic}'.` }] };
+        return { content: [{ type: "text", text: `No prior knowledge found for '${topic}'. No guide covers this yet — if you work on '${topic}', you are the agent who should write_knowledge a general, project-agnostic guide once you solve it.` }] };
       }
 
       const body = briefing.map((b, i) => {
@@ -668,7 +676,7 @@ server.tool(
 // Tool: Write (create/update) a knowledge doc of any content type
 server.tool(
   "write_knowledge",
-  "Create or update a knowledge doc of ANY type (guide|concept|article|reference). Composes YAML frontmatter from metadata, writes <type-dir>/<name>.md as the source-of-record, embeds it into the semantic index immediately (embed-on-write), then commits & syncs to git asynchronously. Prefer this over update_guide for non-guide content.",
+  "Create or update a knowledge doc of ANY type (guide|concept|article|reference). Composes YAML frontmatter from metadata, writes <type-dir>/<name>.md as the source-of-record, embeds it into the semantic index immediately (embed-on-write), then commits & syncs to git asynchronously. Prefer this over update_guide for non-guide content. Call this after any write-back trigger (tool setup, non-obvious fix, version/platform gotcha, tricky config, or session close). Record ONLY general, project-agnostic knowledge; genericise host/path/secret/client/project specifics first.",
   {
     name: z.string().describe("Slug (filename without .md), e.g. 'embed-on-write'"),
     type: z.enum(["guide", "concept", "article", "reference"]).describe("Content type → target directory"),

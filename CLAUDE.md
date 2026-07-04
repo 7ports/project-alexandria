@@ -72,6 +72,17 @@ You do not need to change how you start Claude Code. Run it normally on your des
 - **fetch** — docs, changelogs, API references
 - **alexandria** — shared, project-agnostic knowledge base. Record ONLY general, reusable knowledge that would help an unrelated project; **never** machine/host names, paths, secrets, credentials, or any client-/project-specific detail (those stay in this CLAUDE.md). Positive test before writing: *"Would this help any unrelated project?"* If no, don't write it to Alexandria. Call `recall_context` before any tool setup or non-trivial technical decision, and `write_knowledge` after to record reusable learnings.
 
+  **Write-back triggers — after ANY of these, call `write_knowledge` (or `update_guide`) before you move on:**
+  1. You **set up, installed, or configured** a tool, MCP server, or integration.
+  2. You **resolved a non-obvious error** (the fix wasn't in the first doc you read).
+  3. You **discovered a version-compatibility fact or a platform quirk** (e.g. "vX breaks with vY", "Windows needs Z").
+  4. You **found a working config / command / API pattern** that took more than one try to get right.
+  5. **Session close** — before ending, sweep the session for any of the above you haven't recorded yet.
+
+  Recording is the **default**, not an afterthought. If a trigger fired and you are not writing back, that is the exception and you should be able to say why (e.g. "already covered by guide X", or "purely project-specific — see §boundary"). **"I was busy / it was small" is not a valid reason to skip.**
+
+  **Genericise, don't discard.** Most learnings have a reusable core wrapped in project specifics. Don't skip the write-back just because the raw finding contains a path or a project name — **strip the specifics and record the general lesson.** Replace every project-, machine-, and account-specific value with a generic placeholder: `<your-project>`, `<API_KEY>`, `<path/to/repo>`, `<hostname>`, `<region>`. Example: "our `acme-prod` deploy failed until I set `NODE_OPTIONS=--max-old-space-size=4096`" → record "Node build OOMs on large repos until you set `NODE_OPTIONS=--max-old-space-size=<MB>`."
+
 ---
 
 ## Agent Auto-Update
@@ -99,7 +110,7 @@ mcp__project-voltron__submit_reflection({
 
 Even a brief reflection is valuable. Focus on gaps in agent instructions that required workarounds.
 
-If the session included any tool setup, API integration, or platform-specific discoveries, call `mcp__alexandria__update_guide` to record findings. Record only non-project-specific knowledge — tool setup steps, platform gotchas, version compatibility. Never record project-specific content (business logic, custom architecture, project configs) in Alexandria; that belongs in CLAUDE.md.
+**Session-close write-back sweep.** Before ending, sweep the whole session against the Alexandria **write-back triggers** (see the `alexandria` bullet under *MCP Tools Available*): any tool setup / MCP-server or integration config, any **non-obvious fix** (the answer wasn't in the first doc you read), any **version-compatibility fact or platform quirk**, and any **tricky config / command / API pattern** that took more than one try. For each one you haven't recorded yet, call `mcp__alexandria__update_guide` (or `write_knowledge`) now — recording is the default, not an afterthought. Record only general, project-agnostic knowledge; **genericise** host/path/secret/client/project specifics first (`<your-project>`, `<API_KEY>`, `<path/to/repo>`) rather than skipping. Never record project-specific content (business logic, custom architecture, project configs) in Alexandria; that belongs in CLAUDE.md.
 
 ---
 
