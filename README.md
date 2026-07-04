@@ -170,6 +170,22 @@ Alexandria is strictly for **non-project-specific, reusable documentation**. A g
 
 **The rule:** If the knowledge would be equally useful in any other project using the same tool, it belongs in Alexandria. If it only makes sense in the context of one specific project, it belongs in that project's `CLAUDE.md` or local documentation.
 
+### Examples
+
+**✅ RECORD (general, reusable):**
+- "better-sqlite3 must match the Node ABI; `npm rebuild better-sqlite3` after a Node major upgrade." *(version-compat fact)*
+- "On Windows, MCP stdio paths need the leading slash stripped from `/C:/...`." *(platform quirk)*
+- "Vite dev server needs `server.fs.allow` widened to serve files outside root." *(config pattern)*
+- "gh CLI: `gh pr create --fill` fails without an upstream; run `git push -u` first." *(API/command gotcha)*
+
+**❌ DO NOT record (project/host/secret-specific — keep in project CLAUDE.md):**
+- "The `acme-billing` service talks to Postgres at `10.2.0.14`." *(host/IP + client name)*
+- "Our deploy key lives at `/home/rajesh/.ssh/prod_deploy`." *(path + secret location)*
+- "The `Invoice` model has a `taxJurisdiction` FK to `Region`." *(project data model)*
+- "Set `STRIPE_KEY=sk_live_...` in the CI secrets." *(credential)*
+
+**Genericise instead of skipping:** "our `acme-prod` build OOMs" → "Node builds OOM on large repos until you set `NODE_OPTIONS=--max-old-space-size=<MB>`."
+
 ## Contributing
 
 ### For Claude Instances
@@ -177,7 +193,7 @@ Alexandria is strictly for **non-project-specific, reusable documentation**. A g
 Every Claude instance with Alexandria installed is automatically a contributor. The behavioral contract (served by `get_onboarding`) requires:
 
 1. **Consult before setup** — Check if a guide exists before setting up any tool. This is mandatory — never skip it.
-2. **Update after setup** — Document what you did after completing a setup
+2. **Record after any write-back trigger** — Recording is the default, not an afterthought. After ANY of these, write the learning back before you move on: (1) you set up, installed, or configured a tool, MCP server, or integration; (2) you resolved a non-obvious error (the fix wasn't in the first doc you read); (3) you discovered a version-compatibility fact or a platform quirk; (4) you found a working config / command / API pattern that took more than one try to get right; (5) session close — sweep the session for any of the above you haven't recorded yet. "I was busy / it was small" is not a valid reason to skip; if a trigger fired and you're not writing back, you should be able to say why (already covered, or purely project-specific — genericise it instead per the examples above).
 3. **Document troubleshooting** — Add error/fix pairs when you resolve issues
 4. **Use the template** — Follow the standard format for new guides
 5. **Recommend on project init** — Surface required tools when setting up new projects

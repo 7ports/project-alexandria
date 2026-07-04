@@ -4,16 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Guides — Project Alexandria</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
   <style>
     :root {
-      --bg: #0d1117;
-      --surface: #161b22;
-      --border: #30363d;
-      --text: #e6edf3;
-      --text-muted: #8b949e;
-      --accent: #58a6ff;
-      --orange: #d29922;
-      --amber: #e3b341;
+      --bg: #080b14;
+      --surface: #11161f;
+      --border: rgba(255,255,255,0.08);
+      --text: #e8edf4;
+      --text-muted: #8b97a8;
+      --accent: #22d3ee;
+      --orange: #f59e0b;
+      --amber: #f59e0b;
+      --surface-2: #1a2230;
+      --code-bg: #080b14;
+      --brand-gradient: linear-gradient(135deg, #22d3ee, #f59e0b);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -32,7 +36,7 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(13, 17, 23, 0.92);
+      background: rgba(8, 11, 20, 0.92);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
       border-bottom: 1px solid var(--border);
@@ -49,7 +53,7 @@
       font-weight: 700;
       font-size: 1rem;
       text-decoration: none;
-      background: linear-gradient(135deg, var(--amber), var(--orange));
+      background: var(--brand-gradient);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -79,7 +83,7 @@
     header h1 {
       font-size: 2rem;
       font-weight: 800;
-      background: linear-gradient(135deg, var(--amber), var(--orange));
+      background: var(--brand-gradient);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -148,7 +152,7 @@
       font-size: 0.75rem;
       color: var(--orange);
       font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
-      background: rgba(227, 179, 65, 0.12);
+      background: rgba(245, 158, 11, 0.12);
       padding: 2px 8px;
       border-radius: 4px;
     }
@@ -202,14 +206,14 @@
     #guide-content code {
       font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
       font-size: 0.85em;
-      background: rgba(227, 179, 65, 0.1);
+      background: rgba(245, 158, 11, 0.12);
       padding: 2px 6px;
       border-radius: 4px;
       color: var(--orange);
     }
 
     #guide-content pre {
-      background: #0d1117;
+      background: var(--code-bg);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 16px;
@@ -240,7 +244,7 @@
     }
 
     #guide-content th {
-      background: #1c2128;
+      background: var(--surface-2);
       font-size: 0.85rem;
       color: var(--text-muted);
     }
@@ -270,7 +274,7 @@
   <!-- Nav -->
   <nav class="topnav">
     <div class="container nav-inner">
-      <a class="nav-brand" href="../">Project Alexandria</a>
+      <a class="nav-brand" href="../"><img src="../assets/logo.svg" alt="" width="24" height="24" style="vertical-align:-5px;margin-right:8px">Project Alexandria</a>
       <div class="nav-links">
         <a href="./">Guides</a>
         <a href="https://github.com/7ports/project-alexandria">GitHub</a>

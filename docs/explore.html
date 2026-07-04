@@ -4,20 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Explore Map — Project Alexandria</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
   <script src="https://cdn.plot.ly/plotly-gl3d-3.0.1.min.js"
           integrity="sha384-A0EijT3kCTyfFJW/IaRTp9a7KrbnGdkMQ8sI48OOWTSd8rFkQ7D5V6SMdssJN7W4"
           crossorigin="anonymous"></script>
   <style>
     :root {
-      --bg: #0d1117;
-      --surface: #161b22;
-      --border: #30363d;
-      --text: #e6edf3;
-      --text-muted: #8b949e;
-      --accent: #58a6ff;
-      --accent-subtle: #1f6feb22;
-      --amber: #e3b341;
-      --orange: #d29922;
+      --bg: #080b14;
+      --surface: #11161f;
+      --border: rgba(255,255,255,0.08);
+      --text: #e8edf4;
+      --text-muted: #8b97a8;
+      --accent: #22d3ee;
+      --accent-subtle: rgba(34,211,238,0.13);
+      --amber: #f59e0b;
+      --orange: #f59e0b;
+      --surface-2: #1a2230;
+      --brand-gradient: linear-gradient(135deg, #22d3ee, #f59e0b);
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -29,14 +32,14 @@
     .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
     .topnav {
       position: sticky; top: 0; z-index: 100;
-      background: rgba(13, 17, 23, 0.92);
+      background: rgba(8, 11, 20, 0.92);
       backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
       border-bottom: 1px solid var(--border); padding: 12px 0;
     }
     .nav-inner { display: flex; align-items: center; justify-content: space-between; }
     .nav-brand {
       font-weight: 700; font-size: 1rem; text-decoration: none;
-      background: linear-gradient(135deg, var(--amber), var(--orange));
+      background: var(--brand-gradient);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
     .nav-links a { color: var(--text-muted); text-decoration: none; margin-left: 20px; font-size: 0.9rem; }
@@ -78,7 +81,7 @@
       border-radius: 8px; padding: 8px 16px; font-size: 0.85rem; cursor: pointer;
       font-family: inherit; font-weight: 600;
     }
-    .btn:hover:not(:disabled) { background: #1f6feb33; }
+    .btn:hover:not(:disabled) { background: rgba(34, 211, 238, 0.2); }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     #search-input {
       flex: 1; min-width: 220px; background: var(--surface); color: var(--text);
@@ -110,7 +113,7 @@
 <body>
   <nav class="topnav">
     <div class="container nav-inner">
-      <a class="nav-brand" href="./">Project Alexandria</a>
+      <a class="nav-brand" href="./"><img src="./assets/logo.svg" alt="" width="24" height="24" style="vertical-align:-5px;margin-right:8px">Project Alexandria</a>
       <div class="nav-links">
         <a href="./guides/">Browse Guides</a>
         <a href="./explore.html">Explore Map</a>

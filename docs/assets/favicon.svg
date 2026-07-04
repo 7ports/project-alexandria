@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Project Alexandria">
+  <title>Project Alexandria</title>
+  <defs>
+    <linearGradient id="alexFav" gradientUnits="userSpaceOnUse" x1="5" y1="4" x2="27" y2="28">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <!-- BACK: point-down chevron (V) — flipped, dimmed amber, recedes. -->
+  <g transform="translate(0,32) scale(1,-1)" opacity="0.45"
+     fill="none" stroke="#f59e0b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 26 L16 6 L26 26"/>
+    <path d="M10 19 L22 19"/>
+  </g>
+  <!-- FRONT: upright chevron (A) — prominent duotone. -->
+  <g fill="none" stroke="url(#alexFav)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 26 L16 6 L26 26"/>
+    <path d="M10 19 L22 19"/>
+  </g>
+  <circle cx="16" cy="6" r="3" fill="url(#alexFav)"/>
+</svg>

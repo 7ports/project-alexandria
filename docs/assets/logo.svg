@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Project Alexandria logo">
+  <title>Project Alexandria</title>
+  <desc>A/V ambigram — an upright chevron (front, A) prominent over a point-down chevron (behind, V). Alexandria variant of the Voltron mark: the A reads in front. Duotone cyan to amber.</desc>
+  <defs>
+    <linearGradient id="alexDuotone" gradientUnits="userSpaceOnUse" x1="40" y1="32" x2="216" y2="224">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="alexDuotoneSoft" gradientUnits="userSpaceOnUse" x1="40" y1="32" x2="216" y2="224">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#f59e0b" stop-opacity="0.85"/>
+    </linearGradient>
+    <linearGradient id="alexDuotoneBack" gradientUnits="userSpaceOnUse" x1="40" y1="32" x2="216" y2="224">
+      <stop offset="0" stop-color="#f59e0b"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+
+  <!-- BACK LAYER: point-down chevron (the V) — flipped, dimmed, amber-led, recedes. -->
+  <g transform="translate(0,256) scale(1,-1)" opacity="0.4"
+     fill="none" stroke="url(#alexDuotoneBack)"
+     stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M48 208 L88 128"/>
+    <path d="M96 112 L128 48"/>
+    <path d="M208 208 L168 128"/>
+    <path d="M160 112 L128 48"/>
+    <path d="M82 152 L174 152" stroke-width="22"/>
+  </g>
+
+  <!-- FRONT LAYER: upright chevron (the A) — prominent, full duotone, owns crossbar + core. -->
+  <g fill="none" stroke="url(#alexDuotone)" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+    <path id="segLeftOuter" d="M48 208 L88 128"/>
+    <path id="segLeftInner" d="M96 112 L128 48"/>
+    <path id="segRightOuter" d="M208 208 L168 128"/>
+    <path id="segRightInner" d="M160 112 L128 48"/>
+  </g>
+  <path id="segCrossbar" d="M82 152 L174 152" fill="none"
+        stroke="url(#alexDuotoneSoft)" stroke-width="22" stroke-linecap="round"/>
+  <circle id="coreNode" cx="128" cy="48" r="18" fill="url(#alexDuotone)"/>
+  <circle cx="128" cy="48" r="7" fill="#0b1220"/>
+</svg>
