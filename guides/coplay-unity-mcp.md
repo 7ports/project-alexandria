@@ -1,104 +1,91 @@
-# Coplay — MCP for Unity
+# Coplay (now Aura) — Unity Plugin & MCP
+
+> ⚠️ **Two repos exist — don't confuse them.** This project uses the **Coplay plugin** (`coplay-unity-plugin`), whose MCP server registers as **`coplay-mcp`** and provides the generative tools (`generate_3d_model_*`, `generate_music`, `generate_sfx`, `generate_tts`, `auto_rig_3d_model`) plus scene/asset/Play-Mode control. The separate `CoplayDev/unity-mcp` ("MCP for Unity", `com.coplaydev.unity-mcp`) is a leaner open-source bridge and is **NOT** what serves the `mcp__coplay-mcp__*` tools. Verified 2026-07-04.
 
 ## Quick Reference
 
 <!-- This section is extracted by quick_setup for fast, low-token lookups. -->
 <!-- Keep it self-contained: just the commands and config needed to install. -->
 
-**Install (Unity Editor — git UPM):**
+**Install the Coplay plugin (Unity Editor — git UPM):**
 Window → Package Manager → `+` → **Add package from git URL**:
 ```
-https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity#main
+https://github.com/CoplayDev/coplay-unity-plugin.git#beta
 ```
 
-**Alternative (OpenUPM):**
-```bash
-openupm add com.coplaydev.unity-mcp
-```
+**Open it:** menu **Coplay → Toggle Window**, or `Ctrl+G` / `Cmd+G`.
 
-**Configure:** Window → **MCP for Unity** → setup wizard auto-runs (checks Python + `uv`, then configures detected MCP clients).
+**Verify:** the Coplay panel opens and shows "connected"; in an MCP client the server appears as `coplay-mcp` with tools like `create_game_object`, `play_game`, `generate_sfx`.
 
-**Verify:** Window → MCP for Unity shows dependencies green + at least one MCP client "Configured".
+**Note:** Coplay was acquired and is rebranding to **Aura** (https://www.tryaura.dev/). The `#beta` git URL still works; new installs may be directed to Aura.
 
 ## Overview
 
-MCP for Unity (by CoplayDev) bridges AI assistants (Claude Code, Cursor, Copilot, etc.) and the Unity Editor. It exposes tools to manage assets, control scenes, edit scripts, run Play Mode, and automate Editor tasks over MCP. In a Project Voltron Unity setup, this is what powers the Editor-side agents (`scene-architect`, `build-validator`, and the Editor-preview slices of `shader-artist` / `asset-manager`) — those agents cannot run in Docker and require a live Editor with this package connected.
+Coplay (→ Aura) is an in-Editor AI assistant plugin for Unity. It exposes an MCP server (`coplay-mcp`) that lets external AI clients drive the Unity Editor: manage GameObjects/prefabs/scenes, edit components, run Play Mode, read console/logs, take screenshots, and use generative asset tools (3D models from text/image, music, SFX, TTS, auto-rigging). In a Project Voltron Unity setup, this is what powers the host-only Editor agents (`scene-architect`, `build-validator`, and the Editor-preview slices of `shader-artist` / `asset-manager`) — those agents require a live Editor with this plugin connected and cannot run in Docker.
 
 ## Prerequisites
 
-- Unity **2021.3 LTS → 6.x**
-- **Python 3.10+** (installed/managed via `uv` — the wizard can install both if missing)
-- An MCP client to drive it (Claude Code, Cursor, VS Code Copilot, etc.)
+- Unity Editor (open project) — the MCP tools fail if the Editor process is not running, even when the project root is registered.
+- An MCP client to drive it (Claude Code, Cursor, VS Code, etc.).
+- A Coplay/Aura account may be required for the generative (cloud) features.
 
 ## Installation
 
-The package installs **inside the Unity Editor**, not via a shell package manager. The commands below are the entry points; the actual add happens in Package Manager.
+The plugin installs **inside the Unity Editor** via Package Manager.
 
 ### Windows / macOS / Linux (same flow)
 
-Option A — **Git URL** (recommended, always latest `main`):
 1. Window → Package Manager
 2. `+` (top-left) → **Add package from git URL…**
-3. Paste: `https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity#main`
+3. Paste: `https://github.com/CoplayDev/coplay-unity-plugin.git#beta`
+4. Open with **Coplay → Toggle Window** or `Ctrl+G` / `Cmd+G`.
 
-Option B — **OpenUPM CLI** (from the project root):
-```bash
-openupm add com.coplaydev.unity-mcp
-```
-
-Option C — **Asset Store**: import "MCP for Unity", then Window → Package Manager → **My Assets** → Import.
+To pin a version, replace `#beta` with a specific tag/branch if the repo publishes one.
 
 ## Configuration
 
-### Claude Code Integration
+### Claude Code / MCP client integration
 
-Unlike a standalone stdio MCP server, you do **not** hand-edit `~/.claude.json` for this one — the in-Editor wizard writes the client config for you:
+The plugin hosts the `coplay-mcp` server; connect your MCP client to it per Coplay/Aura's in-panel setup. Once connected, tools appear under the `coplay-mcp` server name in the client.
 
-1. After import, **Window → MCP for Unity** opens the setup wizard automatically.
-2. Confirm **Python** and **uv** are green (wizard guides installation if missing). Click **Done**.
-3. The wizard lists MCP clients detected on your machine. Select the client(s) (e.g. Claude Code) and click **Configure Selected**.
+### Editor must be running
 
-If you prefer manual config or the wizard doesn't detect your client, see the official Claude Code guide (link below) for the exact `mcpServers` entry to add.
-
-### Standalone Configuration
-
-The Editor package launches a Python MCP server via `uv`. Keep `uv` on PATH; the server process is spawned by the Editor bridge, so no separate daemon setup is required.
+The single most common failure: the project root is registered but the **Editor process is closed**, so every `mcp__coplay-mcp__*` call returns "Unity Editor is not running at the specified project root." Keep the Editor open and the Coplay panel connected during any Editor-side agent run.
 
 ## Usage
 
-- Keep the Unity Editor **open** while the MCP client is running — Editor-side tools fail if the Editor is closed.
-- Tools cover: asset management, scene hierarchy/GameObjects, script editing, Play Mode control, console/log reads, screenshots.
-- In Voltron: dispatch Editor-required agents from the **host** (`Agent` tool), never Docker.
+- Keep the Unity Editor **open and focused** while the MCP client runs.
+- Tools cover: scene hierarchy/GameObjects, prefabs, components, transforms, UI, materials, Play Mode control, console/log reads, screenshots, and generative assets (3D/music/SFX/TTS/rigging).
+- In Voltron: dispatch Editor-required agents (`scene-architect`, `build-validator`) from the **host** via the `Agent` tool, never Docker.
 
 ## Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
-| Wizard can't find Python | Install Python 3.10+; ensure `uv` is installed and on PATH, then reopen Window → MCP for Unity |
-| Client not detected in wizard | Configure manually per the official Claude Code guide, or restart the client so the wizard re-detects it |
-| Git URL add fails | Confirm the full URL including `?path=/MCPForUnity#main`; check Unity has network/git access |
-| Tools time out / no response | Ensure the Editor is open and focused; check the Editor console for the MCP bridge status |
-| Version pin needed | Replace `#main` with a tag/branch, or use OpenUPM to pin a specific version |
+| "Unity Editor is not running at the specified project root" | Open the Editor on the project; wait for import/compile to finish; confirm the Coplay panel shows "connected" |
+| Wrong repo installed (`unity-mcp`) and tools missing | Uninstall it; install `coplay-unity-plugin.git#beta` — only that repo serves the `coplay-mcp` generative toolset |
+| Git URL add fails | Confirm the full URL incl. `#beta`; check Unity has network/git access |
+| Panel won't open | Use menu Coplay → Toggle Window, or the `Ctrl+G` / `Cmd+G` shortcut |
+| Generative tools error / need login | Sign in to Coplay/Aura; some features are cloud-backed and require an account |
 
 ## Platform Notes
 
-- The install flow is identical across Windows/macOS/Linux — everything happens through the Unity Package Manager UI.
-- Python/`uv` are the only host-level dependencies; on Windows the wizard's `uv` bootstrap is the smoothest path (avoids PATH issues with a system Python).
+- Install flow is identical across Windows/macOS/Linux (all via Package Manager).
+- The `mcp__coplay-mcp__*` tool prefix in an MCP client confirms this plugin (not `unity-mcp`) is the connected server.
 
 ## Related Tools
 
 - [[beads]] — Voltron task tracking (mandatory dependency)
-- Project Voltron Unity agent team (`scene-architect`, `build-validator`) depend on this package being connected.
+- `CoplayDev/unity-mcp` ("MCP for Unity", `com.coplaydev.unity-mcp`) — a *different*, leaner open-source MCP bridge; document separately if ever used. Not interchangeable with this plugin.
 
 ## References
 
-- [Install — MCP for Unity](https://coplaydev.github.io/unity-mcp/getting-started/install)
-- [GitHub — CoplayDev/unity-mcp](https://github.com/CoplayDev/unity-mcp)
-- [Setting Up Coplay MCP with Claude Code](https://docs.coplay.dev/coplay-mcp/claude-code-guide)
-- [OpenUPM — com.coplaydev.unity-mcp](https://openupm.com/packages/com.coplaydev.unity-mcp/)
-- [Common Setup Problems (Wiki)](https://github.com/CoplayDev/unity-mcp/wiki/3.-Common-Setup-Problems)
+- [CoplayDev/coplay-unity-plugin (this project's plugin)](https://github.com/CoplayDev/coplay-unity-plugin)
+- [Aura (Coplay's successor)](https://www.tryaura.dev/)
+- [CoplayDev/unity-mcp — separate "MCP for Unity" bridge](https://github.com/CoplayDev/unity-mcp)
+- [Coplay docs — Claude Code guide](https://docs.coplay.dev/coplay-mcp/claude-code-guide)
 
 ---
 
 *Last updated: 2026-07-04*
-*Setup verified on: documented from official CoplayDev sources (Windows 10 session); not yet hands-on-verified in-Editor this session*
+*Corrected: originally documented CoplayDev/unity-mcp; the project's `coplay-mcp` server is served by CoplayDev/coplay-unity-plugin (identified by its generative toolset). Verified via repo fetch on Windows 10 session; not yet hands-on-verified in-Editor.*
