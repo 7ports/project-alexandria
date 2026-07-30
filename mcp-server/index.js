@@ -5,7 +5,6 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import fs from "fs";
 import path from "path";
-import { execFile } from "child_process";
 import { createRequire } from "module";
 import {
   withMetrics,
@@ -117,57 +116,26 @@ const GUIDES_DIR = path.resolve(normalizedScriptDir, "..", "guides");
 const TEMPLATES_DIR = path.resolve(normalizedScriptDir, "..", "templates");
 const RECOMMENDATIONS_PATH = path.resolve(normalizedScriptDir, "..", "recommendations.json");
 const ONBOARDING_PATH = path.resolve(normalizedScriptDir, "..", "onboarding.json");
-const REPO_ROOT = path.resolve(normalizedScriptDir, "..");
 
 /**
- * Run a git command in the repo root directory.
- * Returns a promise that resolves with { stdout, stderr } or rejects on error.
+ * Human-readable durability summary for a writeKnowledge() result. Makes a
+ * `pushed:false` outcome VISIBLE in the tool response (not merely logged) so a
+ * caller knows whether their write actually reached the remote, and if not, why.
  */
-function gitExec(args) {
-  return new Promise((resolve, reject) => {
-    execFile("git", args, { cwd: REPO_ROOT }, (error, stdout, stderr) => {
-      if (error) {
-        reject(new Error(`git ${args[0]} failed: ${stderr || error.message}`));
-      } else {
-        resolve({ stdout, stderr });
-      }
-    });
-  });
-}
-
-/**
- * Auto-commit and push a guide file after it is written.
- * Runs asynchronously (fire-and-forget) so it does not block the MCP response.
- * Errors are logged to stderr but never propagated to the caller.
- */
-function gitCommitAndPush(guideFilename, existed) {
-  const relPath = `guides/${guideFilename}`;
-  const verb = existed ? "update" : "create";
-  const guideName = guideFilename.replace(/\.md$/, "");
-  const commitMsg = `docs: ${verb} ${guideName} guide`;
-
-  // Fire-and-forget: chain git add -> commit -> push, log errors to stderr
-  (async () => {
-    try {
-      await gitExec(["add", relPath]);
-      await gitExec(["commit", "-m", commitMsg]);
-    } catch (err) {
-      // If there's nothing to commit (no changes), just skip the push
-      if (err.message && err.message.includes("nothing to commit")) {
-        return;
-      }
-      console.error(`[alexandria] git add/commit failed: ${err.message}`);
-      return;
-    }
-    try {
-      // Rebase onto origin/main first so worktree or other out-of-band pushes
-      // never leave us in a non-fast-forward state.
-      await gitExec(["pull", "--rebase", "origin", "main"]);
-      await gitExec(["push", "origin", "main"]);
-    } catch (err) {
-      console.error(`[alexandria] git push failed (guide saved locally): ${err.message}`);
-    }
-  })();
+function describeSync(r) {
+  if (r.pushed) {
+    const target = `${r.remote || "origin"}/${r.branch || "?"}`;
+    return `✅ committed and pushed to ${target}.`;
+  }
+  const why = r.reason || (r.error ? "error" : "unknown");
+  const detail = r.error ? `: ${r.error}` : "";
+  if (r.sync_conflict) {
+    return `⚠️ committed LOCALLY but NOT pushed — sync conflict (${why}${detail}). Manual reconciliation needed; the doc is saved locally.`;
+  }
+  if (r.committed) {
+    return `⚠️ committed LOCALLY but NOT pushed (${why}${detail}). The doc is saved locally and will sync on the next successful write.`;
+  }
+  return `⚠️ NOT committed and NOT pushed (${why}${detail}). The markdown + local index are updated; git sync did not run.`;
 }
 
 function getGuideFiles() {
@@ -378,22 +346,26 @@ server.tool(
   },
   async ({ name, content }) => {
     return withMetrics("update_guide", async () => {
-      const filename = name.endsWith(".md") ? name : `${name}.md`;
-      const filepath = path.join(GUIDES_DIR, filename);
-      const existed = fs.existsSync(filepath);
-
+      if (!knowledgeLib) {
+        return { content: [{ type: "text", text: "Knowledge module unavailable." }] };
+      }
+      // Normalise the slug: callers may pass a trailing ".md" for the legacy
+      // guides/<name>.md contract; writeKnowledge wants the bare slug.
+      const slug = name.endsWith(".md") ? name.replace(/\.md$/, "") : name;
       try {
-        fs.mkdirSync(GUIDES_DIR, { recursive: true });
-        fs.writeFileSync(filepath, content, "utf-8");
-        guideUpdatesTotal.inc({ guide: name ?? 'unknown' });
-
-        // Fire-and-forget: auto-commit and push so GitHub Pages rebuilds
-        gitCommitAndPush(filename, existed);
-
+        // Delegate to the single correct write path: composes frontmatter,
+        // writes guides/<slug>.md, embeds-on-write into the vector store, and
+        // syncs via git-sync.js (which targets the current branch — no
+        // hardcoded main).
+        const r = await knowledgeLib.writeKnowledge(
+          { name: slug, type: "guide", content },
+          { store: getStore() }
+        );
+        guideUpdatesTotal.inc({ guide: name ?? "unknown" });
         return {
           content: [{
             type: "text",
-            text: `Guide '${filename}' ${existed ? "updated" : "created"} successfully at ${filepath}`,
+            text: `Guide '${slug}' written to ${r.path} — ${r.chunks} chunk(s) embedded. ${describeSync(r)}`,
           }],
         };
       } catch (err) {
@@ -707,7 +679,7 @@ server.tool(
         return {
           content: [{
             type: "text",
-            text: `Wrote ${r.path} — ${r.chunks} chunk(s) embedded${r.committed ? ", git sync enqueued" : ""}.`,
+            text: `Wrote ${r.path} — ${r.chunks} chunk(s) embedded. ${describeSync(r)}`,
           }],
         };
       } catch (err) {

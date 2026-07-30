@@ -119,7 +119,9 @@ function composeFrontmatter(meta, body) {
  *
  * @param {{ name: string, type?: string, content: string, metadata?: object }} input
  * @param {{ store?: object, noGit?: boolean }} [opts]
- * @returns {Promise<{ path: string, chunks: number, committed: boolean }>}
+ * @returns {Promise<{ path: string, chunks: number, committed: boolean,
+ *   pushed: boolean, branch?: string, remote?: string, reason?: string,
+ *   sync_conflict: boolean, error?: string }>}
  */
 async function writeKnowledge(input, opts = {}) {
   const { name, content, metadata } = input || {};
@@ -184,18 +186,36 @@ async function writeKnowledge(input, opts = {}) {
     }
   }
 
-  // 3. Enqueue async git sync (non-blocking). The file + index are already
-  //    correct, so we return to the caller without awaiting the push.
-  let committed = false;
+  // 3. Git sync (stage → commit → rebase-onto-remote → push, under the per-tree
+  //    lock). We AWAIT so the returned value reflects what ACTUALLY reached the
+  //    remote. The previous fire-and-forget path reported committed:true before
+  //    the sync had even been attempted and swallowed every failure into a
+  //    console.error the caller never saw — the single point where durability
+  //    truth was lost. Latency is bounded by git-sync.js's retry/backoff budget,
+  //    which is acceptable for a write tool that must not lie about durability.
+  let sync = { committed: false, pushed: false, reason: 'skipped-no-git' };
   if (!noGit) {
     const verb = existed ? 'update' : 'create';
     const message = `docs(${type}): ${verb} ${name}`;
-    Promise.resolve(syncCommitAndPush(relPath, message, {}))
-      .catch((err) => console.error(`[alexandria] syncCommitAndPush error: ${err.message}`));
-    committed = true; // git sync enqueued
+    try {
+      sync = await syncCommitAndPush(relPath, message, {});
+    } catch (err) {
+      console.error(`[alexandria] syncCommitAndPush error: ${err.message}`);
+      sync = { committed: false, pushed: false, reason: 'sync-threw', error: err.message };
+    }
   }
 
-  return { path: relPath, chunks: chunksCount, committed };
+  return {
+    path: relPath,
+    chunks: chunksCount,
+    committed: !!sync.committed,
+    pushed: !!sync.pushed,
+    branch: sync.branch,
+    remote: sync.remote,
+    reason: sync.reason,
+    sync_conflict: !!sync.sync_conflict,
+    error: sync.error,
+  };
 }
 
 /**
