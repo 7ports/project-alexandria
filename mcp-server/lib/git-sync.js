@@ -158,7 +158,15 @@ async function syncCommitAndPush(relPath, message, opts = {}) {
       }
 
       try {
-        await gitExec(['rebase', `origin/${branch}`], cwd);
+        // --autostash: this tree is essentially ALWAYS dirty with files unrelated
+        // to the one we just committed (a session hook rewrites .beads/config.yaml
+        // and Dockerfile.voltron on every session). Plain `git rebase` refuses to
+        // run against a dirty tree, so the push never happened. --autostash makes
+        // git stash those unrelated changes, rebase, then restore them — and it
+        // restores them on `rebase --abort` too (see the conflict path below), so
+        // the user's dirty files are byte-identical whether we succeed OR fail,
+        // and no manual stash/pop can lose them.
+        await gitExec(['rebase', '--autostash', `origin/${branch}`], cwd);
       } catch (rebaseErr) {
         // REBASE CONFLICT → abort, never overwrite the peer's commit, leave our
         // commit local, raise the health flag, and log a loud, named warning.
