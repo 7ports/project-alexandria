@@ -7,7 +7,7 @@ summary: >
 tags: [dev-tooling]
 status: active
 created: 2026-06-17
-updated: 2026-06-17
+updated: 2026-07-15
 embedding_version: 1
 ---
 
@@ -253,6 +253,22 @@ All three can coexist without conflicts.
 | Database locked | Only one writer at a time in embedded mode; use server mode for concurrency |
 | Git conflicts in `.beads/` | Hash-based IDs should prevent this; try `bd repair` |
 
+## Reliability: shared dolt-server vs per-project embedded (Windows)
+
+If you run bd in **server mode** with a single shared `dolt sql-server` across multiple projects (`dolt.shared-server: true`, one port serving all repos), expect instability on Windows. Hard-won lessons:
+
+- **The process is unsupervised.** A user-launched `dolt sql-server` has no Windows service or scheduled task behind it, so it is orphaned on reboot/logout AND can die mid-session. In shared-server mode bd refuses to auto-spawn it (auto-start is suppressed by design), so every affected session hard-stops until someone runs `bd dolt start`.
+- **Loopback connection aborts under multi-project churn.** With several projects each opening a short-lived connection per bd command against one `127.0.0.1:<port>`, the server log fills with Windows `wsasend: An established connection was aborted by the software in your host machine` handshake failures. This is a *connection* failure, not a process crash — so supervising/restarting the process does NOT fix it.
+- **A diverged, backup-less dolt remote floods the log.** `unknown push error; no common ancestor` / `nothing to commit` warnings on every write are benign under `shared-server: true` + `backup.git-push: false`, but they bury the real connection-abort errors in the log.
+
+**Durable fix that removes the whole failure class — per-project *embedded* Dolt.** Set `dolt.shared-server: false` so each project runs Dolt in-process (data in `.beads/embeddeddolt/`) — no long-running server, no TCP port — so both the process-death and the `wsasend`-abort classes disappear by construction, and projects are fully isolated. Trade-off: embedded is single-writer per project (fine when a single host orchestrator writes and CI/containers do not). Migrate existing shared-server DBs via Dolt export/import; verify row counts; keep the old shared-server data dir read-only until confirmed.
+
+**Make bd non-blocking regardless of storage choice.** Never let a bd/DB outage hard-fail an entire session: after one automated recovery attempt, degrade to a lightweight fallback tracker and continue. And gate readiness on `bd ready --json` **exit 0**, NOT on grepping `bd dolt status` text — the status text can print "running" while the server is actually down (false-positive liveness).
+
+**Reliable recovery when a shared server won't come up:** `rm -f .beads/dolt-server.pid .beads/dolt-server.lock && bd dolt start` — stale pid/lock removal is effectively first-line on Windows, not a rare fallback. On Windows without WSL, run the installer's binary release or `npm install -g @beads/bd`. Keep `bd`/`dolt` current — running many releases behind on the storage engine means upstream loopback/handshake fixes are absent — but do NOT assume a version bump alone resolves the `wsasend` aborts.
+
+**Permanent shared-server keep-alive (only if you stay on server mode):** register `bd dolt start` (or `dolt sql-server`) as a Windows Scheduled Task at logon, or as a service via NSSM with restart-on-failure. This closes the orphaning gap but does NOT stop the connection-abort class — which is why per-project embedded is the stronger fix.
+
 ## References
 
 - [GitHub Repository](https://github.com/steveyegge/beads)
@@ -260,5 +276,5 @@ All three can coexist without conflicts.
 
 ---
 
-*Last updated: 2026-04-04*
-*Status: NOT YET INSTALLED — setup pending*
+*Last updated: 2026-07-15*
+*Status: active — in use*

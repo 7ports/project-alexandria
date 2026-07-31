@@ -118,13 +118,22 @@ function composeFrontmatter(meta, body) {
  * index, then enqueue an async git sync (unless noGit).
  *
  * @param {{ name: string, type?: string, content: string, metadata?: object }} input
- * @param {{ store?: object, noGit?: boolean }} [opts]
- * @returns {Promise<{ path: string, chunks: number, committed: boolean }>}
+ * @param {{ store?: object, noGit?: boolean, embedPassage?: (text: string) => Promise<number[]> }} [opts]
+ * @returns {Promise<{ path: string, chunks: number, indexed: (boolean|null),
+ *   embed_error?: string, committed: boolean, pushed: boolean, branch?: string,
+ *   remote?: string, reason?: string, sync_conflict: boolean, error?: string }>}
+ *   `indexed`: true when embed-on-write completed, false when it threw (doc is on
+ *   disk but ABSENT from the index), null when indexing was not attempted (no
+ *   store). `embed_error` carries the original throw message on failure so the
+ *   caller can report the doc is saved-but-not-searchable — never a silent 0.
  */
 async function writeKnowledge(input, opts = {}) {
   const { name, content, metadata } = input || {};
   const type = (input && input.type) || 'guide';
   const { store = null, noGit = false } = opts;
+  // Injectable embed fn (defaults to the real pipeline) — lets tests exercise the
+  // environment-specific throw the desktop host hits without a live model load.
+  const embed = opts.embedPassage || embedPassage;
 
   if (!name) throw new Error('writeKnowledge: name (slug) is required');
 
@@ -148,14 +157,24 @@ async function writeKnowledge(input, opts = {}) {
   fs.writeFileSync(absPath, composeFrontmatter(meta, body), 'utf-8');
 
   // 2. Embed-on-write: keep the local read surface correct immediately.
+  //    `indexed` is the honesty flag: null = not attempted (no store), true =
+  //    completed, false = threw. On failure we do NOT block the write (the
+  //    markdown is the source-of-record and git sync below still runs) but we DO
+  //    keep the error so the caller learns the doc is on disk yet unsearchable —
+  //    the same silent-durability class fixed on the git path in 4ecdd84. A
+  //    swallowed embed throw previously returned chunks:0 as an unqualified
+  //    success, dropping ~19% of the corpus out of search while reporting OK.
   let chunksCount = 0;
+  let indexed = null;
+  let embedError;
   if (store) {
+    indexed = false;
     try {
       const contentHash = sha256(body);
       const chunks = chunk({ meta, body });
       const embeddings = [];
       for (const c of chunks) {
-        embeddings.push(await embedPassage(c.text));
+        embeddings.push(await embed(c.text));
       }
       const upsertChunks = chunks.map((c) => ({
         heading_path: c.heading_path,
@@ -177,25 +196,48 @@ async function writeKnowledge(input, opts = {}) {
         embeddings,
       });
       chunksCount = upsertChunks.length;
+      indexed = true;
     } catch (err) {
-      // Index failures never block the write — the markdown is the truth and a
-      // reindex/self-heal will reconcile the cache later.
-      console.error(`[alexandria] embed-on-write failed for ${relPath}: ${err.message}`);
+      // Do NOT downgrade to a stderr line and return success: the index cache is
+      // now stale for this doc. Keep the ORIGINAL message and let the caller
+      // report saved-but-not-searchable. A reindex/self-heal reconciles later.
+      embedError = err && err.message ? err.message : String(err);
+      console.error(`[alexandria] embed-on-write failed for ${relPath}: ${embedError}`);
     }
   }
 
-  // 3. Enqueue async git sync (non-blocking). The file + index are already
-  //    correct, so we return to the caller without awaiting the push.
-  let committed = false;
+  // 3. Git sync (stage → commit → rebase-onto-remote → push, under the per-tree
+  //    lock). We AWAIT so the returned value reflects what ACTUALLY reached the
+  //    remote. The previous fire-and-forget path reported committed:true before
+  //    the sync had even been attempted and swallowed every failure into a
+  //    console.error the caller never saw — the single point where durability
+  //    truth was lost. Latency is bounded by git-sync.js's retry/backoff budget,
+  //    which is acceptable for a write tool that must not lie about durability.
+  let sync = { committed: false, pushed: false, reason: 'skipped-no-git' };
   if (!noGit) {
     const verb = existed ? 'update' : 'create';
     const message = `docs(${type}): ${verb} ${name}`;
-    Promise.resolve(syncCommitAndPush(relPath, message, {}))
-      .catch((err) => console.error(`[alexandria] syncCommitAndPush error: ${err.message}`));
-    committed = true; // git sync enqueued
+    try {
+      sync = await syncCommitAndPush(relPath, message, {});
+    } catch (err) {
+      console.error(`[alexandria] syncCommitAndPush error: ${err.message}`);
+      sync = { committed: false, pushed: false, reason: 'sync-threw', error: err.message };
+    }
   }
 
-  return { path: relPath, chunks: chunksCount, committed };
+  return {
+    path: relPath,
+    chunks: chunksCount,
+    indexed,
+    embed_error: embedError,
+    committed: !!sync.committed,
+    pushed: !!sync.pushed,
+    branch: sync.branch,
+    remote: sync.remote,
+    reason: sync.reason,
+    sync_conflict: !!sync.sync_conflict,
+    error: sync.error,
+  };
 }
 
 /**

@@ -61,7 +61,17 @@ function gitExec(args, cwd) {
 
 async function currentBranch(cwd) {
   const { stdout } = await gitExec(['rev-parse', '--abbrev-ref', 'HEAD'], cwd);
-  return stdout.trim() || 'main';
+  const branch = stdout.trim();
+  // Fail loudly instead of guessing a branch name. An empty result or a detached
+  // HEAD ("HEAD") must NOT silently fall back to "main" — that reintroduces the
+  // exact hardcoded-main durability bug T1 removed. Callers surface this reason.
+  if (!branch || branch === 'HEAD') {
+    throw new Error(
+      `cannot resolve current branch (git returned "${branch || '<empty>'}"); ` +
+        'refusing to guess a branch to push to'
+    );
+  }
+  return branch;
 }
 
 function sleep(ms) {
@@ -119,7 +129,23 @@ async function syncCommitAndPush(relPath, message, opts = {}) {
       return { committed: false, pushed: false, error: err.message };
     }
 
-    const branch = await currentBranch(cwd).catch(() => 'main');
+    // Resolve the target branch dynamically. On failure we STOP loudly rather
+    // than defaulting to any branch name — a wrong-branch push is worse than no
+    // push (it can land the commit on the wrong ref). The commit is already
+    // local, so it propagates on the next successful sync.
+    let branch;
+    try {
+      branch = await currentBranch(cwd);
+    } catch (err) {
+      console.error(`[alexandria] cannot resolve branch for push: ${err.message}`);
+      return {
+        committed: true,
+        pushed: false,
+        remote: 'origin',
+        reason: 'branch-unresolved',
+        error: err.message,
+      };
+    }
 
     // 2. Rebase-onto-remote then push, retrying on a racing peer push.
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -128,11 +154,19 @@ async function syncCommitAndPush(relPath, message, opts = {}) {
       } catch (err) {
         // Offline / no remote: keep the local commit; it propagates next sync.
         console.error(`[alexandria] git fetch failed (saved locally, will sync later): ${err.message}`);
-        return { committed: true, pushed: false, reason: 'fetch-failed', error: err.message };
+        return { committed: true, pushed: false, branch, remote: 'origin', reason: 'fetch-failed', error: err.message };
       }
 
       try {
-        await gitExec(['rebase', `origin/${branch}`], cwd);
+        // --autostash: this tree is essentially ALWAYS dirty with files unrelated
+        // to the one we just committed (a session hook rewrites .beads/config.yaml
+        // and Dockerfile.voltron on every session). Plain `git rebase` refuses to
+        // run against a dirty tree, so the push never happened. --autostash makes
+        // git stash those unrelated changes, rebase, then restore them — and it
+        // restores them on `rebase --abort` too (see the conflict path below), so
+        // the user's dirty files are byte-identical whether we succeed OR fail,
+        // and no manual stash/pop can lose them.
+        await gitExec(['rebase', '--autostash', `origin/${branch}`], cwd);
       } catch (rebaseErr) {
         // REBASE CONFLICT → abort, never overwrite the peer's commit, leave our
         // commit local, raise the health flag, and log a loud, named warning.
@@ -150,16 +184,47 @@ async function syncCommitAndPush(relPath, message, opts = {}) {
             `overwrite a peer's commit). A concurrent same-file edit needs manual ` +
             `reconciliation by an operator.`
         );
-        return { committed: true, pushed: false, sync_conflict: true, reason: 'rebase-conflict' };
+        return { committed: true, pushed: false, branch, remote: 'origin', sync_conflict: true, reason: 'rebase-conflict' };
       }
 
       try {
         await gitExec(['push', 'origin', branch], cwd);
+
+        // Wrong-ref guard: confirm the push actually advanced the remote branch
+        // to OUR HEAD. If the remote-tracking ref does not match HEAD, the push
+        // did not land where we expect (e.g. a racing force-update) — report a
+        // failure instead of a false success.
+        let headSha;
+        let remoteSha;
+        try {
+          headSha = (await gitExec(['rev-parse', 'HEAD'], cwd)).stdout.trim();
+          remoteSha = (await gitExec(['rev-parse', `refs/remotes/origin/${branch}`], cwd)).stdout.trim();
+        } catch (verifyErr) {
+          incSyncFailure();
+          console.error(`[alexandria] push verification failed for "${relPath}": ${verifyErr.message}`);
+          return { committed: true, pushed: false, branch, remote: 'origin', reason: 'push-verify-failed', error: verifyErr.message };
+        }
+        if (headSha !== remoteSha) {
+          incSyncFailure();
+          console.error(
+            `[alexandria] ⚠️  push landed on the wrong ref for "${relPath}" on ${branch}: ` +
+              `remote origin/${branch}=${remoteSha} != local HEAD=${headSha}. Reporting NOT pushed.`
+          );
+          return {
+            committed: true,
+            pushed: false,
+            branch,
+            remote: 'origin',
+            reason: 'push-ref-mismatch',
+            error: `remote ref ${remoteSha} does not match HEAD ${headSha}`,
+          };
+        }
+
         syncState.last_sync_ok = Date.now();
         setLastSyncAge(syncState.last_sync_ok);
         syncState.sync_conflict = false;
         syncState.conflict_file = null;
-        return { committed: true, pushed: true, attempts: attempt };
+        return { committed: true, pushed: true, branch, remote: 'origin', attempts: attempt };
       } catch (pushErr) {
         // Non-fast-forward: a peer pushed between our fetch and push. Back off
         // and re-loop — the next iteration re-fetches and re-rebases on top.
@@ -174,14 +239,14 @@ async function syncCommitAndPush(relPath, message, opts = {}) {
             `[alexandria] git push failed after ${maxRetries} attempts ` +
               `(knowledge saved locally + committed; will sync on next write/refresh): ${pushErr.message}`
           );
-          return { committed: true, pushed: false, reason: 'max-retries', error: pushErr.message };
+          return { committed: true, pushed: false, branch, remote: 'origin', reason: 'max-retries', error: pushErr.message };
         }
         console.error(`[alexandria] git push failed (saved locally): ${pushErr.message}`);
-        return { committed: true, pushed: false, error: pushErr.message };
+        return { committed: true, pushed: false, branch, remote: 'origin', error: pushErr.message };
       }
     }
 
-    return { committed: true, pushed: false, reason: 'exhausted' };
+    return { committed: true, pushed: false, branch, remote: 'origin', reason: 'exhausted' };
   });
 }
 
