@@ -1,6 +1,61 @@
+---
+id: coplay-mcp-unity-editor-gotchas
+type: guide
+title: coplay-mcp-unity-editor-gotchas
+embedding_version: 1
+---
+
 # Coplay MCP (Unity Editor) — Gotchas & Workarounds
 
 Practical notes for driving the Unity Editor through the Coplay MCP tool server.
+
+## "Unity Editor is not running at the specified project root" while it plainly IS running
+
+**Symptom:** `list_unity_project_roots` happily returns the project (correct `projectRoot` and
+`projectName`), but every tool that touches the Editor — `get_unity_editor_state`,
+`install_unity_package`, `execute_script` — fails with:
+
+```
+Unity Editor is not running at the specified project root
+```
+
+Calling `set_unity_project_root` first succeeds and changes nothing.
+
+**Cause:** the two things are answered by different halves of the system. Root discovery is satisfied
+by on-disk project metadata, so it reports a project whose Editor the MCP server cannot actually
+talk to. The Editor-side bridge (the Coplay/Aura Unity plugin) must be **installed in that specific
+project** for anything else to work. A running Editor is necessary but not sufficient.
+
+**Check it is really a bridge problem, not a dead Editor** — confirm the process exists and which
+project it has open (Windows/PowerShell):
+
+```powershell
+Get-Process -Name Unity | Select-Object Id, MainWindowTitle
+# the title carries the project + scene + Unity version, e.g.
+#   my-project - SampleScene - Windows, Mac, Linux - Unity 6.4 (6000.4.2f1)* <DX12>
+```
+
+Then confirm the plugin is absent — none of these should find anything:
+
+```bash
+grep -ril "coplay" Packages/ Assets/
+ls Library/PackageCache | grep -iE "coplay|aura"
+```
+
+**Workaround:** if you cannot or should not add the plugin to the project (installing it is a project
+dependency change — get the user's agreement first), do the work **file-based on disk** instead. This
+is often no worse, and is sometimes better because it is deterministic:
+
+- Packages: add the entry to `Packages/manifest.json` yourself. Unity resolves it on next focus.
+  Check version/Unity compatibility at `https://packages.unity.com/<package-name>`.
+- Import settings: edit the `.meta` files directly. Changing a `.meta` triggers a reimport on focus.
+- Assets that are painful to hand-author (AnimatorControllers, scenes, prefabs — anything with
+  internal file IDs): do **not** write the YAML. Ship an `[MenuItem]` editor script that builds them
+  through the real API, and tell the user which menu item to click.
+
+Order of operations to rely on when Unity next gets focus: package resolve → script compile → asset
+reimport. So a script that references a newly added package compiles fine, but do not assume a
+freshly added `AssetPostprocessor` has run over pre-existing assets (it has not — see below).
 
 ## `add_persistent_listener` cannot bind generic `UnityEvent<T>` events
 
@@ -70,11 +125,31 @@ import first with an `execute_script` helper:
 `AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);` then wait until
 `hasCompilationErrors == false` and confirm the `.cs.meta` exists.
 
+## A new AssetPostprocessor does not touch assets already in the project
+
+Adding an `AssetPostprocessor` only affects assets imported *after* it compiles. Existing assets keep
+their current import settings. Force it with a menu item that reimports them, and reset whatever field
+the postprocessor generates so it regenerates rather than short-circuiting:
+
+```csharp
+foreach (var path in AssetDatabase.FindAssets("t:Model", new[] { folder })
+                                  .Select(AssetDatabase.GUIDToAssetPath).Distinct())
+{
+    if (AssetImporter.GetAtPath(path) is ModelImporter m)
+    {
+        m.clipAnimations = new ModelImporterClipAnimation[0];  // let the postprocessor rebuild
+        m.SaveAndReimport();
+    }
+}
+```
+
 ## Saving the active scene in place (avoid save-as)
 
 The Coplay `save_scene` tool takes a scene name and can behave like save-as.
 To save the current scene in place, use an `execute_script` helper:
 `EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene())`.
+
+(`EditorSceneManager` derives from `SceneManager`, which is why `GetActiveScene()` resolves through it.)
 
 ## Building a radio-button row from Coplay-created Toggles
 
