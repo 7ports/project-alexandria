@@ -2,7 +2,7 @@
 id: unity-humanoid-animation-gotchas
 type: reference
 title: Unity — Humanoid Animation & Prefab Gotchas (Mecanim)
-summary: "Non-obvious Mecanim/prefab behaviours that present as character bugs: empty states on override layers snap to bind pose, Bake Into Pose does the opposite of what scripted movement wants, SampleAnimation cannot verify root settings, reparenting inside a model prefab instance silently reverts, plus authoring humanoid clips from muscle curves and HumanPoseHandler."
+summary: "Non-obvious Mecanim/prefab behaviours that present as character bugs: empty override-layer states snap to bind pose, Bake Into Pose is backwards for scripted movement, SampleAnimation silently no-ops in edit mode and cannot verify root settings, stripping RootT.y buries the character, reparenting inside a model prefab instance reverts, plus authoring humanoid clips from muscle curves."
 tags:
   - unity
   - mecanim
@@ -48,11 +48,11 @@ case: Unity forces it to weight 1 at runtime, but a freshly created controller s
 ## "Bake Into Pose" is backwards from what scripted movement wants
 
 With `applyRootMotion = false`, anything Mecanim classifies as **root motion is discarded** — which is
-exactly what a script-driven CharacterController wants, because the body then stays centred and upright
-over its capsule.
+what a script-driven CharacterController wants, because the body then stays centred and upright over
+its capsule.
 
 **Bake Into Pose moves a channel OUT of root motion and INTO the body pose**, where it can no longer be
-discarded. So enabling it does not "lock the character in place"; it makes the authored drift visible.
+discarded. Enabling it does not "lock the character in place"; it makes the authored drift visible.
 Turning it on for Root Transform Position (Y) on a fall-from-height clip sank the rendered body two
 metres through the floor.
 
@@ -62,65 +62,79 @@ For a scripted-movement controller, leave all three **off**:
 clip.lockRootRotation   = false;   // rotation   -> root motion -> discarded
 clip.lockRootPositionXZ = false;   // horizontal -> root motion -> discarded
 clip.lockRootHeightY    = false;   // vertical   -> root motion -> discarded
-clip.keepOriginalOrientation = false;   // measure from the body, not the authored origin
-clip.keepOriginalPositionXZ  = false;
-clip.keepOriginalPositionY   = false;
 ```
 
 Bake Into Pose is for the opposite case — root-motion-driven characters, where you want a channel
 excluded from the motion applied to the Transform.
 
-## SampleAnimation cannot verify any of that
+## SampleAnimation silently does nothing in edit mode
 
-`AnimationClip.SampleAnimation` applies the raw curves straight to the transforms and **bypasses
-Mecanim's humanoid root handling entirely**. It returns byte-identical numbers before and after you
-change the Root Transform import settings, which makes it look like the settings did nothing.
+`AnimationClip.SampleAnimation` on a **humanoid** clip needs an initialised Animator to retarget. In
+edit mode the Animator is not initialised, so the call **no-ops without any error** and the bones stay
+in bind pose.
 
-Verify by driving the real Animator in play mode and stepping it manually:
+This bites in two ways:
+
+1. **It cannot verify root import settings.** It applies raw curves and bypasses Mecanim's humanoid
+   root handling, returning byte-identical numbers before and after you change Root Transform settings,
+   so the settings look inert. Verify by driving the real Animator in play mode instead:
+   ```csharp
+   animator.Play(stateName, 0, 0f);
+   animator.Update(0f);
+   // ... measure, then animator.Update(dt) to step
+   ```
+   Watch the **swing** (max − min) of a hip bone's yaw in character space, not the absolute value — bone
+   axes are arbitrary, but a 250° swing within one state is not noise.
+   Remember default parameter values still drive transitions while probing: `Grounded` defaulting to
+   true sends Jump and FreeFall straight into the landing state, so all three report identical numbers
+   and it looks like a measurement bug.
+
+2. **It poisons any pose capture built on top of it.** Sampling a clip and then reading
+   `HumanPoseHandler.GetHumanPose` returns the **bind pose**, not the clip's pose. Building a "neutral
+   idle" that way yields a literal T-pose (`Forearm Stretch = 0.985`, every spine value 0) that looks
+   plausible in code and obviously broken in game.
+
+   Read the source clip's curves directly instead — no Animator needed, cannot fail this way:
+   ```csharp
+   foreach (var b in AnimationUtility.GetCurveBindings(source)) {
+       float rest = AnimationUtility.GetEditorCurve(source, b).Evaluate(0f);
+       AnimationUtility.SetEditorCurve(target, b, AnimationCurve.Constant(0, len, rest));
+   }
+   ```
+   (Do the `HumanPoseHandler` capture in play mode if you genuinely need muscle-space values.)
+
+## Stripping RootT.y buries the character
+
+When generating a full-body humanoid clip, it is tempting to drop the `Root*` curves on the reasoning
+that root motion is discarded anyway. **`RootT.y` is not optional** — it is what lifts the hips above
+the virtual body root. Without it the pose collapses onto the root and the character sinks by roughly a
+leg length (measured: feet at −0.86, lowest skinned vertex at −1.02, against a correct +0.02).
+
+Keep `RootT.y`; neutralise the rest if you want no drift or turn:
 
 ```csharp
-animator.Play(stateName, 0, 0f);
-animator.Update(0f);
-for (int i = 0; i < steps; i++) {
-    Vector3 fwd = root.InverseTransformDirection(hips.forward);
-    float yaw = Mathf.Atan2(fwd.x, fwd.z) * Mathf.Rad2Deg;   // body yaw in character space
-    animator.Update(0.15f);
-}
+"RootT.x", "RootT.z"          -> 0     // stay centred over the capsule
+"RootQ.x", "RootQ.y", "RootQ.z" -> 0   // identity rotation
+"RootQ.w"                     -> 1
+"RootT.y"                     -> keep the source value (standing height)
 ```
 
-Watch the **swing** (max − min) rather than absolute yaw: a bone's local axes are arbitrary, so the
-absolute number is meaningless, but a 250° swing within one state is not.
+A clip played on a **masked** layer that excludes Root does not need root curves — the base layer
+supplies them. It is full-body base-layer clips that must carry `RootT.y`.
 
-When probing states this way, remember default parameter values still drive transitions — `Grounded`
-defaulting to true sends Jump and FreeFall straight into the landing state, so all three report
-identical numbers and it looks like a measurement bug.
+## Check ground fit with BakeMesh, not renderer bounds
 
-## Mixamo clip names oversell what the clip does
+`SkinnedMeshRenderer.bounds` is padded bind-pose bounds and lies in both directions: it reported 2.11m
+height against a true skeleton height of 1.84m (leaving a CharacterController 20cm too tall), and
+reported a lowest point of −0.078 where the real geometry was at +0.020.
 
-`Falling_Impact` is not a landing: it is a fall-from-height crumple that descends ~2m and turns the
-body ~250°. Used as the Land state after a small hop it reads as the character lurching sideways and
-sinking. Check a clip's actual root travel before wiring it up; for a short jump, returning straight to
-locomotion usually looks better than a wrong landing clip.
-
-Similarly, a set may have exactly one idle and it may be a *fidget* (`Idle_Bored`). Looping a fidget as
-the resting pose is why "the idle plays too often". Generate a calm idle and demote the fidget to an
-occasional break on a random re-rolled interval.
-
-## Capturing a rest pose with HumanPoseHandler
-
-To build a neutral idle from an existing clip's first frame:
+For sizing, measure the skeleton (lowest foot bone to top of the head chain). For ground fit, bake the
+posed skin in play mode and find the lowest real vertex:
 
 ```csharp
-source.SampleAnimation(instance, 0f);
-var handler = new HumanPoseHandler(animator.avatar, instance.transform);
-var pose = new HumanPose();
-handler.GetHumanPose(ref pose);
-float[] muscles = (float[])pose.muscles.Clone();   // indexed by HumanTrait.MuscleName
-handler.Dispose();
+var baked = new Mesh(); smr.BakeMesh(baked, true);
+foreach (var v in baked.vertices) lowest = Mathf.Min(lowest, smr.transform.TransformPoint(v).y);
 ```
-
-Then write constant curves at those values, adding a slow sine on `Chest Front-Back`,
-`Spine Front-Back` and the shoulder muscles for breathing.
 
 ## Authoring a Humanoid clip from muscle curves in code
 
@@ -137,13 +151,26 @@ AnimationUtility.SetEditorCurve(clip, binding, curve);
 - Get exact spellings by dumping `AnimationUtility.GetCurveBindings()` on an imported humanoid clip.
   They are space-separated (`Right Forearm Stretch`, `Spine Twist Left-Right`, `Head Nod Down-Up`).
 - **`HumanTrait.MuscleName` does not match the binding names for fingers** — it reports
-  `Left Index 1 Stretched` while the binding is `LeftHand.Index.1 Stretched`. Skip fingers or map them
-  explicitly when iterating muscles.
+  `Left Index 1 Stretched` while the binding is `LeftHand.Index.1 Stretched`.
 - A clip missing a muscle leaves that bone at **bind pose**, so a partial clip on an unmasked layer
   gives T-pose arms. Write every body muscle for a full-body clip.
-- Omit root/leg curves for a masked upper-body clip; `SampleAnimation` will then drop the model through
-  the floor in preview — an artefact, not a defect. Lift the instance by its lowest renderer bound.
 - `curve.SmoothTangents(i, 0f)` on every key; linear tangents look mechanical.
+
+**Amplitude is not reach.** Pushing wind-up muscle values toward their limits can make a swing *smaller*
+if the limb folds: over-bending `Right Forearm Stretch` at the apex pulled the hand in toward the
+shoulder and dropped the hand apex from 0.58 to 0.51. Keeping the elbow open raised it to 0.72. For a
+wide, deliberate arc, keep the limb extended through the motion and drive the rotation from the shoulder
+and torso. Measure the end effector's travel rather than trusting the muscle numbers.
+
+## Mixamo clip names oversell what the clip does
+
+`Falling_Impact` is not a landing: it is a fall-from-height crumple that descends ~2m and turns the body
+~250°. Used as the Land state after a small hop it reads as the character lurching sideways and sinking.
+For a short jump, returning straight to locomotion usually beats a wrong landing clip.
+
+Similarly, a set may have exactly one idle and it may be a *fidget* (`Idle_Bored`). Looping a fidget as
+the resting pose is why "the idle plays too often" — generate a calm idle and demote the fidget to an
+occasional break on a randomly re-rolled interval.
 
 ## Reparenting inside a model prefab instance is silently discarded
 
@@ -177,13 +204,8 @@ weapon.rotation = Quaternion.FromToRotation(weapon.TransformDirection(axis),
 weapon.position += bone.position - weapon.TransformPoint(gripCentroid);  // re-seat AFTER rotating
 ```
 
-Verify by measuring blade-tip travel across sampled times — a weapon stuck at the origin still looks
-plausible in a single screenshot.
-
-## SkinnedMeshRenderer.bounds is inflated — never size a character from it
-
-It reports padded bind-pose bounds: 2.11m reported against a true skeleton height of 1.84m, leaving a
-CharacterController 20cm too tall. Measure lowest foot bone to top of the head chain instead.
+Leaving `localRotation` at identity inherits the bone's arbitrary axes, which is why a sword often ends
+up hanging straight down.
 
 ## Jump flags cleared one frame too early
 
