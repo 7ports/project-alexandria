@@ -142,8 +142,24 @@ async function writeKnowledge(input, opts = {}) {
   const relPath = `${dir}/${name}.md`;
   const absPath = path.join(absDir, `${name}.md`);
 
-  // Build frontmatter meta from caller metadata + enforced id/type.
-  const meta = Object.assign({}, metadata || {});
+  // Build frontmatter meta from EXISTING frontmatter + caller metadata + enforced id/type.
+  //
+  // Merging with what is already on disk is load-bearing, not a nicety. This is the single write
+  // path for every tool, and `update_guide` supplies no metadata at all — composing from scratch
+  // therefore destroyed title/summary/tags on every edit, and `title` silently became the slug.
+  // The damage is invisible until someone runs list_guides and finds `coplay-unity-mcp` where a
+  // real title used to be. Caller metadata still wins field-by-field, so partial updates work.
+  let existingMeta = {};
+  if (fs.existsSync(absPath)) {
+    try {
+      const parsed = parseFrontmatter(fs.readFileSync(absPath, 'utf-8'), `${name}.md`);
+      existingMeta = (parsed && parsed.meta) || {};
+    } catch {
+      // Unparseable frontmatter: fall back to caller metadata rather than fail the write.
+    }
+  }
+
+  const meta = Object.assign({}, existingMeta, metadata || {});
   meta.id = name;
   meta.type = type;
   if (!meta.title) meta.title = name;

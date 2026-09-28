@@ -32,12 +32,37 @@ if (sub === 'rev-parse' && args[1] === 'HEAD') { process.stdout.write(${JSON.str
 if (sub === 'rev-parse') { process.stdout.write(${JSON.stringify(remoteSha)} + '\\n'); process.exit(0); }
 process.exit(0);
 `;
+  // Windows ignores the shebang line, so an extension-less script on PATH is not
+  // executable there — the real git would run instead and every assertion would fail
+  // against a tmpdir that is not a repository. Ship the body separately plus a .cmd
+  // wrapper, which is what cmd.exe/CreateProcess will actually resolve.
+  const shimBody = path.join(binDir, 'git-shim.js');
+  fs.writeFileSync(shimBody, shim);
   fs.writeFileSync(path.join(binDir, 'git'), shim, { mode: 0o755 });
+  if (process.platform === 'win32') {
+    fs.writeFileSync(
+      path.join(binDir, 'git.cmd'),
+      `@echo off\r\nnode "%~dp0git-shim.js" %*\r\n`
+    );
+  }
 
+  // Point git-sync at the shim explicitly instead of shadowing PATH. PATH shadowing relies
+  // on a shebang script being executable, which is a POSIX-only assumption; naming the
+  // interpreter and the script works everywhere.
   const oldPath = process.env.PATH;
+  const oldGitBin = process.env.ALEXANDRIA_GIT_BIN;
+  const oldPreargs = process.env.ALEXANDRIA_GIT_PREARGS;
   process.env.PATH = binDir + path.delimiter + oldPath;
+  process.env.ALEXANDRIA_GIT_BIN = process.execPath;
+  process.env.ALEXANDRIA_GIT_PREARGS = JSON.stringify([path.join(binDir, 'git-shim.js')]);
+  const restoreEnv = (key, value) => {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  };
   cleanups.push(() => {
     process.env.PATH = oldPath;
+    restoreEnv('ALEXANDRIA_GIT_BIN', oldGitBin);
+    restoreEnv('ALEXANDRIA_GIT_PREARGS', oldPreargs);
     fs.rmSync(workDir, { recursive: true, force: true });
     fs.rmSync(binDir, { recursive: true, force: true });
   });

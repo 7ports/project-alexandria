@@ -7,7 +7,7 @@ summary: >
 tags: [mcp-server]
 status: active
 created: 2026-06-17
-updated: 2026-06-17
+updated: 2026-09-28
 embedding_version: 1
 ---
 
@@ -137,42 +137,72 @@ docs — `guide`, `concept`, `article`, `reference` — through a second set of 
 | `recall_context` | Topic briefing; wrapper over `search_knowledge` |
 | `reindex_knowledge` | Rebuild the vector index from the markdown source-of-record |
 
-### `update_guide` silently degrades a guide's frontmatter
+### Frontmatter is merged, not recomposed (fixed 2026-09-28)
 
-`update_guide` takes raw markdown and writes frontmatter composed from the **name only**. Any
-existing `title`, `summary` and `tags` are lost, and the title becomes the slug — so
-`Coplay (now Aura) — Unity Plugin & MCP` came back as `coplay-unity-mcp` in every listing.
+`update_guide` passes no metadata, and `writeKnowledge` used to compose frontmatter from the
+**name only** — so every body-only edit destroyed `title`, `summary` and `tags`, and the title
+silently became the slug. `Coplay (now Aura) — Unity Plugin & MCP` came back as
+`coplay-unity-mcp` in every listing, and nothing surfaced the loss until someone ran
+`list_guides` much later.
 
-**Use `write_knowledge` with a `metadata` block for edits**, or restore the frontmatter by hand
-afterwards. This has bitten real sessions; the damage is invisible until you next run `list_guides`.
+The single write path now reads the existing frontmatter off disk and merges caller metadata over
+it field-by-field, so partial updates still work and omitted fields survive. If you are running an
+older build, use `write_knowledge` with a full `metadata` block for edits.
 
-## Semantic search requires native modules, and fails quietly
+## Semantic search requires native modules — and says so when they are missing
 
-`search_knowledge` and `recall_context` degrade to a **lexical substring scan** when the vector
-index cannot load. The degradation is announced only as a small `(mode: lexical-fallback)` marker,
-and writes report `0 chunk(s) embedded (indexing not attempted — no store)`.
+`search_knowledge` and `recall_context` fall back to a **lexical substring scan** when the vector
+index cannot load. That is the right runtime behaviour (answers keep flowing) and a terrible
+diagnostic, because in lexical mode a natural-language question matches nothing:
+`"Unity humanoid animation root motion RootT.y sinking through floor"` returned nothing while the
+single keyword `"Mecanim"` returned two documents containing exactly that content.
 
-**The practical trap:** in lexical mode a natural-language question matches nothing, because it is a
-substring scan. `"Unity humanoid animation root motion RootT.y sinking through floor"` returned no
-results while the single keyword `"Mecanim"` returned two documents containing exactly that content.
+The server used to answer both cases — empty corpus and broken index — with the same confident
+sentence, *"No guide covers this yet"*. Sessions believed it and rewrote knowledge that already
+existed. Since 2026-09-28 a degraded read is announced in the tool output itself:
 
-> If a recall comes back empty, retry with **one or two keywords** before concluding nothing exists.
-> Several sessions have wrongly concluded "no prior knowledge" and rewritten what was already there.
+```
+!! DEGRADED READ PATH — the semantic index is unavailable, so this ran as a
+case-insensitive SUBSTRING scan over the markdown...
+```
+
+`recall_context` reports its mode alongside the rows for the same reason — a caller that receives
+only rows cannot tell an empty corpus from a broken index.
+
+> **If you see that banner, or an empty recall, retry with one or two keywords** before concluding
+> nothing exists.
+
+### Diagnosing it
+
+```bash
+cd mcp-server && npm run doctor
+```
+
+`doctor` names the cause and the remedy, and exits non-zero when the semantic path is degraded.
+CI runs it on Linux and Windows across Node 20 and 24, because none of these failures are visible
+on a single platform.
 
 ### Requirements
 
 `better-sqlite3` + `sqlite-vec`, both with binaries matching the **host** platform and Node ABI.
 
-Failure modes seen on Windows:
-
 | Symptom | Cause | Fix |
 |---|---|---|
-| `Vector index unavailable — reindex skipped` | extension cannot load | see below |
-| `sqlite-vec-windows-x64 NOT INSTALLED`, only `sqlite-vec-linux-x64` present | `node_modules` populated in a Linux/Docker context | `npm install sqlite-vec-windows-x64` |
-| `better_sqlite3.node is not a valid Win32 application` | same — the compiled binding is a Linux build | rebuild or reinstall on the host |
-| `npm rebuild better-sqlite3` fails in node-gyp | `better-sqlite3@9` has no prebuild for recent Node (e.g. Node 24), so it must compile, which needs VS Build Tools | bump to a version with prebuilds for your Node, install the build tools, or run an older Node |
+| `Vector index unavailable — reindex skipped` | extension cannot load | `npm run doctor` |
+| only `sqlite-vec-linux-x64` present on a Windows host | `node_modules` populated in a Linux/Docker context | delete `node_modules`, `npm install` on the host that runs the server |
+| `better_sqlite3.node is not a valid Win32 application` | same — the compiled binding is a Linux build | as above |
+| `npm rebuild better-sqlite3` fails in node-gyp | the pinned version has no prebuild for your Node (e.g. `better-sqlite3@9` on Node 24), so it must compile, which needs a C++ toolchain | bump to `better-sqlite3@^12.11.1` (prebuilds for Node 20–26) rather than installing build tools |
 
-Note `require('better-sqlite3')` succeeds even when broken — the native binding is not loaded until a
+Do **not** work around a missing platform package by adding it to `dependencies`: those packages
+declare `os`/`cpu` constraints, so pinning `sqlite-vec-windows-x64` directly breaks `npm install`
+for everyone else. `sqlite-vec` already lists all platforms as `optionalDependencies`; a clean
+install on the target host resolves the right one.
+
+**The root cause is almost always one `node_modules` serving two platforms** — a container and its
+host sharing a bind-mounted checkout. Keep `node_modules` out of the image (`.dockerignore`) and
+install separately in each.
+
+Note `require('better-sqlite3')` can succeed while broken — the binding is not loaded until a
 `Database` is instantiated. Test properly:
 
 ```js
@@ -181,8 +211,13 @@ const db = new Database(':memory:'); v.load(db);
 console.log(db.prepare('select vec_version() as v').get());
 ```
 
-If the repo is also built inside Docker, a single shared `node_modules` cannot serve both platforms.
-Keep the container's install separate from the host's.
+### Running the tests
+
+`npm test` (unit) and `npm run test:integration`. `ALEXANDRIA_GIT_BIN` / `ALEXANDRIA_GIT_PREARGS`
+override which git binary the sync path shells out to; the sync tests use them to point at a
+scripted stand-in, because shadowing `PATH` with a shebang script does not work on Windows and
+silently ran the real git instead.
+
 
 ## Collaborative Maintenance
 
@@ -232,5 +267,5 @@ This means tool knowledge flows in both directions: Voltron improves its agent i
 
 ---
 
-*Last updated: 2026-04-04*
+*Last updated: 2026-09-28*
 *Setup verified on: Windows 10*

@@ -37,6 +37,9 @@ function makeRepoWithRemote() {
   git(['init', '-b', 'work-branch', workDir], root);
   git(['config', 'user.email', 'test@alexandria'], workDir);
   git(['config', 'user.name', 'Alexandria Test'], workDir);
+  // Byte-identity is the assertion; core.autocrlf=true (the Git-for-Windows default) would
+  // rewrite line endings on the autostash restore and fail it for reasons unrelated to sync.
+  git(['config', 'core.autocrlf', 'false'], workDir);
   git(['remote', 'add', 'origin', originDir], workDir);
 
   // Seed a tracked "unrelated" file + an initial commit, then publish the branch

@@ -221,10 +221,18 @@ function dedupeBriefing(hits, topK) {
  * index/embedder is unavailable). Over-fetches chunks so that after collapsing
  * to one-per-doc we still surface ~top_k distinct docs.
  *
+ * Returns the search `mode` alongside the briefing, and this is load-bearing: a
+ * caller that only receives rows cannot tell a genuinely empty corpus from a
+ * broken vector index, and Alexandria's previous answer to both was the same
+ * confident "no guide covers this yet". Degradation must be visible to whoever
+ * renders the result. Mode is the WORST mode across the per-type searches — one
+ * lexical leg means the whole briefing is partly substring-matched.
+ *
  * @param {{ db, stmts }|null} store - open index-store handle (or null/unavailable)
  * @param {string} topic
  * @param {{ top_k?: number, types?: string[] }} [opts]
- * @returns {Promise<Array<{ doc_id, type, title, snippet, score }>>} best-first, one per doc
+ * @returns {Promise<{ mode: 'semantic'|'lexical-fallback',
+ *   briefing: Array<{ doc_id, type, title, snippet, score }> }>} best-first, one per doc
  */
 async function recallContext(store, topic, opts) {
   const options = opts || {};
@@ -239,26 +247,28 @@ async function recallContext(store, topic, opts) {
 
   try {
     let hits;
+    let mode = 'semantic';
     if (types) {
       // One typed search per requested type, merged. searchKnowledge honors the
       // single-type filter in both semantic and lexical modes.
       const perType = await Promise.all(
         types.map((t) => searchKnowledge(store, topic, { type: t, top_k: poolK }))
       );
+      if (perType.some((r) => !r || r.mode !== 'semantic')) mode = 'lexical-fallback';
       hits = perType.flatMap((r) => (r && r.hits) || []);
     } else {
       const r = await searchKnowledge(store, topic, { top_k: poolK });
+      if (!r || r.mode !== 'semantic') mode = 'lexical-fallback';
       hits = (r && r.hits) || [];
     }
-    return dedupeBriefing(hits, topK);
+    return { mode, briefing: dedupeBriefing(hits, topK) };
   } catch (err) {
     // searchKnowledge already falls back internally, but guard the merge/dedup
     // path too: degrade to a direct lexical scan over the requested types.
-    if (types) {
-      const merged = types.flatMap((t) => lexicalSearch(topic, { type: t, top_k: poolK }).hits);
-      return dedupeBriefing(merged, topK);
-    }
-    return dedupeBriefing(lexicalSearch(topic, { top_k: poolK }).hits, topK);
+    const merged = types
+      ? types.flatMap((t) => lexicalSearch(topic, { type: t, top_k: poolK }).hits)
+      : lexicalSearch(topic, { top_k: poolK }).hits;
+    return { mode: 'lexical-fallback', briefing: dedupeBriefing(merged, topK) };
   }
 }
 

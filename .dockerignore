@@ -1,0 +1,19 @@
+# node_modules must never cross a platform boundary.
+#
+# better-sqlite3 and sqlite-vec ship compiled binaries chosen by npm at install time for the
+# installing host's OS/arch. When a Linux container and a Windows/macOS host share one checkout,
+# whichever ran `npm install` last wins and the other loads binaries it cannot execute. The
+# server then degrades to a substring-only search that still answers every query, so the failure
+# looks like an empty knowledge base rather than a broken index. Keeping node_modules out of the
+# build context means an image always installs its own.
+node_modules
+**/node_modules
+
+# Derived, host-specific, or secret — none of it belongs in a build context.
+mcp-server/.index
+mcp-server/.models
+.git
+.voltron
+*.log
+.env
+.env.*
