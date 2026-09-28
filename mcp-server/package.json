@@ -26,6 +26,6 @@
     "sqlite-vec": "^0.1.4"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   }
 }

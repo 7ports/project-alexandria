@@ -70,7 +70,8 @@ try {
       ? 'the compiled binary is for another OS — reinstall node_modules on this machine'
       : wrongAbi
         ? `no prebuilt binary for Node ${process.version} — use a Node version this release ships `
-          + 'prebuilds for, or upgrade better-sqlite3 (>=12.11.1 covers Node 20-26)'
+          + 'prebuilds for (better-sqlite3 12.x: Node 22, 24, 25, 26 on every OS — not Node 20 on '
+          + 'Windows), rather than installing a C++ toolchain'
         : 'reinstall with `npm install`; if it still fails, a source build needs a C++ toolchain'
   );
 }

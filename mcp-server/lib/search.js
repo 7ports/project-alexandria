@@ -5,7 +5,7 @@
  *
  *   - semantic (default): embed the query locally with the `query:` prefix →
  *     KNN over the sqlite-vec index → filter by min_score → ranked chunk hits.
- *   - lexical-fallback: a case-insensitive SUBSTRING scan over the markdown
+ *   - lexical / lexical-fallback: a case-insensitive SUBSTRING scan over the markdown
  *     source-of-record (the legacy `search_guides` behavior, generalized across
  *     all content dirs). Used when `lexical:true` is forced, OR transparently
  *     when the index/embedder is unavailable (any error in the semantic path).
@@ -57,8 +57,11 @@ function snippetOf(text, n) {
  * @param {{ db, stmts }|null} store - open index-store handle (or null/unavailable)
  * @param {string} query
  * @param {{ type?: string, top_k?: number, min_score?: number, lexical?: boolean }} [opts]
- * @returns {Promise<{ mode: 'semantic'|'lexical-fallback',
+ * @returns {Promise<{ mode: 'semantic'|'lexical'|'lexical-fallback',
  *   hits: Array<{ doc_id, type, title, heading_path, score, snippet }> }>}
+ *   'lexical' = the caller asked for a substring scan; 'lexical-fallback' = semantic was
+ *   wanted but the index/embedder failed. Only the second is a degradation, and callers
+ *   announce it as one — conflating them cries wolf on every exact-string lookup.
  */
 async function searchKnowledge(store, query, opts) {
   const options = opts || {};
@@ -90,7 +93,8 @@ async function searchKnowledge(store, query, opts) {
     }
   }
 
-  return lexicalSearch(query, { type, top_k: topK });
+  const scanned = lexicalSearch(query, { type, top_k: topK });
+  return lexical ? { mode: 'lexical', hits: scanned.hits } : scanned;
 }
 
 /**

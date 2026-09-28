@@ -99,3 +99,19 @@ describe('writeKnowledge preserves existing frontmatter', () => {
     expect(meta.summary).toBe('Keep me.'); // not supplied → preserved
   });
 });
+
+describe('searchKnowledge separates a requested substring scan from a degraded one', () => {
+  const { searchKnowledge } = require('../lib/search.js');
+
+  it('reports lexical (not lexical-fallback) when the caller forces it', async () => {
+    // Forcing lexical is a legitimate exact-string lookup. Labelling it a fallback made the
+    // server announce "the semantic index is unavailable" while the index was healthy.
+    const r = await searchKnowledge(null, 'guide', { lexical: true, top_k: 1 });
+    expect(r.mode).toBe('lexical');
+  });
+
+  it('reports lexical-fallback when semantic was wanted but unavailable', async () => {
+    const r = await searchKnowledge(null, 'guide', { top_k: 1 });
+    expect(r.mode).toBe('lexical-fallback');
+  });
+});

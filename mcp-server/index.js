@@ -193,7 +193,7 @@ function degradedNote(mode) {
   return "\n\n!! DEGRADED READ PATH \u2014 the semantic index is unavailable, so this ran as a"
     + " case-insensitive SUBSTRING scan over the markdown. A doc that covers this topic in"
     + " different words did NOT match, so an absence of results here is NOT evidence that the"
-    + " knowledge is missing. Retry with one or two literal keywords before concluding anything,"
+    + " knowledge is missing. Retry with one or two literal keywords before concluding anything."
     + " Run `npm run doctor` in mcp-server/ to see why the index is down and how to fix it;"
     + " guides/alexandria-mcp-server.md has the background.";
 }

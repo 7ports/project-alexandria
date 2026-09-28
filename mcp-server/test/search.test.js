@@ -82,7 +82,7 @@ describe('searchKnowledge — forced lexical mode', () => {
 
   it('finds a substring match over the markdown source-of-record', async () => {
     const res = await searchKnowledge(null, NEEDLE, { lexical: true, top_k: 10 });
-    expect(res.mode).toBe('lexical-fallback');
+    expect(res.mode).toBe('lexical'); // requested, not degraded
     const hit = res.hits.find((h) => h.doc_id === slug);
     expect(hit).toBeTruthy();
     expect(hit.type).toBe('guide');

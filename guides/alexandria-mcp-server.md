@@ -179,7 +179,7 @@ cd mcp-server && npm run doctor
 ```
 
 `doctor` names the cause and the remedy, and exits non-zero when the semantic path is degraded.
-CI runs it on Linux and Windows across Node 20 and 24, because none of these failures are visible
+CI runs it on Linux and Windows across Node 22 and 24, because none of these failures are visible
 on a single platform.
 
 ### Requirements
@@ -191,7 +191,7 @@ on a single platform.
 | `Vector index unavailable — reindex skipped` | extension cannot load | `npm run doctor` |
 | only `sqlite-vec-linux-x64` present on a Windows host | `node_modules` populated in a Linux/Docker context | delete `node_modules`, `npm install` on the host that runs the server |
 | `better_sqlite3.node is not a valid Win32 application` | same — the compiled binding is a Linux build | as above |
-| `npm rebuild better-sqlite3` fails in node-gyp | the pinned version has no prebuild for your Node (e.g. `better-sqlite3@9` on Node 24), so it must compile, which needs a C++ toolchain | bump to `better-sqlite3@^12.11.1` (prebuilds for Node 20–26) rather than installing build tools |
+| `npm rebuild better-sqlite3` fails in node-gyp | the pinned version has no prebuild for your Node (e.g. `better-sqlite3@9` on Node 24), so it must compile, which needs a C++ toolchain | bump to `better-sqlite3@^12.11.1` and run Node **22+** (prebuilds for 22/24/25/26 on every OS; there is **no Windows prebuild for Node 20**, which is EOL anyway) rather than installing build tools |
 
 Do **not** work around a missing platform package by adding it to `dependencies`: those packages
 declare `os`/`cpu` constraints, so pinning `sqlite-vec-windows-x64` directly breaks `npm install`
