@@ -124,6 +124,66 @@ search_guides(query: "uvx") → all guides mentioning uvx
 update_guide(name: "my-tool", content: "# My Tool\n\n...") → creates/updates guide
 ```
 
+## Knowledge docs vs guides (newer tool surface)
+
+The table above lists the original guide-only tools. The server now also exposes typed knowledge
+docs — `guide`, `concept`, `article`, `reference` — through a second set of tools:
+
+| Tool | Notes |
+|------|-------|
+| `write_knowledge` | Create/update ANY type. **Composes frontmatter from a `metadata` argument** (title, summary, tags, status, source_urls). Prefer this. |
+| `read_knowledge` / `list_knowledge` | Read and list across all types |
+| `search_knowledge` | Primary search. Semantic when the vector index is up, lexical substring otherwise |
+| `recall_context` | Topic briefing; wrapper over `search_knowledge` |
+| `reindex_knowledge` | Rebuild the vector index from the markdown source-of-record |
+
+### `update_guide` silently degrades a guide's frontmatter
+
+`update_guide` takes raw markdown and writes frontmatter composed from the **name only**. Any
+existing `title`, `summary` and `tags` are lost, and the title becomes the slug — so
+`Coplay (now Aura) — Unity Plugin & MCP` came back as `coplay-unity-mcp` in every listing.
+
+**Use `write_knowledge` with a `metadata` block for edits**, or restore the frontmatter by hand
+afterwards. This has bitten real sessions; the damage is invisible until you next run `list_guides`.
+
+## Semantic search requires native modules, and fails quietly
+
+`search_knowledge` and `recall_context` degrade to a **lexical substring scan** when the vector
+index cannot load. The degradation is announced only as a small `(mode: lexical-fallback)` marker,
+and writes report `0 chunk(s) embedded (indexing not attempted — no store)`.
+
+**The practical trap:** in lexical mode a natural-language question matches nothing, because it is a
+substring scan. `"Unity humanoid animation root motion RootT.y sinking through floor"` returned no
+results while the single keyword `"Mecanim"` returned two documents containing exactly that content.
+
+> If a recall comes back empty, retry with **one or two keywords** before concluding nothing exists.
+> Several sessions have wrongly concluded "no prior knowledge" and rewritten what was already there.
+
+### Requirements
+
+`better-sqlite3` + `sqlite-vec`, both with binaries matching the **host** platform and Node ABI.
+
+Failure modes seen on Windows:
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `Vector index unavailable — reindex skipped` | extension cannot load | see below |
+| `sqlite-vec-windows-x64 NOT INSTALLED`, only `sqlite-vec-linux-x64` present | `node_modules` populated in a Linux/Docker context | `npm install sqlite-vec-windows-x64` |
+| `better_sqlite3.node is not a valid Win32 application` | same — the compiled binding is a Linux build | rebuild or reinstall on the host |
+| `npm rebuild better-sqlite3` fails in node-gyp | `better-sqlite3@9` has no prebuild for recent Node (e.g. Node 24), so it must compile, which needs VS Build Tools | bump to a version with prebuilds for your Node, install the build tools, or run an older Node |
+
+Note `require('better-sqlite3')` succeeds even when broken — the native binding is not loaded until a
+`Database` is instantiated. Test properly:
+
+```js
+const v = require('sqlite-vec'), Database = require('better-sqlite3');
+const db = new Database(':memory:'); v.load(db);
+console.log(db.prepare('select vec_version() as v').get());
+```
+
+If the repo is also built inside Docker, a single shared `node_modules` cannot serve both platforms.
+Keep the container's install separate from the host's.
+
 ## Collaborative Maintenance
 
 Alexandria is designed to be collaboratively maintained by every Claude instance that has it installed. Each instance is both a consumer and contributor.

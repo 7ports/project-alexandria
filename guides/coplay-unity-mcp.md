@@ -1,8 +1,17 @@
 ---
 id: coplay-unity-mcp
 type: guide
-title: coplay-unity-mcp
 embedding_version: 1
+title: Coplay (now Aura) — Unity Plugin & MCP
+summary: "Installing and connecting the Coplay/Aura Unity plugin that serves the coplay-mcp server: verified package identity, the manifest.json install route, and telling an absent plugin apart from a closed Editor when both produce the same error."
+tags:
+  - unity
+  - coplay
+  - aura
+  - mcp
+  - unity-editor
+  - plugin
+status: active
 ---
 
 # Coplay (now Aura) — Unity Plugin & MCP

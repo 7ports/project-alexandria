@@ -1,8 +1,16 @@
 ---
 id: coplay-mcp-unity-editor-gotchas
 type: guide
-title: coplay-mcp-unity-editor-gotchas
 embedding_version: 1
+title: Coplay MCP (Unity Editor) — Gotchas & Workarounds
+summary: "Per-tool gotchas for driving the Unity Editor through Coplay MCP, and the file-based fallback playbook for when the Editor bridge is unavailable."
+tags:
+  - unity
+  - coplay
+  - mcp
+  - unity-editor
+  - troubleshooting
+status: active
 ---
 
 # Coplay MCP (Unity Editor) — Gotchas & Workarounds
