@@ -114,7 +114,7 @@ Override the port with the `PORT` env var (e.g. `PORT=3000 npm run preview`).
 | [Claude Preview MCP Server](guides/claude-preview-mcp-server.md) | Claude Preview provides a built-in dev server launcher and browser preview for Claude Code. It can start local development servers, take screenshots,  |
 | [Client-Side Embedding Visualizer (static site / GitHub Pages)](guides/client-side-embedding-visualizer.md) | > |
 | [Coplay (now Aura) — Unity Plugin & MCP](guides/coplay-unity-mcp.md) | Coplay (→ Aura) is an in-Editor AI assistant plugin for Unity. It exposes an MCP server (`coplay-mcp`) that lets external AI clients drive the Unity E |
-| [Coplay MCP (Unity Editor) — Gotchas & Workarounds](guides/coplay-mcp-unity-editor-gotchas.md) |  |
+| [Coplay MCP (Unity Editor) — Gotchas & Workarounds](guides/coplay-mcp-unity-editor-gotchas.md) | Per-tool gotchas for driving the Unity Editor through Coplay MCP, and the file-based fallback playbook for when the Editor bridge is unavailable. |
 | [coplay-mcp-server (Unity Editor MCP)](guides/coplay-mcp-server.md) |  |
 | [Environment Canada Weather API (GeoMet OGC API)](guides/environment-canada-weather-api.md) | Environment Canada exposes real-time surface weather observations (SWOB) through the MSC GeoMet OGC API at `https://api.weather.gc.ca/`. No API key is |
 | [Express 5 + Node.js 20 + TypeScript](guides/express-5-node-typescript.md) |  |
@@ -149,6 +149,7 @@ Override the port with the `PORT` env var (e.g. `PORT=3000 npm run preview`).
 | [Unity URP 2D — ParticleSystem renders magenta / ignores color](guides/unity-urp-2d-particle-materials.md) |  |
 | [Unity URP — Particle System colors render magenta / ignore Start Color](guides/unity-urp-particle-material-color.md) |  |
 | [Unity — Editing the Physics2D Layer Collision Matrix from a Script (persisted)](guides/unity-physics2d-layer-collision-matrix-scripting.md) |  |
+| [Unity — Third Person Controller with Mixamo Clips, Input System & Cinemachine 3](guides/unity-third-person-controller-mixamo.md) | Recipe for a camera-relative third person controller in Unity 6: Mixamo FBX import fixes (Generic→Humanoid), scripted movement instead of root motion, |
 | [Vector Database Options: Embedded vs Managed](guides/vector-db-options.md) | Vector databases store embeddings alongside metadata and answer "nearest neighbor" queries efficiently. The key fork in the road is **embedded vs. ser |
 | [Vite Dev Server Proxy](guides/vite-dev-proxy.md) |  |
 | [vite-plugin-pwa — PWA Setup with Vite + Workbox](guides/vite-plugin-pwa.md) |  |
