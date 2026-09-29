@@ -44,9 +44,33 @@ const syncState = {
   last_sync_ok: null,
 };
 
+// Which git to run. Normally plain `git` off PATH. ALEXANDRIA_GIT_BIN overrides the
+// executable and ALEXANDRIA_GIT_PREARGS (a JSON array) supplies arguments to put in front of
+// git's own, so the pair can name an interpreter plus a script.
+//
+// This exists because shadowing PATH with a fake `git` — the usual way to script this in a
+// test — does not work on Windows: CreateProcess ignores shebang lines, and since Node
+// 18.20/20.12 spawning a .cmd without shell:true is refused outright. So the sync tests
+// silently ran the REAL git and failed for every Windows contributor, which is how a suite
+// quietly stops being run. It is also the escape hatch for a host where git is installed
+// outside PATH.
+// Read per call, not once at module load: these are environment, and a module-scope
+// constant freezes whatever happened to be set at import time.
+function gitBin() {
+  return process.env.ALEXANDRIA_GIT_BIN || 'git';
+}
+function gitPreargs() {
+  try {
+    const parsed = JSON.parse(process.env.ALEXANDRIA_GIT_PREARGS || '[]');
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
 function gitExec(args, cwd) {
   return new Promise((resolve, reject) => {
-    execFile('git', args, { cwd: cwd || REPO_ROOT }, (error, stdout, stderr) => {
+    execFile(gitBin(), gitPreargs().concat(args), { cwd: cwd || REPO_ROOT }, (error, stdout, stderr) => {
       if (error) {
         const e = new Error(`git ${args[0]} failed: ${stderr || error.message}`);
         e.stdout = stdout;

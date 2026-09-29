@@ -102,10 +102,15 @@ The cache is invalidated when:
 
   it('recalls context with deduplication (one chunk per doc)', async () => {
     // Recall context should call searchKnowledge and deduplicate by doc_id
-    const briefing = await recallContext(store, 'how do I improve widget performance?', {
+    const recalled = await recallContext(store, 'how do I improve widget performance?', {
       top_k: 5,
     });
 
+    // recallContext reports the mode alongside the rows. A caller that sees only rows cannot
+    // tell an empty corpus from a broken vector index, and reporting the second as the first
+    // is what made a degraded server look authoritative.
+    expect(recalled.mode).toBe('semantic');
+    const briefing = recalled.briefing;
     expect(Array.isArray(briefing)).toBe(true);
     expect(briefing.length).toBeGreaterThan(0);
 

@@ -25,7 +25,11 @@ try {
   indexStore = require('./lib/index-store');
   reindexLib = require('./lib/reindex');
 } catch (err) {
-  console.error(`[alexandria] vector index unavailable (lexical fallback only): ${err.message}`);
+  // Stderr alone is not enough — MCP clients rarely surface it, which is why this failure
+  // read as "Alexandria has no guide on that" for a whole session. The tool-output banner
+  // in degradedNote() is the load-bearing half; this is for whoever tails the log.
+  console.error(`[alexandria] vector index unavailable, SEARCH IS SUBSTRING-ONLY: ${err.message}`);
+  console.error('[alexandria] run `npm run doctor` in mcp-server/ for the cause and the fix.');
 }
 // search.js depends only on embedder + index-store + frontmatter; load it
 // separately so the lexical fallback stays available even if the native index
@@ -175,6 +179,35 @@ function readGuide(filename) {
   const filepath = path.join(GUIDES_DIR, filename.endsWith(".md") ? filename : `${filename}.md`);
   if (!fs.existsSync(filepath)) return null;
   return fs.readFileSync(filepath, "utf-8");
+}
+
+// An empty result means two completely different things, and Alexandria used to report both
+// with the same confident sentence: either nothing has been written on the topic, or the
+// vector index is down and we only substring-matched. Asserting "no guide covers this yet"
+// while the index is broken teaches an agent to rewrite knowledge that already exists --
+// the most expensive failure this server can cause. This is the read-path half of the
+// contract concepts/write-path-durability-must-be-loud states for writes: degradation must
+// be announced, never inferred from silence.
+function degradedNote(mode) {
+  if (mode !== "lexical-fallback") return "";
+  return "\n\n!! DEGRADED READ PATH \u2014 the semantic index is unavailable, so this ran as a"
+    + " case-insensitive SUBSTRING scan over the markdown. A doc that covers this topic in"
+    + " different words did NOT match, so an absence of results here is NOT evidence that the"
+    + " knowledge is missing. Retry with one or two literal keywords before concluding anything."
+    + " Run `npm run doctor` in mcp-server/ to see why the index is down and how to fix it;"
+    + " guides/alexandria-mcp-server.md has the background.";
+}
+
+/** Empty-result text that is honest about which mode produced the emptiness. */
+function noResultsText(label, term, mode) {
+  if (mode === "lexical-fallback") {
+    return `No ${label} matched '${term}' \u2014 but the semantic index is DOWN, so this was a`
+      + ` substring scan only. Do NOT conclude the topic is uncovered: retry with one or two`
+      + ` literal keywords, or list_knowledge to browse what exists.` + degradedNote(mode);
+  }
+  return `No ${label} found for '${term}'. No guide covers this yet \u2014 if you work on`
+    + ` '${term}', you are the agent who should write_knowledge a general, project-agnostic`
+    + ` guide once you solve it.`;
 }
 
 // Surfaced to every client on `initialize` (SDK: server/index.js returns options.instructions).
@@ -340,7 +373,7 @@ server.tool(
       }
 
       if (results.length === 0) {
-        return { content: [{ type: "text", text: `No results found for '${query}'.` }] };
+        return { content: [{ type: "text", text: `No results found for '${query}'. search_guides is a literal SUBSTRING match over guide markdown, so a guide that covers this in different words will not appear here. Try search_knowledge (semantic) or a single keyword before concluding no guide covers this.` }] };
       }
 
       const output = results.map(r => {
@@ -610,7 +643,7 @@ server.tool(
 
       const { mode, hits } = result;
       if (!hits || hits.length === 0) {
-        return { content: [{ type: "text", text: `No results found for '${query}' (mode: ${mode}). No guide covers this yet — if you work on '${query}', you are the agent who should write_knowledge a general, project-agnostic guide once you solve it.` }] };
+        return { content: [{ type: "text", text: noResultsText("results", query, mode) }] };
       }
 
       const body = hits.map((h, i) => {
@@ -619,7 +652,7 @@ server.tool(
         return `${i + 1}. [${h.type}] ${h.title} (${h.doc_id})${heading} — score ${score}\n   ${h.snippet}`;
       }).join("\n\n");
 
-      return { content: [{ type: "text", text: `# search_knowledge — ${mode}\nResults for '${query}':\n\n${body}` }] };
+      return { content: [{ type: "text", text: `# search_knowledge \u2014 ${mode}\nResults for '${query}':\n\n${body}${degradedNote(mode)}` }] };
     });
   }
 );
@@ -644,14 +677,20 @@ server.tool(
       }
 
       let briefing;
+      let mode;
       try {
-        briefing = await searchLib.recallContext(getStore(), topic, { top_k, types });
+        // recallContext returns { mode, briefing }: the mode is the only thing that lets this
+        // tool tell an empty corpus apart from a broken index. Tolerate a bare array so an
+        // older lib build degrades to "unknown mode" rather than rendering zero results.
+        const recalled = await searchLib.recallContext(getStore(), topic, { top_k, types });
+        briefing = Array.isArray(recalled) ? recalled : (recalled && recalled.briefing) || [];
+        mode = Array.isArray(recalled) ? undefined : recalled && recalled.mode;
       } catch (err) {
         return { content: [{ type: "text", text: `Recall failed: ${err.message}` }] };
       }
 
       if (!briefing || briefing.length === 0) {
-        return { content: [{ type: "text", text: `No prior knowledge found for '${topic}'. No guide covers this yet — if you work on '${topic}', you are the agent who should write_knowledge a general, project-agnostic guide once you solve it.` }] };
+        return { content: [{ type: "text", text: noResultsText("prior knowledge", topic, mode) }] };
       }
 
       const body = briefing.map((b, i) => {
@@ -659,7 +698,7 @@ server.tool(
         return `${i + 1}. [${b.type}] ${b.title} (${b.doc_id}) — score ${score}\n   ${b.snippet}\n   → read_knowledge("${b.doc_id}")`;
       }).join("\n\n");
 
-      return { content: [{ type: "text", text: `# recall_context — '${topic}'\n${briefing.length} doc(s):\n\n${body}` }] };
+      return { content: [{ type: "text", text: `# recall_context \u2014 '${topic}' (${mode || "unknown mode"})\n${briefing.length} doc(s):\n\n${body}${degradedNote(mode)}` }] };
     });
   }
 );

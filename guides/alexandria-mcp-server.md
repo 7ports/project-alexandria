@@ -7,7 +7,7 @@ summary: >
 tags: [mcp-server]
 status: active
 created: 2026-06-17
-updated: 2026-06-17
+updated: 2026-09-28
 embedding_version: 1
 ---
 
@@ -124,6 +124,101 @@ search_guides(query: "uvx") → all guides mentioning uvx
 update_guide(name: "my-tool", content: "# My Tool\n\n...") → creates/updates guide
 ```
 
+## Knowledge docs vs guides (newer tool surface)
+
+The table above lists the original guide-only tools. The server now also exposes typed knowledge
+docs — `guide`, `concept`, `article`, `reference` — through a second set of tools:
+
+| Tool | Notes |
+|------|-------|
+| `write_knowledge` | Create/update ANY type. **Composes frontmatter from a `metadata` argument** (title, summary, tags, status, source_urls). Prefer this. |
+| `read_knowledge` / `list_knowledge` | Read and list across all types |
+| `search_knowledge` | Primary search. Semantic when the vector index is up, lexical substring otherwise |
+| `recall_context` | Topic briefing; wrapper over `search_knowledge` |
+| `reindex_knowledge` | Rebuild the vector index from the markdown source-of-record |
+
+### Frontmatter is merged, not recomposed (fixed 2026-09-28)
+
+`update_guide` passes no metadata, and `writeKnowledge` used to compose frontmatter from the
+**name only** — so every body-only edit destroyed `title`, `summary` and `tags`, and the title
+silently became the slug. `Coplay (now Aura) — Unity Plugin & MCP` came back as
+`coplay-unity-mcp` in every listing, and nothing surfaced the loss until someone ran
+`list_guides` much later.
+
+The single write path now reads the existing frontmatter off disk and merges caller metadata over
+it field-by-field, so partial updates still work and omitted fields survive. If you are running an
+older build, use `write_knowledge` with a full `metadata` block for edits.
+
+## Semantic search requires native modules — and says so when they are missing
+
+`search_knowledge` and `recall_context` fall back to a **lexical substring scan** when the vector
+index cannot load. That is the right runtime behaviour (answers keep flowing) and a terrible
+diagnostic, because in lexical mode a natural-language question matches nothing:
+`"Unity humanoid animation root motion RootT.y sinking through floor"` returned nothing while the
+single keyword `"Mecanim"` returned two documents containing exactly that content.
+
+The server used to answer both cases — empty corpus and broken index — with the same confident
+sentence, *"No guide covers this yet"*. Sessions believed it and rewrote knowledge that already
+existed. Since 2026-09-28 a degraded read is announced in the tool output itself:
+
+```
+!! DEGRADED READ PATH — the semantic index is unavailable, so this ran as a
+case-insensitive SUBSTRING scan over the markdown...
+```
+
+`recall_context` reports its mode alongside the rows for the same reason — a caller that receives
+only rows cannot tell an empty corpus from a broken index.
+
+> **If you see that banner, or an empty recall, retry with one or two keywords** before concluding
+> nothing exists.
+
+### Diagnosing it
+
+```bash
+cd mcp-server && npm run doctor
+```
+
+`doctor` names the cause and the remedy, and exits non-zero when the semantic path is degraded.
+CI runs it on Linux and Windows across Node 22 and 24, because none of these failures are visible
+on a single platform.
+
+### Requirements
+
+`better-sqlite3` + `sqlite-vec`, both with binaries matching the **host** platform and Node ABI.
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `Vector index unavailable — reindex skipped` | extension cannot load | `npm run doctor` |
+| only `sqlite-vec-linux-x64` present on a Windows host | `node_modules` populated in a Linux/Docker context | delete `node_modules`, `npm install` on the host that runs the server |
+| `better_sqlite3.node is not a valid Win32 application` | same — the compiled binding is a Linux build | as above |
+| `npm rebuild better-sqlite3` fails in node-gyp | the pinned version has no prebuild for your Node (e.g. `better-sqlite3@9` on Node 24), so it must compile, which needs a C++ toolchain | bump to `better-sqlite3@^12.11.1` and run Node **22+** (prebuilds for 22/24/25/26 on every OS; there is **no Windows prebuild for Node 20**, which is EOL anyway) rather than installing build tools |
+
+Do **not** work around a missing platform package by adding it to `dependencies`: those packages
+declare `os`/`cpu` constraints, so pinning `sqlite-vec-windows-x64` directly breaks `npm install`
+for everyone else. `sqlite-vec` already lists all platforms as `optionalDependencies`; a clean
+install on the target host resolves the right one.
+
+**The root cause is almost always one `node_modules` serving two platforms** — a container and its
+host sharing a bind-mounted checkout. Keep `node_modules` out of the image (`.dockerignore`) and
+install separately in each.
+
+Note `require('better-sqlite3')` can succeed while broken — the binding is not loaded until a
+`Database` is instantiated. Test properly:
+
+```js
+const v = require('sqlite-vec'), Database = require('better-sqlite3');
+const db = new Database(':memory:'); v.load(db);
+console.log(db.prepare('select vec_version() as v').get());
+```
+
+### Running the tests
+
+`npm test` (unit) and `npm run test:integration`. `ALEXANDRIA_GIT_BIN` / `ALEXANDRIA_GIT_PREARGS`
+override which git binary the sync path shells out to; the sync tests use them to point at a
+scripted stand-in, because shadowing `PATH` with a shebang script does not work on Windows and
+silently ran the real git instead.
+
+
 ## Collaborative Maintenance
 
 Alexandria is designed to be collaboratively maintained by every Claude instance that has it installed. Each instance is both a consumer and contributor.
@@ -172,5 +267,5 @@ This means tool knowledge flows in both directions: Voltron improves its agent i
 
 ---
 
-*Last updated: 2026-04-04*
+*Last updated: 2026-09-28*
 *Setup verified on: Windows 10*

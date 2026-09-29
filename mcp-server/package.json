@@ -10,18 +10,22 @@
   "scripts": {
     "start": "node index.js",
     "test": "vitest run",
-    "test:integration": "vitest run --config vitest.integration.config.js"
+    "test:integration": "vitest run --config vitest.integration.config.js",
+    "doctor": "node scripts/doctor.mjs"
   },
   "devDependencies": {
-    "vitest": "^2.1.9",
+    "ml-kmeans": "^6.0.0",
     "umap-js": "^1.4.0",
-    "ml-kmeans": "^6.0.0"
+    "vitest": "^2.1.9"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.6.0",
     "@modelcontextprotocol/sdk": "^1.12.1",
+    "better-sqlite3": "^12.11.1",
     "prom-client": "^15.1.3",
-    "better-sqlite3": "^9.2.0",
-    "sqlite-vec": "^0.1.4",
-    "@huggingface/transformers": "^3.6.0"
+    "sqlite-vec": "^0.1.4"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
