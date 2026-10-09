@@ -43,7 +43,18 @@ npm install -D wrangler @cloudflare/vite-plugin vite
 - Local D1 works before `wrangler d1 create` — a placeholder `database_id` is fine for `--local`.
 - `npx wrangler d1 create <db>` prints the id; in non-interactive shells it declines to edit config (use `--update-config --binding DB` or paste the id yourself — `--update-config` adds a *new* entry, so don't use it if a placeholder binding already exists).
 - **Changing `database_id` switches the local SQLite file** (local state is keyed by id) — re-run `migrations apply --local` afterwards.
-- `wrangler types worker/worker-configuration.d.ts` generates Env + runtime types; give the Worker its own tsconfig (`lib: ["ES2023"]`, no DOM) and exclude it from the client tsconfig.
+- `wrangler types worker/worker-configuration.d.ts` generates Env + runtime types; give the Worker its own tsconfig (`lib: ["ES2023"]`, no DOM) and exclude it from the client tsconfig. Keep pure helpers (validation, date math) in files without D1 types so the client-side test/tsconfig can import them.
+
+## Deploy
+```bash
+npm run build                     # vite build → dist/client + dist/<worker>/wrangler.json
+npx wrangler deploy --dry-run     # "Using redirected Wrangler configuration" = the plugin's output config; lists bindings
+npx wrangler deploy               # prints https://<worker>.<subdomain>.workers.dev and the cron schedule
+```
+- Apply D1 migrations to remote **before** deploying code that needs them: `npx wrangler d1 migrations apply <db> --remote`.
+- Secrets without echoing them: `node -e "process.stdout.write(require('crypto').randomBytes(24).toString('hex'))" | npx wrangler secret put NAME` (stdin works non-interactively; creates a new deployment version).
+- Cron triggers only fire once deployed — in local/remote dev, make jobs idempotent and also trigger them from request paths (`ctx.waitUntil(...)`) or an admin route, so nothing depends on the cron having run.
+- An admin route guarded by "token if set, else only localhost hostname" is safe to deploy without the token: on workers.dev the hostname is never localhost, so it returns 401.
 
 ## Dev tips
 - `npx wrangler d1 migrations apply <db> --local` before `vite`; prompts auto-answer "yes" in non-interactive shells.
@@ -54,7 +65,8 @@ npm install -D wrangler @cloudflare/vite-plugin vite
     if (mode === "remote") w.d1_databases = w.d1_databases.map((db) => ({ ...db, remote: true }));
   } })] }));
   ```
-  then `"dev:remote": "vite --mode remote"` (works under Windows cmd, unlike `VAR=1 vite`). Requires the workers.dev subdomain (see above). Startup takes ~20s ("Establishing remote connection...").
+  then `"dev": "vite --mode remote"` (works under Windows cmd, unlike `VAR=1 vite`). Requires the workers.dev subdomain (see above). Startup takes ~20s ("Establishing remote connection...").
+- When browser-testing against a real database, intercept write endpoints in Playwright (`page.route("**/api/game", r => r.fulfill({ status: 201, body: "{}" }))`) so test runs don't pollute production data.
 - To isolate remote-binding problems from your app, run a 10-line probe Worker (`"remote": true` on the D1 binding, `SELECT 1`) with plain `wrangler dev --cwd <dir>`.
 - Read-only remote check: `npx wrangler d1 execute <db> --remote --json --command "SELECT name FROM sqlite_master WHERE type='table'"`.
 - Editing `vite.config.ts` while dev runs can trigger "config must export or return an object" on the auto-restart (file read mid-write) — just restart.
@@ -64,4 +76,6 @@ npm install -D wrangler @cloudflare/vite-plugin vite
 ## D1 design notes (free plan: 5M rows read/day, 100k rows written/day, 5GB)
 - Store a submission as one row with a JSON column, aggregate later in SQL with `json_each` — far fewer row writes than one row per item.
 - `INSERT ... SELECT ... GROUP BY ... ON CONFLICT(...) DO UPDATE SET n = n + excluded.n` works for incremental rollups; keep a cursor (max id processed) in a meta table and run all statements in `db.batch([...])` (one transaction).
+- Live dashboards: keep running totals in a small `counters` table (incl. per-hour buckets like `h:0000497644`) updated in the same batch as each insert, so "total" and "today" never scan the main table. Presence = `INSERT ... ON CONFLICT DO UPDATE SET last_seen` heartbeat + `COUNT(*) WHERE last_seen > now - window`; clean old rows from the cron.
+- Daily snapshots: `INSERT OR IGNORE` one row per finished UTC day, computed from the main table with an index on `created_at`; fill every missing day each run so a skipped cron never leaves gaps.
 - Workers free plan CPU is 10ms/invocation: precompute expensive JSON in the cron job and store it as a single row, so the read endpoint just returns it.
