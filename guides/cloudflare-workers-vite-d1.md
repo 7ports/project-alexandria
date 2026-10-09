@@ -22,6 +22,7 @@ claude plugin install cloudflare@cloudflare     # user scope
 ## New account checklist
 - `npx wrangler login` (OAuth; scopes include d1/workers write). Check with `npx wrangler whoami`.
 - **Register a workers.dev subdomain** (dashboard → Workers & Pages → onboarding, `https://dash.cloudflare.com/<account-id>/workers/onboarding`). Without it, *remote bindings in dev* fail with API error **10063** on `/workers/subdomain/edge-preview` ("You need to register a workers.dev subdomain before running the dev command in remote mode"). Local dev and `wrangler d1` commands work without it.
+- **Right after registering the subdomain, remote bindings connect but every query fails** with `D1_ERROR: Failed to parse body as JSON, got: Error: internal error; reference = …` (even a bare `SELECT 1` probe Worker). It's propagation: it started working ~1–2 minutes later with no changes. Don't debug your code — retry. `wrangler d1 execute --remote` works throughout (it uses the REST API, not the preview proxy).
 
 ## Project setup (SPA + API Worker, no framework)
 ```bash
@@ -53,10 +54,11 @@ npm install -D wrangler @cloudflare/vite-plugin vite
     if (mode === "remote") w.d1_databases = w.d1_databases.map((db) => ({ ...db, remote: true }));
   } })] }));
   ```
-  then `"dev:remote": "vite --mode remote"` (works under Windows cmd, unlike `VAR=1 vite`). Requires the workers.dev subdomain (see above).
+  then `"dev:remote": "vite --mode remote"` (works under Windows cmd, unlike `VAR=1 vite`). Requires the workers.dev subdomain (see above). Startup takes ~20s ("Establishing remote connection...").
+- To isolate remote-binding problems from your app, run a 10-line probe Worker (`"remote": true` on the D1 binding, `SELECT 1`) with plain `wrangler dev --cwd <dir>`.
 - Read-only remote check: `npx wrangler d1 execute <db> --remote --json --command "SELECT name FROM sqlite_master WHERE type='table'"`.
 - Editing `vite.config.ts` while dev runs can trigger "config must export or return an object" on the auto-restart (file read mid-write) — just restart.
-- **Windows:** stopping a backgrounded `npx vite` shell can leave the node process holding the port. Find it with `netstat -ano | grep :5173` and `taskkill //PID <pid> //T //F`.
+- **Windows:** stopping a backgrounded `npx vite` / `wrangler dev` shell can leave the node process holding the port. Find it with `netstat -ano | grep :5173` and `taskkill //PID <pid> //T //F`.
 - Use a separate `vitest.config.ts` so tests don't load the Cloudflare plugin.
 
 ## D1 design notes (free plan: 5M rows read/day, 100k rows written/day, 5GB)
