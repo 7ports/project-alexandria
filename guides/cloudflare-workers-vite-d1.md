@@ -19,6 +19,10 @@ claude plugin install cloudflare@cloudflare     # user scope
 - Then run `/reload-plugins` (or restart) inside Claude Code to activate.
 - Optional beta `cf` CLI (`npm install -g cf`, `cf auth login`) covers the whole Cloudflare API; guide suggests the agent instruction "use the cf CLI unless the project has a Wrangler configuration file".
 
+## New account checklist
+- `npx wrangler login` (OAuth; scopes include d1/workers write). Check with `npx wrangler whoami`.
+- **Register a workers.dev subdomain** (dashboard → Workers & Pages → onboarding, `https://dash.cloudflare.com/<account-id>/workers/onboarding`). Without it, *remote bindings in dev* fail with API error **10063** on `/workers/subdomain/edge-preview` ("You need to register a workers.dev subdomain before running the dev command in remote mode"). Local dev and `wrangler d1` commands work without it.
+
 ## Project setup (SPA + API Worker, no framework)
 ```bash
 npm install -D wrangler @cloudflare/vite-plugin vite
@@ -36,6 +40,8 @@ npm install -D wrangler @cloudflare/vite-plugin vite
 ```
 - Don't set `assets.directory` — the plugin uses Vite's client build output. `vite build` emits `dist/<worker>/wrangler.json` used by `wrangler deploy`.
 - Local D1 works before `wrangler d1 create` — a placeholder `database_id` is fine for `--local`.
+- `npx wrangler d1 create <db>` prints the id; in non-interactive shells it declines to edit config (use `--update-config --binding DB` or paste the id yourself — `--update-config` adds a *new* entry, so don't use it if a placeholder binding already exists).
+- **Changing `database_id` switches the local SQLite file** (local state is keyed by id) — re-run `migrations apply --local` afterwards.
 - `wrangler types worker/worker-configuration.d.ts` generates Env + runtime types; give the Worker its own tsconfig (`lib: ["ES2023"]`, no DOM) and exclude it from the client tsconfig.
 
 ## Dev tips
@@ -47,7 +53,8 @@ npm install -D wrangler @cloudflare/vite-plugin vite
     if (mode === "remote") w.d1_databases = w.d1_databases.map((db) => ({ ...db, remote: true }));
   } })] }));
   ```
-  then `"dev:remote": "vite --mode remote"` (works under Windows cmd, unlike `VAR=1 vite`).
+  then `"dev:remote": "vite --mode remote"` (works under Windows cmd, unlike `VAR=1 vite`). Requires the workers.dev subdomain (see above).
+- Read-only remote check: `npx wrangler d1 execute <db> --remote --json --command "SELECT name FROM sqlite_master WHERE type='table'"`.
 - Editing `vite.config.ts` while dev runs can trigger "config must export or return an object" on the auto-restart (file read mid-write) — just restart.
 - **Windows:** stopping a backgrounded `npx vite` shell can leave the node process holding the port. Find it with `netstat -ano | grep :5173` and `taskkill //PID <pid> //T //F`.
 - Use a separate `vitest.config.ts` so tests don't load the Cloudflare plugin.
