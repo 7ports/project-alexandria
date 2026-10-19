@@ -5,13 +5,6 @@ title: pico-8
 embedding_version: 1
 ---
 
----
-id: pico-8
-type: guide
-title: pico-8
-embedding_version: 1
----
-
 # PICO-8 (Lexaloffle fantasy console): agent development guide
 
 <!-- Researched against PICO-8 v0.2.7 (cart "version 43") on Windows 10. Items tagged [VERIFIED-LOCAL] were smoke-tested on a real install; [MANUAL] = official manual; [SRC] = read in tool source; [UNVERIFIED] = test before relying on it. -->
@@ -20,9 +13,10 @@ embedding_version: 1
 
 **Install:** PICO-8 is paid (lexaloffle.com). The Windows installer puts it in `C:\Program Files (x86)\PICO-8\` (`pico8.exe`, `pico8.dat`, `SDL2.dll`, `pico-8_manual.txt` — the full manual + changelog; read it locally). User data: `%APPDATA%\pico-8\` (carts/, backup/, cdata/, plates/, log.txt; `config.txt` only appears after the first *clean* exit).
 
-**Companion tool (recommended):**
+**Companion tool (recommended)** [VERIFIED-LOCAL, shrinko8 v1.2.7d]:
 ```bash
-python -m pip install shrinko      # PyPI name is "shrinko" (NOT shrinko8 -> 404). Gives `shrinko8` + `shrinkotron`; pulls pillow + lupaz8
+python -m pip install --user shrinko   # PyPI name is "shrinko" (NOT shrinko8 -> 404). Gives `shrinko8` + `shrinkotron`; pulls pillow + lupaz8
+# Windows --user install: the exes land in %APPDATA%\Python\Python3XX\Scripts\ (not on PATH) - call by full path
 # or standalone exe: https://github.com/thisismypassport/shrinko8/releases (shrinko.zip)
 ```
 
@@ -30,8 +24,9 @@ python -m pip install shrinko      # PyPI name is "shrinko" (NOT shrinko8 -> 404
 ```bash
 shrinko8 game.p8 --lint --no-lint-fail --count --error-format tabbed
 # exit: 0 ok | 1 syntax/compile error | 2 lint warnings | 3 failure | 4 #include not found
-# without --no-lint-fail, counts may not print when lint fails
+# without --no-lint-fail, counts may not print when lint fails; it follows #include lines
 ```
+Lint notes [VERIFIED-LOCAL]: globals first assigned outside `_init` are reported as undefined — declare them with a comment line `--lint: name1, name2` (this does **not** silence "only ever assigned, never used" warnings). Globals read via `_ENV["name"]` are invisible to the linter (they show as unused) — look them up from a plain table instead. Locals named `t` (or other builtins) warn because they shadow `t()`.
 
 **Headless run with captured output (Git Bash)** [VERIFIED-LOCAL]:
 ```bash
@@ -69,7 +64,7 @@ Lessons from people who've used LLM agents on PICO-8: agents do logic, systems, 
 | Save data | `cartdata(id)` → 64 numbers (256 B) via `dget/dset` | Up to 4 ids/session (0.2.7). Pack bits/shorts via `poke` at 0x5e00. |
 | Extra RAM | 0x8000-0xffff (32 KB) | RAM only, not stored in cart. |
 
-**Token rules** [SRC shrinko8 tokenizer]: free = `, . : ; :: ) ] } end local`, comments, whitespace, unary `-`/`~` on a literal. 1 token = each identifier, literal (any-length string = 1), opening bracket, keyword, operator, compound assignment (`+=` is 1). So `f"str"` = 2, `f("str")` = 3; `t.k` = 2, `t["k"]` = 3; `local` costs nothing.
+**Token rules** [SRC shrinko8 tokenizer]: free = `, . : ; :: ) ] } end local`, comments, whitespace, unary `-`/`~` on a literal. 1 token = each identifier, literal (any-length string = 1), opening bracket, keyword, operator, compound assignment (`+=` is 1). So `f"str"` = 2, `f("str")` = 3; `t.k` = 2, `t["k"]` = 3; `local` costs nothing. (A ~60-line regex counter following these rules landed within 0.5% of shrinko8 on a ~4800-token cart — fine as a fallback.)
 
 ## The .p8 text format
 
@@ -231,7 +226,7 @@ What worked, and what looked bad, converting a 16px, ~30-colour pack:
 7. Divide by zero → ±0x7fff.ffff, no error; `x%0==0`. Bugs show as huge numbers, not crashes.
 8. `del(t,v)` removes first element **equal to v**; `deli(t,i)` by index. Deleting inside `for v in all(t)` is safe; in forward numeric loops iterate backwards.
 9. `#t` undefined with nil holes; `pairs` order random → arrays for ordered update/draw.
-10. **No stdlib**: no `string.*/table.*/math.*/require/os/io`; no `s:sub()`. Use `sub ord chr tostr tonum split add del deli count all foreach flr ceil mid rnd srand`, `s[i]` single char. Globals by name: `_ENV["s_"..name]` works.
+10. **No stdlib**: no `string.*/table.*/math.*/require/os/io`; no `s:sub()`. Use `sub ord chr tostr tonum split add del deli count all foreach flr ceil mid rnd srand`, `s[i]` single char. Globals by name: `_ENV["s_"..name]` works at runtime but hides the use from shrinko8's linter/minifier — prefer a lookup table.
 11. `btnp` only meaningful in `_update` (state resets each update). Repeat = 15 frames then every 4; tune `poke(0x5f5c,delay) poke(0x5f5d,rate)` (255 = no repeat).
 12. Game logic belongs in `_update` (may run 2× per draw when over budget). `time()` counts updates, not wall-clock; wraps ~9 h [UNVERIFIED].
 13. **Mouse/keyboard are optional hardware** (`poke(0x5f2d,1)`; `stat(32/33)` x/y, `stat(34)` buttons, `stat(36)` wheel, `stat(30/31)` keys). Handhelds/phones lack them; "p"/Enter open pause (`poke(0x5f30,1)` suppresses one frame). Cursor-driven games (management sims): d-pad cursor primary, mouse optional.
@@ -269,12 +264,12 @@ menuitem(1,"save game",function() save() end)
 ```
 Management sims: tick the simulation every N frames, draw static UI with one `map()` call, `print` with `\#c` background codes for panels, money as `>>16`. Tweening: `x+=(tx-x)*0.2`. Fades: per-colour darkening ramp applied with `pal(c,ramp[c],1)`.
 
-**Token savers** (manual): data as strings + `split"1,2,3"` (any-length string = 1 token), `a,b,c=1,2,3`, paren-less calls `f"x"`/`f{}`, `t.k` over `t["k"]`, `\` for `flr(a/b)`, `?` for print, shorthand `if`, `_ENV`, `foreach`/`all`. shrinko8 `--minify` handles renames/whitespace/const-folding (`--[[$const]] DEBUG=false` strips dead branches). Parens-8 compiler mode saves more but is AGPLv3 and slower.
+**Token savers** (manual): data as strings + `split"1,2,3"` (any-length string = 1 token), `a,b,c=1,2,3`, paren-less calls `f"x"`/`f{}`, `t.k` over `t["k"]`, `\` for `flr(a/b)`, `?` for print, shorthand `if`, `_ENV`, `foreach`/`all`. Generated constant files (sprite numbers etc.) should only emit names the code uses — each unused `name=value` still costs ~3 tokens. shrinko8 `--minify` handles renames/whitespace/const-folding (`--[[$const]] DEBUG=false` strips dead branches). Parens-8 compiler mode saves more but is AGPLv3 and slower.
 
 ## Recommended agent loop
 
 1. Edit `src/*.lua` (data sections only via scripts, only when human has no unsaved PICO-8 edits).
-2. `shrinko8 game.p8 --lint --no-lint-fail --count --error-format tabbed` — fail on exit 1/4; fix or annotate lint (declare non-`_init` globals with `--$lint: name1, name2`). Keep tokens < ~7800 for headroom.
+2. `shrinko8 game.p8 --lint --no-lint-fail --count --error-format tabbed` — fail on exit 1/4; fix or annotate lint (declare non-`_init` globals with a `--lint: name1, name2` comment). Keep tokens < ~7800 for headroom.
 3. Headless test: generate `.test_run.p8` with driver, `timeout 60 pico8.exe -home .build/p8home -x ...`, parse `@pass/@fail/@done` + error lines from stdout+stderr.
 4. Framebuffer dump → PNG → view it.
 5. Human playtest window (`-run`), Ctrl+R after each change; human judges feel/art/audio.
@@ -284,7 +279,7 @@ Management sims: tick the simulation every N frames, draw static UI with one `ma
 
 | Tool | Verdict |
 |---|---|
-| **shrinko8** (thisismypassport) | Active, supports 0.2.7. Lint, count, minify, convert p8/png/rom/lua/js, gfx merge, `.bin` export via `--pico8-dat`. Parses full dialect. **Use it.** |
+| **shrinko8** (thisismypassport) | Active, supports 0.2.7 (v1.2.7d verified). Lint, count, minify, convert p8/png/rom/lua/js, gfx merge, `.bin` export via `--pico8-dat`. Parses full dialect, follows `#include`. **Use it.** |
 | **lupaz8** (`pip install lupaz8`) | z8lua (PICO-8 dialect + fixed point) in Python; good for logic unit tests outside PICO-8 with a hand-written API shim (sub/add/del/all/rnd/spr/btn… must be stubbed). |
 | pico8-ls (VS Code `PollywogGames.pico8-ls`) | Active editor language server; no CLI. |
 | pico-8-mcp (nutshot2000, Windows-first, Python/uv) | MCP server: validate, count, headless simulate w/ scripted inputs, window capture, set_sprite/set_sfx. Its SKILL.md "hard rules" are worth reading. smartfrog/pico8-mcp (Node) does lockstep stdin/stdout play, Linux-tested. |
@@ -297,6 +292,9 @@ Management sims: tick the simulation every N frames, draw static UI with one `ma
 | Issue | Solution |
 |---|---|
 | `pip install shrinko8` → 404 | Package is `shrinko`. |
+| `shrinko8: command not found` after `pip install --user` | Windows puts it in `%APPDATA%\Python\Python3XX\Scripts\`; use the full path or add it to PATH. |
+| Lint: "Identifier 'x' not found" for a real global | It's first assigned outside `_init`; add `--lint: x` comment. |
+| Lint: "only ever assigned to, never used" for something read via `_ENV[...]` | The linter can't see dynamic lookups; use a table. |
 | No `printh` output when launched normally | GUI exe; capture **stderr** too (`2>&1 \| cat`) or `printh(s,"f.txt")` (lands in root_path). |
 | Test runner sees only `RUNNING: ...` and no `INFO:` lines | You captured stdout only; `printh` goes to stderr on Windows. |
 | `-x` never returns | Game loop running or **syntax error** (hangs). Use `extcmd("shutdown")` + `timeout`; check output for `syntax error`. |
@@ -334,4 +332,4 @@ itch.io tag pages (`itch.io/game-assets/tag-pico-8`, `/free/tag-pico-8`, `/asset
 ---
 
 *Last updated: 2026-10-19*
-*Setup verified on: Windows 10, PICO-8 v0.2.7, Git Bash (headless -x behaviour, stderr capture, rot90/sset, tonum(s,2) money, _ENV lookup smoke-tested; shrinko8 commands from source/docs, not yet run locally)*
+*Setup verified on: Windows 10, PICO-8 v0.2.7, shrinko8 v1.2.7d, Git Bash (headless -x behaviour, stderr capture, rot90/sset, tonum(s,2) money, shrinko8 lint/count with #include all run locally)*
