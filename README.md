@@ -132,6 +132,7 @@ Override the port with the `PORT` env var (e.g. `PORT=3000 npm run preview`).
 | [MapLibre GL JS + react-map-gl Setup Guide](guides/maplibre-react-map-gl.md) | MapLibre GL JS is an open-source fork of Mapbox GL JS. `react-map-gl` v8 provides a React adapter that works with both MapLibre and Mapbox. Together t |
 | [MapLibre Vessel Animation — lerp + requestAnimationFrame](guides/maplibre-vessel-animation.md) |  |
 | [Memory MCP Server](guides/memory-mcp-server.md) | Provides a persistent knowledge graph for AI assistants via MCP. Stores entities, observations, and relations that persist across conversations. Usefu |
+| [PICO-8 (Lexaloffle fantasy console): agent development guide](guides/pico-8.md) | PICO-8 is a fantasy console: 128x128 screen, 16 colours (+16 "secret" ones), 4-channel audio, Lua 5.2-derived dialect, carts saved as plain-text `.p8` |
 | [Project Voltron](guides/project-voltron.md) | Project Voltron is an MCP server that provides a team of specialized Claude Code subagents (`.claude/agents/`) along with CLAUDE.md project context te |
 | [Project Voltron — Docker Agent Setup](guides/project-voltron-docker.md) | Project Voltron runs specialist Claude Code agents inside Docker containers via `run_agent_in_docker`. The container mounts the project workspace and  |
 | [Prometheus + Grafana on Docker Compose](guides/prometheus-grafana-docker-compose.md) | Running a full observability stack (Prometheus, Grafana, exporters) via Docker Compose on a Linux host (tested on Amazon Linux 2023 on EC2 t3.small). |
