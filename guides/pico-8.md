@@ -1,0 +1,305 @@
+---
+id: pico-8
+type: guide
+title: pico-8
+embedding_version: 1
+---
+
+# PICO-8 (Lexaloffle fantasy console): agent development guide
+
+<!-- Researched against PICO-8 v0.2.7 (cart "version 43") on Windows 10. Items tagged [VERIFIED-LOCAL] were smoke-tested on a real install; [MANUAL] = official manual; [SRC] = read in tool source; [UNVERIFIED] = test before relying on it. -->
+
+## Quick Reference
+
+**Install:** PICO-8 is paid (lexaloffle.com). The Windows installer puts it in `C:\Program Files (x86)\PICO-8\` (`pico8.exe`, `pico8.dat`, `SDL2.dll`, `pico-8_manual.txt` — the full manual + changelog; read it locally). User data: `%APPDATA%\pico-8\` (carts/, backup/, cdata/, plates/, log.txt; `config.txt` only appears after the first *clean* exit).
+
+**Companion tool (recommended):**
+```bash
+python -m pip install shrinko      # PyPI name is "shrinko" (NOT shrinko8 -> 404). Gives `shrinko8` + `shrinkotron`; pulls pillow + lupaz8
+# or standalone exe: https://github.com/thisismypassport/shrinko8/releases (shrinko.zip)
+```
+
+**Every-edit gate:**
+```bash
+shrinko8 game.p8 --lint --no-lint-fail --count --error-format tabbed
+# exit: 0 ok | 1 syntax/compile error | 2 lint warnings | 3 failure | 4 #include not found
+# without --no-lint-fail, counts may not print when lint fails
+```
+
+**Headless run with captured output (Git Bash)** [VERIFIED-LOCAL]:
+```bash
+P="/c/Program Files (x86)/PICO-8/pico8.exe"
+timeout -k 2 30 "$P" -home "$(pwd)/.build/p8home" -root_path "$(pwd)" -volume 0 -x "$(cygpath -m test_run.p8)" 2>&1 | tee .build/run.log
+# printh() lines arrive on stdout prefixed "INFO: "; grep for "runtime error"/"syntax error"
+```
+
+**Launch for a human playtest:**
+```bash
+cmd //c start "" "C:\Program Files (x86)\PICO-8\pico8.exe" -windowed 1 -run "$(cygpath -w game.p8)"
+# human presses Ctrl+R after each external edit to reload
+```
+
+**Verify:** `"$P" -x hello.p8 2>&1 | cat` prints `INFO: <your printh text>`.
+
+## Overview
+
+PICO-8 is a fantasy console: 128x128 screen, 16 colours (+16 "secret" ones), 4-channel audio, Lua 5.2-derived dialect, carts saved as plain-text `.p8` (diff-friendly) or `.p8.png` images. An agent can do almost everything through files + CLI: write Lua, generate gfx/map/sfx data as hex, lint/count with shrinko8, run carts headlessly and capture `printh` output, dump the framebuffer to get screenshots. What it can't do: see/hear the live game — the human judges feel, art and sound.
+
+Lessons from people who've used LLM agents on PICO-8: agents do logic, systems, data plumbing and refactors well; **AI-drawn pixel art and visual styling fails repeatedly** — keep the human (or a pre-made asset pack) on art, use agent-generated placeholders only.
+
+## Hard limits
+
+| Limit | Value | Notes |
+|---|---|---|
+| Tokens | **8192** | Usually the first wall. `#include`d code counts. |
+| Characters | 65535 | P8SCII chars (a glyph emoji = 1). |
+| Compressed code | **15360 B** (manual) / 15616 (code region, what tools report) | Only enforced for `.p8.png`/`.p8.rom`/exports. Target < 15360. shrinko8 compresses better than PICO-8 — leave margin. |
+| Lua RAM | 2 MB | `stat(0)` = KB used. |
+| CPU | `stat(1)` 1.0 = 100% of frame | `_update60` halves per-frame budget. Over budget → 30→15 fps (or 60→30), `_update` called twice per `_draw`. |
+| Sprites / map | 256 8x8 sprites; map 128x32 (128x64 using shared memory) | Sprites 128-255 **are** map rows 32-63 (0x1000-0x1fff). Use one or the other. |
+| Audio | 64 SFX, 64 music patterns, 4 channels | |
+| Save data | `cartdata(id)` → 64 numbers (256 B) via `dget/dset` | Up to 4 ids/session (0.2.7). Pack bits/shorts via `poke` at 0x5e00. |
+| Extra RAM | 0x8000-0xffff (32 KB) | RAM only, not stored in cart. |
+
+**Token rules** [SRC shrinko8 tokenizer]: free = `, . : ; :: ) ] } end local`, comments, whitespace, unary `-`/`~` on a literal. 1 token = each identifier, literal (any-length string = 1), opening bracket, keyword, operator, compound assignment (`+=` is 1). So `f"str"` = 2, `f("str")` = 3; `t.k` = 2, `t["k"]` = 3; `local` costs nothing.
+
+## The .p8 text format
+
+```
+pico-8 cartridge // http://www.pico-8.com
+version 43
+__lua__
+-- code (tabs separated by a line that is exactly -->8)
+__gfx__
+__label__
+__gff__
+__map__
+__sfx__
+__music__
+```
+Order is what PICO-8 writes; reader is header-driven. Omitted sections / trailing lines = defaults. Short lines are zero-padded. Always write the 2 header lines. LF endings, UTF-8 no BOM, lowercase hex.
+
+| Section | Shape | Encoding |
+|---|---|---|
+| `__gfx__` | ≤128 lines × 128 hex | **1 digit per pixel, visual left→right** (RAM is nibble-swapped: low nibble = left pixel — the file is NOT). Sprite n top-left = x `(n%16)*8`, y `(n\16)*8`. Lines 64-127 = shared memory = map rows 32-63 (map byte written low nibble first there). |
+| `__gff__` | 2 lines × 256 hex | 1 byte (2 hex, MSB first) of flags per sprite; flag 0 = bit value 1. |
+| `__label__` | 128 × 128 | like gfx but `0-9a-v` = 32 colours (`g`-`v` = secret colours 128-143). |
+| `__map__` | ≤32 lines × 256 hex | 1 byte per tile, rows 0-31. |
+| `__sfx__` | 64 lines × 168 hex | 8 hex header = 4 bytes: editor mode/filters, **speed** (≈1/120 s per note per unit), loop start, loop end (end=0 → start acts as length). Then 32 notes × 5 hex `PPWVE`: pitch 00-3f (C0..D#5), waveform 0-7 (8-f = custom instrument sfx 0-7), volume 0-7 (0 = rest), effect 0-7 (none, slide, vibrato, drop, fade-in, fade-out, arp fast, arp slow). Waveforms: 0 triangle, 1 tilted saw, 2 saw, 3 square, 4 pulse, 5 organ, 6 noise, 7 phaser. Empty sfx 1-63 default speed 16: `00100000` + `00000`×32. |
+| `__music__` | 64 lines `FF AABBCCDD` | flags bit0 loop-start, bit1 loop-end, bit2 stop. Channel byte = sfx id; **0x40 bit = channel off** (empty pattern `00 41424344`). |
+| `__meta:name__` | free text | preserved by PICO-8; for tools. |
+
+Generation pitfalls:
+- **Lowercase code only.** Uppercase ASCII = "puny" glyphs and distinct identifiers (`PRINT` is undefined). Only exception: `_ENV`.
+- Never start/end code with `-->8` or put two in a row.
+- A line that starts and ends with `__` inside code (e.g. in a multiline string) is parsed as a section header.
+- Button glyphs (`⬅️➡️⬆️⬇️🅾️❎`) are multi-codepoint UTF-8 — prefer `btn(0..5)`.
+- Never hand-type large hex blobs; generate with a script.
+
+## Recommended project layout & editing workflow
+
+```
+game.p8          # thin cart: header, __lua__ with only #include lines, + gfx/map/sfx/music data
+src/*.lua        # all code (agent edits these)
+tests/*.lua      # test drivers
+tools/           # runner, framebuffer->png, png->gfx scripts
+.build/ shots/   # gitignored
+```
+```
+__lua__
+#include src/util.lua
+#include src/main.lua
+```
+- `#include` [MANUAL+VERIFIED-LOCAL]: path relative to the cart file; resolved at each run (Ctrl+R picks up `.lua` edits even if `.p8` unchanged); **not recursive**; also `#include other.p8:N` (one tab) / `other.p8` (all tabs). `.p8` saves keep the lines; `.p8.png`/rom/exports flatten them.
+- **Reload rules:** no file watcher. Ctrl+R reloads the `.p8` only if PICO-8 has *no unsaved editor changes*; otherwise "DIDN'T RELOAD; UNSAVED CHANGES". If the human saves (Ctrl+S) in PICO-8, it rewrites the whole `.p8` and clobbers agent edits to data sections → agent edits `src/*.lua`; touches `game.p8` data only when the human has saved/closed.
+- `.gitattributes`: `*.p8 text eol=lf`, `*.lua text eol=lf`, `*.p8.png binary`. `__gfx__` merge conflicts aren't hand-resolvable — pick a side.
+- Inside PICO-8 (console `load/save/cd/ls`, `printh` files) paths are relative to **root_path**; `-export` paths are relative to the **OS cwd**.
+
+## Command line (Windows)
+
+`pico8.exe [switches] [cart]`. It's a 32-bit **GUI-subsystem** exe: `cmd` returns immediately; Git Bash/PowerShell `-Wait` block.
+
+| Switch | Use |
+|---|---|
+| `-run cart` | load & run (window). Pause menu gains SHUTDOWN. |
+| `-x cart` | headless run (see below). |
+| `-export "args"` | headless EXPORT then exit, e.g. `pico8.exe game.p8 -export "-f game.html"` / `"game.p8.png"` / `"-i 32 -s 2 -c 12 game.bin"`. Args lowercase. |
+| `-p "str"` | param readable via `stat(6)` (e.g. test mode flags). |
+| `-home dir` | config/log/backup/cdata location — **sandbox test runs with this**. |
+| `-root_path dir` | virtual drive root. |
+| `-desktop dir` | where screenshots/GIFs/wavs go. |
+| `-windowed 1 -width N -height N`, `-volume 0`, `-screenshot_scale N`, `-gif_len N`, `-accept_future 1`, `-global_api 1` | misc. No `-frames` switch exists. |
+
+### Headless `-x` behaviour [VERIFIED-LOCAL, v0.2.7, Win10, Git Bash]
+- **stdout is capturable when piped** (`2>&1 | cat`). `printh(s)` → `INFO: s`. Top-level output comes before a `RUNNING: <path>` line.
+- **The game loop runs**: `_update`/`_draw` are called at real-time speed. Without a stop condition it runs forever → always end with `extcmd("shutdown")` (works under `-x`, exits within ~1 s) and wrap in `timeout`.
+- **Runtime error → prints and exits** (exit code 0):
+  ```
+  runtime error line 2 tab 0
+   return q.y
+  attempt to index local 'q' (a nil value)
+  src/mod.lua line 4          <- included file + real line are reported
+  in boom line 2 (tab 0)
+  at line 1 (tab 1)
+  ```
+  Line numbers are 1-based **within the tab** (or within the included file).
+- **Syntax error → prints `syntax error` / `unclosed if at line 2 (tab 0)` then HANGS** until killed.
+- **Exit code is always 0 / meaningless** → parse output for `runtime error`, `syntax error`, your own `@fail` markers, and a final `@done` sentinel.
+- `printh(s, "out.txt", true)` writes to **root_path** (not OS cwd). Allowed extensions include `.txt`; rate limit 10 MB / 64 files per minute.
+- Kill by PID (Python `proc.kill()` / `timeout`), never `taskkill /IM pico8.exe` — that kills the human's playtest window too.
+- Use `-home <project>/.build/p8home` so tests don't touch the user's config, cartdata or backups.
+
+### Test-driver pattern (headless, deterministic)
+Runner copies `game.p8` → `.test_run.p8` **next to it** (so `#include`s resolve), appends a tab, runs `-x`, parses stdout:
+```lua
+-->8
+-- test driver
+local held={}
+function btn(i) return held[i]==true end   -- scripted input
+function btnp(i) return held[i]==true end
+local function ok(c,m) printh((c and "@pass " or "@fail ")..m) end
+_init()
+for f=1,300 do                 -- drive frames manually: runs as fast as host allows
+ held[1]=f<60                  -- hold right 2 s
+ _update()                     -- or _update60()
+end
+ok(player.x>40,"player moved right")
+_draw()
+-- framebuffer dump: 128 lines of 128 hex (screen RAM: low nibble = left pixel)
+local hx="0123456789abcdef"
+for y=0,127 do local s=""
+ for i=0,63 do local b=peek(0x6000+y*64+i)
+  s..=sub(hx,b%16+1,b%16+1)..sub(hx,b\16+1,b\16+1) end
+ printh("@px "..s) end
+for i=0,15 do printh("@pal "..i.." "..peek(0x5f10+i)) end  -- display palette (>=128 = secret colours)
+printh("@done")
+_init=nil _update=nil _update60=nil _draw=nil
+extcmd("shutdown")
+```
+A ~50-line stdlib Python script maps `@px` lines through `@pal` + the RGB table below and writes a PNG (zlib+struct, scale ×4) the agent can view. Use `b\16` not `b>>4` (`>>` keeps fraction bits). Also run soak tests (thousands of frames, random input) to catch nil errors and 32767 overflow.
+
+Alternative screenshot (window, `-run`): `-desktop <dir> -screenshot_scale 1`, then in a debug build `extcmd("set_filename","shot") extcmd("screen")` (no `%d` → overwrite). Keys: Ctrl+6 screenshot, Ctrl+7 label, Ctrl+8/9 GIF, Ctrl+P CPU meter.
+
+## Palette
+
+| 0 #000000 | 1 #1D2B53 | 2 #7E2553 | 3 #008751 | 4 #AB5236 | 5 #5F574F | 6 #C2C3C7 | 7 #FFF1E8 |
+|---|---|---|---|---|---|---|---|
+| **8 #FF004D** | **9 #FFA300** | **10 #FFEC27** | **11 #00E436** | **12 #29ADFF** | **13 #83769C** | **14 #FF77A8** | **15 #FFCCAA** |
+
+Secret 128-143: #291814 #111D35 #422136 #125359 #742F29 #49333B #A28879 #F3EF7D #BE1250 #FF6C24 #A8E72E #00B543 #065AB5 #754665 #FF6E59 #FF9D81 — only via display palette `pal(c,128+k,1)`; still max 16 on screen.
+
+**PNG → `__gfx__`:** quantize to the 16 colours first (nearest RGB, no dithering), then either PICO-8 console `import sheet.png`, or `shrinko8 game.p8 .build/out.p8 --merge sheet.png gfx spritesheet` — **shrinko8's .p8 output inlines `#include`s**, so splice only the `__gfx__` block back into the real cart; or a Pillow script emitting 128 lines × 128 hex. Reverse: `--extra-output sheet.png spritesheet`. No WAV→sfx importer exists; generate sfx rows by script (or MIDI converters: midi2pico, Denote).
+
+## Language & API gotchas (top 20)
+
+1. **16.16 fixed point, silent wrap at 32767** (`32767+1==-32768`, `200*200==-25536`, literal `40000` wraps). Frame counters overflow after ~18 min at 30 fps; `for i=1,36000` runs 0 times; `dx*dx+dy*dy` overflows for dx>181 → scale down before squaring. **Money/scores:** store as 32-bit int `v>>16`, add `money+=n>>16`, compare `money>=n>>16`, print `tostr(money,2)`, parse `tonum(s,2)`; saves losslessly in one `dset` slot. (Don't multiply two shifted values.) Or hi/lo pair split at 10000.
+2. Lowercase source (see format section).
+3. **Draw state persists across frames**: camera, clip, pal, palt, fillp, color. Call `camera()` before HUD; `pal()` resets palettes *and* transparency.
+4. Sprites 128-255 = map rows 32-63.
+5. Trig in **turns** (0..1), `sin` inverted (y down). `atan2(dx,dy)` → 0..1.
+6. `sgn(0)==1`; `flr` toward −∞; `\` floor-div (`-7\2==-4`); `%` takes divisor's sign (`-1%10==9`).
+7. Divide by zero → ±0x7fff.ffff, no error; `x%0==0`. Bugs show as huge numbers, not crashes.
+8. `del(t,v)` removes first element **equal to v**; `deli(t,i)` by index. Deleting inside `for v in all(t)` is safe; in forward numeric loops iterate backwards.
+9. `#t` undefined with nil holes; `pairs` order random → arrays for ordered update/draw.
+10. **No stdlib**: no `string.*/table.*/math.*/require/os/io`; no `s:sub()`. Use `sub ord chr tostr tonum split add del deli count all foreach flr ceil mid rnd srand`, `s[i]` single char.
+11. `btnp` only meaningful in `_update` (state resets each update). Repeat = 15 frames then every 4; tune `poke(0x5f5c,delay) poke(0x5f5d,rate)` (255 = no repeat).
+12. Game logic belongs in `_update` (may run 2× per draw when over budget). `time()` counts updates, not wall-clock; wraps ~9 h [UNVERIFIED].
+13. **Mouse/keyboard are optional hardware** (`poke(0x5f2d,1)`; `stat(32/33)` x/y, `stat(34)` buttons, `stat(36)` wheel, `stat(30/31)` keys). Handhelds/phones lack them; "p"/Enter open pause (`poke(0x5f30,1)` suppresses one frame). Cursor-driven games (management sims): d-pad cursor primary, mouse optional.
+14. Only colour 0 transparent by default (spr/map/tline). To draw black: `palt(0,false)` + another key colour.
+15. Secret palette only through display palette (`pal(...,1)`).
+16. `map()` skips tile 0; `mset` changes RAM only (`reload(0x2000,0x2000,0x1000)` restores); `mget` out of bounds → 0.
+17. `cartdata("author_game")` once before `dget/dset`; version your save layout (magic number in slot 0).
+18. **Coroutine errors are silent** → `assert(coresume(c))`.
+19. `local _ENV=self` drops `self.` (saves tokens) but hides globals unless the object's metatable has `__index=_ENV`; never assign global `_ENV`. Breaks shrinko8 aggressive minify (use `--minify-safe-only`).
+20. Dialect: `+= -= ..= \=` etc. must be whole single-line statements (`local x+=1` illegal); `if (c) stmt` needs parens & one line; `!=` ok; `?x` = print; `tonum("abc")` returns *nothing* (flag 0x4 → 0). `print` without x,y scrolls the console. `rnd(str)` no longer works (0.2.5c); `rnd(tbl)` picks an element.
+
+Useful `stat()`: 0 mem KB, 1 CPU, 6 param, 7 fps, 46-49 sfx per channel, 54-57 music state, 80-95 date/time. Debug: `printh`, `stop(msg)` (then `resume`, `.` single-steps), `assert`, `trace()`.
+
+## Idiomatic architecture snippets
+
+```lua
+-- state machine: swap callbacks (keep using the name you started with: _update or _update60)
+function go_game() init_game() _update60=game_upd _draw=game_drw end
+
+-- entity class
+ent={} ent.__index=ent
+function ent:new(o) return setmetatable(o or {},self) end
+
+-- AABB
+function hit(a,b) return a.x<b.x+b.w and b.x<a.x+a.w and a.y<b.y+b.h and b.y<a.y+a.h end
+
+-- map-flag collision (flag 0 = solid)
+function solid(px,py) return fget(mget(px\8,py\8),0) end
+
+-- coroutine sequence
+function wait(n) for i=1,n do yield() end end
+
+-- pause menu (index 1-5, label <=16 chars)
+menuitem(1,"save game",function() save() end)
+```
+Management sims: tick the simulation every N frames, draw static UI with one `map()` call, `print` with `\#c` background codes for panels, money as `>>16`. Tweening: `x+=(tx-x)*0.2`. Fades: per-colour darkening ramp applied with `pal(c,ramp[c],1)`.
+
+**Token savers** (manual): data as strings + `split"1,2,3"` (any-length string = 1 token), `a,b,c=1,2,3`, paren-less calls `f"x"`/`f{}`, `t.k` over `t["k"]`, `\` for `flr(a/b)`, `?` for print, shorthand `if`, `_ENV`, `foreach`/`all`. shrinko8 `--minify` handles renames/whitespace/const-folding (`--[[$const]] DEBUG=false` strips dead branches). Parens-8 compiler mode saves more but is AGPLv3 and slower.
+
+## Recommended agent loop
+
+1. Edit `src/*.lua` (data sections only via scripts, only when human has no unsaved PICO-8 edits).
+2. `shrinko8 game.p8 --lint --no-lint-fail --count --error-format tabbed` — fail on exit 1/4; fix or annotate lint (declare non-`_init` globals with `--$lint: name1, name2`). Keep tokens < ~7800 for headroom.
+3. Headless test: generate `.test_run.p8` with driver, `timeout 60 pico8.exe -home .build/p8home -x ...`, parse `@pass/@fail/@done` + error lines.
+4. Framebuffer dump → PNG → view it.
+5. Human playtest window (`-run`), Ctrl+R after each change; human judges feel/art/audio.
+6. Commit with LF; art in its own commits.
+
+## Tooling landscape (status as of late 2026)
+
+| Tool | Verdict |
+|---|---|
+| **shrinko8** (thisismypassport) | Active, supports 0.2.7. Lint, count, minify, convert p8/png/rom/lua/js, gfx merge, `.bin` export via `--pico8-dat`. Parses full dialect. **Use it.** |
+| **lupaz8** (`pip install lupaz8`) | z8lua (PICO-8 dialect + fixed point) in Python; good for logic unit tests outside PICO-8 with a hand-written API shim (sub/add/del/all/rnd/spr/btn… must be stubbed). |
+| pico8-ls (VS Code `PollywogGames.pico8-ls`) | Active editor language server; no CLI. |
+| pico-8-mcp (nutshot2000, Windows-first, Python/uv) | MCP server: validate, count, headless simulate w/ scripted inputs, window capture, set_sprite/set_sfx. Its SKILL.md "hard rules" are worth reading. smartfrog/pico8-mcp (Node) does lockstep stdin/stdout play, Linux-tested. |
+| picotool (dansanderson) | **Avoid on 0.2.x** — misparses `?` and `f"x"`. |
+| zepto8/z8tool, picolove, fake-08 | Emulators; experimental/outdated API — don't use for verification; real `pico8 -x` is better. |
+| LuaLS + pico8-definitions | False errors on `?`, `\`, `if(c)`, `@` — editor hints only. |
+
+## Troubleshooting
+
+| Issue | Solution |
+|---|---|
+| `pip install shrinko8` → 404 | Package is `shrinko`. |
+| No `printh` output when launched normally | GUI exe; pipe stdout (`2>&1 \| cat`) or `printh(s,"f.txt")` (lands in root_path). |
+| `-x` never returns | Game loop running or **syntax error** (hangs). Use `extcmd("shutdown")` + `timeout`; check output for `syntax error`. |
+| Edits not picked up | PICO-8 has unsaved changes → "DIDN'T RELOAD". Save/discard in PICO-8 or relaunch. |
+| `X` and `x` treated differently / `PRINT` undefined | Uppercase = puny glyphs; lowercase everything. |
+| Score goes negative | 16.16 overflow; use `>>16` integer storage. |
+| Map bottom half corrupted | You drew in sprite banks 2-3 (shared memory). |
+| HUD scrolls with world | Reset `camera()` before drawing HUD. |
+| Cart won't save as .p8.png | Compressed > 15360 B; check `shrinko8 --count`, minify. |
+| "future version" error | `-accept_future 1`. |
+| Settings lost | config.txt written only on clean exit; killed process doesn't save. |
+
+## Platform Notes (Windows)
+- Git Bash: quote `"C:\Program Files (x86)\..."` (space + parens); `cygpath -m` gives `C:/...` paths PICO-8 accepts; `taskkill //F`, `cmd //c start "" ...`.
+- Detach the playtest window with `cmd //c start` or PowerShell `Start-Process` (a backgrounded `&` may die with the shell).
+- Backups accumulate in `%APPDATA%\pico-8\backup`.
+- Exported binaries write `printh` files next to the exe.
+
+## Asset sources
+itch.io tag pages (`itch.io/game-assets/tag-pico-8`, `/free/tag-pico-8`, `/assets-cc0/free/tag-pico-8`), OpenGameArt "pico-8", Lexaloffle BBS carts (viewable source; default BBS licence CC4-BY-NC-SA → non-commercial). Learning: Lazy Devs (YouTube), NerdyTeachers, awesome-pico-8.
+
+## References
+- Manual: https://www.lexaloffle.com/dl/docs/pico-8_manual.html (local `pico-8_manual.txt` includes changelog)
+- shrinko8: https://github.com/thisismypassport/shrinko8 · https://pypi.org/project/shrinko/
+- lupaz8: https://github.com/thisismypassport/lupaz8
+- pico-8-mcp: https://github.com/nutshot2000/pico-8-mcp · https://github.com/smartfrog/pico8-mcp
+- Token tricks: https://github.com/seleb/PICO-8-Token-Optimizations
+- .p8 format (archived wiki): https://web.archive.org/web/2024/https://pico-8.fandom.com/wiki/P8FileFormat
+- Palette: https://nerdyteachers.com/PICO-8/Guide/Colors · hidden: https://nerdyteachers.com/PICO-8/Guide/HIDDEN_PALETTE
+- Large numbers: https://lexaloffle.com/bbs/?pid=156546 · `_ENV`: https://www.lexaloffle.com/bbs/?tid=43912
+- awesome-pico-8: https://github.com/pico-8/awesome-pico-8
+- AI-dev experience: https://www.lexaloffle.com/bbs/?tid=153543 · https://lgallardo.com/2025/11/09/pico8-ai-game-development/
+
+---
+
+*Last updated: 2026-10-19*
+*Setup verified on: Windows 10, PICO-8 v0.2.7, Git Bash (headless -x behaviour smoke-tested; shrinko8 commands from source/docs, not yet run locally)*
