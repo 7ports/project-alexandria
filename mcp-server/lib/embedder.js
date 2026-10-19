@@ -49,7 +49,17 @@ async function getPipeline() {
     env.allowRemoteModels = true;
     env.allowLocalModels = true;
 
-    return pipeline('feature-extraction', MODEL_ID);
+    // Transformers.js resolves a download (FileCache.put) without awaiting the cached file's
+    // close. On Windows the native runtime then cannot open the just-downloaded model
+    // ("system error number 13", a sharing violation), so a cold-cache first load fails once.
+    // Every write was awaited, so the file is complete; a retry loads it from the cache.
+    try {
+      return await pipeline('feature-extraction', MODEL_ID);
+    } catch (err) {
+      if (!/system error number 13\b/.test(String(err && err.message))) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return pipeline('feature-extraction', MODEL_ID);
+    }
   })();
 
   try {

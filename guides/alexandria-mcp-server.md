@@ -191,7 +191,6 @@ on a single platform.
 | `Vector index unavailable — reindex skipped` | extension cannot load | `npm run doctor` |
 | only `sqlite-vec-linux-x64` present on a Windows host | `node_modules` populated in a Linux/Docker context | delete `node_modules`, `npm install` on the host that runs the server |
 | `better_sqlite3.node is not a valid Win32 application` | same — the compiled binding is a Linux build | as above |
-| `embed-on-write FAILED (A dynamic link library (DLL) initialization routine failed ... onnxruntime_binding.node)` | Windows Visual C++ runtime older than 14.40 (see the embedder section below) | update the server (WebAssembly fallback); install the current VC++ 2015-2022 x64 redistributable for native speed |
 | `npm rebuild better-sqlite3` fails in node-gyp | the pinned version has no prebuild for your Node (e.g. `better-sqlite3@9` on Node 24), so it must compile, which needs a C++ toolchain | bump to `better-sqlite3@^12.11.1` and run Node **22+** (prebuilds for 22/24/25/26 on every OS; there is **no Windows prebuild for Node 20**, which is EOL anyway) rather than installing build tools |
 
 Do **not** work around a missing platform package by adding it to `dependencies`: those packages
@@ -211,37 +210,6 @@ const v = require('sqlite-vec'), Database = require('better-sqlite3');
 const db = new Database(':memory:'); v.load(db);
 console.log(db.prepare('select vec_version() as v').get());
 ```
-
-### The embedder: native ONNX Runtime, with a WebAssembly fallback
-
-Every query and every write is embedded through Transformers.js, which imports `onnxruntime-node`
-**statically**. If that native binary cannot load, importing Transformers.js throws and the whole
-embedder goes down: search degrades to substring, and every write reports
-`❌ NOT searchable — embed-on-write FAILED` — while an index-only `doctor` (before 2026-10-19)
-still said "healthy".
-
-The case seen in the wild:
-
-```
-A dynamic link library (DLL) initialization routine failed.
-...\onnxruntime-node\bin\napi-v3\win32\x64\onnxruntime_binding.node
-```
-
-on Windows hosts whose Visual C++ runtime is older than **14.40** (e.g. `msvcp140.dll`
-14.29 from a VS 2019-era redistributable). onnxruntime 1.21+ is built with VS 2022 17.10+, whose
-STL changed `std::mutex`; against an older runtime the DLL's static initialisation fails. No
-export is missing, so reinstalling `node_modules` does not help. **Fix on that host:** install the
-current [Visual C++ 2015-2022 Redistributable (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe).
-
-Since 2026-10-19 the server no longer needs that fix to work: `lib/onnx-backend.js` probes the
-native binding once and, when it will not load, redirects the `onnxruntime-node` import to
-onnxruntime-web's WebAssembly build (already installed as a Transformers.js dependency) through a
-`module.registerHooks` resolve hook (Node **22.15+**). Same model and vectors, slower (~2 s first
-embed including model load), fully offline — the shim points `wasmPaths` at the installed package
-instead of the CDN Transformers.js defaults to. `doctor` reports the native failure as a `WARN`
-with the remedy, and embeds one query end to end on whichever backend the server would use.
-
-`ALEXANDRIA_ONNX_BACKEND=native` disables the fallback (fail loudly); `=wasm` forces it.
 
 ### Running the tests
 
@@ -299,5 +267,5 @@ This means tool knowledge flows in both directions: Voltron improves its agent i
 
 ---
 
-*Last updated: 2026-10-19*
+*Last updated: 2026-09-28*
 *Setup verified on: Windows 10*
