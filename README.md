@@ -110,6 +110,7 @@ Override the port with the `PORT` env var (e.g. `PORT=3000 npm run preview`).
 | [AWS CLI v2](guides/aws-cli.md) | AWS CLI v2 is the unified command-line tool for managing AWS services. Used in this ecosystem primarily for S3 static site deployments, CloudFront CDN |
 | [Beads — Distributed Graph Issue Tracker for AI Agents](guides/beads.md) | Beads (`bd` CLI) is a distributed graph issue tracker designed for AI coding agents, powered by Dolt (a version-controlled SQL database). It provides  |
 | [Claude Code in GitHub Actions](guides/claude-code-github-actions.md) |  |
+| [Claude Code Remote Control: offload sessions to an always-on machine](guides/claude-code-remote-control-offload.md) | Use this when long or overnight work should keep running while your laptop sleeps, and you still want to watch/steer it from the laptop or phone. Alte |
 | [Claude in Chrome (Browser Automation)](guides/claude-in-chrome.md) | Claude in Chrome is a browser extension that allows Claude Code to control a Chrome browser — taking screenshots, clicking elements, filling forms, re |
 | [Claude Preview MCP Server](guides/claude-preview-mcp-server.md) | Claude Preview provides a built-in dev server launcher and browser preview for Claude Code. It can start local development servers, take screenshots,  |
 | [Client-Side Embedding Visualizer (static site / GitHub Pages)](guides/client-side-embedding-visualizer.md) | > |
@@ -140,6 +141,7 @@ Override the port with the `PORT` env var (e.g. `PORT=3000 npm run preview`).
 | [PICO-8 (Lexaloffle fantasy console): agent development guide](guides/pico-8.md) | PICO-8 is a fantasy console: 128x128 screen, 16 colours (+16 "secret" ones), 4-channel audio, Lua 5.2-derived dialect, carts saved as plain-text `.p8` |
 | [Project Voltron](guides/project-voltron.md) | Project Voltron is an MCP server that provides a team of specialized Claude Code subagents (`.claude/agents/`) along with CLAUDE.md project context te |
 | [Project Voltron — Docker Agent Setup](guides/project-voltron-docker.md) | Project Voltron runs specialist Claude Code agents inside Docker containers via `run_agent_in_docker`. The container mounts the project workspace and  |
+| [project-spider](guides/project-spider.md) | Install and setup notes for project-spider, a PowerShell supervisor that keeps one `claude remote-control --spawn worktree` server per project running |
 | [Prometheus + Grafana on Docker Compose](guides/prometheus-grafana-docker-compose.md) | Running a full observability stack (Prometheus, Grafana, exporters) via Docker Compose on a Linux host (tested on Amazon Linux 2023 on EC2 t3.small). |
 | [Publishing to npm — 2FA / access token gotcha](guides/npm-publish-2fa-tokens.md) |  |
 | [R / Rscript on Windows — Setup Guide](guides/r-windows-setup.md) |  |
