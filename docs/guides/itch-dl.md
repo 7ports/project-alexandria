@@ -2,7 +2,7 @@
 id: itch-dl
 type: guide
 title: itch-dl (download itch.io games and assets from the CLI)
-summary: "Install itch-dl with pip --user on Windows, find its exe off-PATH, authenticate with an itch.io API key, and what a download contains (files/, metadata.json, site.html with free-text licence)."
+summary: "Install itch-dl with pip --user on Windows, find its exe off-PATH, authenticate with a full itch.io API key (butler's key is rejected), and what a download contains (files/, metadata.json, site.html with free-text licence)."
 tags:
   - itch.io
   - itch-dl
@@ -35,10 +35,11 @@ python -m pip install --user itch-dl     # 1.0.0 as of 2026-10; needs Python 3.1
 
 ## Authenticate
 
-- Pass `--api-key <key>`, or keep the key in a profile (`--profile`). Get a key at https://itch.io/user/settings/api-keys.
+- Pass `--api-key <key>`, or keep the key in a profile (`--profile`). **Create a full key at https://itch.io/user/settings/api-keys.**
+- **butler's key does not work (verified 2026-10):** the key `butler login` saves in `~/.config/itch/butler_creds` is rejected by `api.itch.io/profile`, which itch-dl checks before every run. Don't bother wiring it up.
+- **Validate a key the way itch-dl does:** `GET https://api.itch.io/profile?api_key=<key>` returns `{"user": {...}}` for a usable key. A setup script can check this before saving the key.
 - **Keep the key off printed command lines and logs:** read it into a variable, pass `--api-key "$KEY"`, and scrub it from any captured output before saving it.
-- **A key issued by `butler login` may be scoped to uploads.** Test it with a real download before relying on it. If it fails with an auth or scope error, create a full API key in the itch.io settings.
-- **Claude Code auto mode blocks agents from reading credential files** (e.g. butler's `butler_creds`) as "credential exploration", even when the user asked for the key to be found. Moving a key into place is a step for the user to run themselves (e.g. a `!` command), not one to route through another session.
+- **Claude Code auto mode blocks agents from reading credential files** (e.g. `butler_creds`) as "credential exploration", even when the request was relayed from the user by another session. Moving a key into place is a step for the user: ship a small script they run themselves (one short command; long pasted one-liners tend to break when copied from a terminal), or have them ask in their own words in the session that will do it.
 
 ## Usage
 
@@ -66,5 +67,5 @@ Accepts a game/asset URL, a creator page, a collection, or a jam URL. To smoke-t
 
 ## Related Tools
 
-- itch-butler (uploading builds; `butler login` stores its key in the butler config folder)
-- A Claude Code skill built on this (fetch-assets) quarantines downloads, unpacks archives with traversal/link checks and writes a SOURCE.md with the licence text.
+- itch-butler (uploading builds; its saved key is upload-only for this purpose)
+- A Claude Code skill built on this (fetch-assets) quarantines downloads, unpacks archives with traversal/link checks, writes a SOURCE.md with the licence text, and ships a set-key script the user runs once per machine.

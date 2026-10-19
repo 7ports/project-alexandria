@@ -131,7 +131,7 @@ Override the port with the `PORT` env var (e.g. `PORT=3000 npm run preview`).
 | [GitHub MCP Server](guides/github-mcp-server.md) | Provides GitHub API access via MCP, enabling AI assistants to interact with repositories, issues, pull requests, branches, releases, and more through  |
 | [GitHub Pages — Jekyll via GitHub Actions](guides/github-pages-jekyll-actions.md) | Deploy a Jekyll site from a `docs/` subdirectory using GitHub Actions (not the legacy "Deploy from branch" method). Required when using `actions/deplo |
 | [Go + Stringer Setup (Windows)](guides/go-stringer.md) |  |
-| [itch-dl (download itch.io games and assets from the CLI)](guides/itch-dl.md) | Install itch-dl with pip --user on Windows, find its exe off-PATH, authenticate with an itch.io API key, and what a download contains (files/, metadat |
+| [itch-dl (download itch.io games and assets from the CLI)](guides/itch-dl.md) | Install itch-dl with pip --user on Windows, find its exe off-PATH, authenticate with a full itch.io API key (butler's key is rejected), and what a dow |
 | [itch.io butler (CLI for pushing builds)](guides/itch-butler.md) |  |
 | [Local vs Hosted Embeddings for Semantic Search](guides/embeddings-local-vs-hosted.md) | Embedding models turn text into dense vectors so you can do semantic similarity search — "find docs that mean the same thing as this query" even when  |
 | [Loki + Grafana Stack (LGTM)](guides/loki-grafana-stack.md) |  |
