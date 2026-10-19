@@ -96,7 +96,7 @@ if (Database) {
     ok('vector index opens');
     require('../lib/index-store').close(store);
   } catch (err) {
-    bad(`vector index will not open: ${err.message}`, 'check .index/ permissions, then `npm run reindex`');
+    bad(`vector index will not open: ${err.message}`, 'check .index/ permissions, then run the `reindex_knowledge` MCP tool');
   }
 }
 
@@ -134,7 +134,7 @@ try {
     `embedder fails: ${String(err && err.message).split(/\r?\n/)[0]}`,
     'semantic search and embed-on-write are both down until this is fixed. If the native binary '
       + 'failed above, fix that; otherwise check network access to huggingface.co for the first '
-      + 'model download, then `npm run reindex`'
+      + 'model download, then run the `reindex_knowledge` MCP tool'
   );
 }
 

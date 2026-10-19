@@ -49,16 +49,20 @@ async function getPipeline() {
     env.allowRemoteModels = true;
     env.allowLocalModels = true;
 
-    // Transformers.js resolves a download (FileCache.put) without awaiting the cached file's
-    // close. On Windows the native runtime then cannot open the just-downloaded model
-    // ("system error number 13", a sharing violation), so a cold-cache first load fails once.
-    // Every write was awaited, so the file is complete; a retry loads it from the cache.
-    try {
-      return await pipeline('feature-extraction', MODEL_ID);
-    } catch (err) {
-      if (!/system error number 13\b/.test(String(err && err.message))) throw err;
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return pipeline('feature-extraction', MODEL_ID);
+    // On Node, Transformers.js downloads the model, resolves without awaiting the cached
+    // file's close, and hands onnxruntime only the path. On a cold Windows cache the native
+    // open then hits a sharing violation ("system error number 13") — while the write handle
+    // closes, and for seconds longer when antivirus scans the fresh ~130 MB file (a single
+    // 500 ms retry still failed in CI). Every write was awaited, so the file is complete;
+    // back off and load it from the cache once the handle is released.
+    for (const delayMs of [500, 1000, 2000, 4000, 0]) {
+      try {
+        return await pipeline('feature-extraction', MODEL_ID);
+      } catch (err) {
+        if (!delayMs || !/system error number 13\b/.test(String(err && err.message))) throw err;
+        console.error(`[alexandria] model file still locked after download; retrying in ${delayMs} ms`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
     }
   })();
 
