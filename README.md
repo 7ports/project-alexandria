@@ -113,12 +113,15 @@ Override the port with the `PORT` env var (e.g. `PORT=3000 npm run preview`).
 | [Claude in Chrome (Browser Automation)](guides/claude-in-chrome.md) | Claude in Chrome is a browser extension that allows Claude Code to control a Chrome browser — taking screenshots, clicking elements, filling forms, re |
 | [Claude Preview MCP Server](guides/claude-preview-mcp-server.md) | Claude Preview provides a built-in dev server launcher and browser preview for Claude Code. It can start local development servers, take screenshots,  |
 | [Client-Side Embedding Visualizer (static site / GitHub Pages)](guides/client-side-embedding-visualizer.md) | > |
+| [Cloudflare Worker on a custom domain (wrangler)](guides/cloudflare-worker-custom-domain.md) | routes with custom_domain: true; workers_dev turns off by default once routes exist |
+| [Cloudflare Workers + Vite + D1 (and Claude Code agent setup)](guides/cloudflare-workers-vite-d1.md) |  |
 | [Coplay (now Aura) — Unity Plugin & MCP](guides/coplay-unity-mcp.md) | Coplay (→ Aura) is an in-Editor AI assistant plugin for Unity. It exposes an MCP server (`coplay-mcp`) that lets external AI clients drive the Unity E |
 | [Coplay MCP (Unity Editor) — Gotchas & Workarounds](guides/coplay-mcp-unity-editor-gotchas.md) | Per-tool gotchas for driving the Unity Editor through Coplay MCP, and the file-based fallback playbook for when the Editor bridge is unavailable. |
 | [coplay-mcp-server (Unity Editor MCP)](guides/coplay-mcp-server.md) |  |
 | [Environment Canada Weather API (GeoMet OGC API)](guides/environment-canada-weather-api.md) | Environment Canada exposes real-time surface weather observations (SWOB) through the MSC GeoMet OGC API at `https://api.weather.gc.ca/`. No API key is |
 | [Express 5 + Node.js 20 + TypeScript](guides/express-5-node-typescript.md) |  |
 | [Fetch MCP Server](guides/fetch-mcp-server.md) | Provides web content fetching capabilities via MCP. Allows AI assistants to retrieve and process content from URLs, converting HTML to readable text.  |
+| [ffmpeg and gifski on Windows](guides/ffmpeg-gifski-windows.md) |  |
 | [Firebase MCP Server](guides/firebase-mcp-server.md) | Provides Firebase project management via MCP. Allows AI assistants to manage Firebase projects, apps, authentication, Firestore, Realtime Database, Ho |
 | [Fly.io Deployment — Node.js / TypeScript](guides/flyio-deployment.md) |  |
 | [Git MCP Server](guides/git-mcp-server.md) | Provides Git repository operations via MCP. Allows AI assistants to perform git status, diff, log, commit, branch management, and other git operations |
@@ -127,6 +130,7 @@ Override the port with the `PORT` env var (e.g. `PORT=3000 npm run preview`).
 | [GitHub MCP Server](guides/github-mcp-server.md) | Provides GitHub API access via MCP, enabling AI assistants to interact with repositories, issues, pull requests, branches, releases, and more through  |
 | [GitHub Pages — Jekyll via GitHub Actions](guides/github-pages-jekyll-actions.md) | Deploy a Jekyll site from a `docs/` subdirectory using GitHub Actions (not the legacy "Deploy from branch" method). Required when using `actions/deplo |
 | [Go + Stringer Setup (Windows)](guides/go-stringer.md) |  |
+| [itch.io butler (CLI for pushing builds)](guides/itch-butler.md) |  |
 | [Local vs Hosted Embeddings for Semantic Search](guides/embeddings-local-vs-hosted.md) | Embedding models turn text into dense vectors so you can do semantic similarity search — "find docs that mean the same thing as this query" even when  |
 | [Loki + Grafana Stack (LGTM)](guides/loki-grafana-stack.md) |  |
 | [MapLibre GL JS + react-map-gl Setup Guide](guides/maplibre-react-map-gl.md) | MapLibre GL JS is an open-source fork of Mapbox GL JS. `react-map-gl` v8 provides a React adapter that works with both MapLibre and Mapbox. Together t |
@@ -141,7 +145,9 @@ Override the port with the `PORT` env var (e.g. `PORT=3000 npm run preview`).
 | [R / Rscript on Windows — Setup Guide](guides/r-windows-setup.md) |  |
 | [Rancher Desktop on Windows (Colima equivalent)](guides/rancher-desktop-windows.md) |  |
 | [Server-Sent Events (SSE)](guides/sse-server-sent-events.md) |  |
+| [steamcmd — uploading game builds to Steam (SteamPipe) on Windows](guides/steamcmd-steampipe-uploads.md) |  |
 | [Supertest](guides/supertest.md) |  |
+| [Syncing Claude Code config across machines](guides/claude-code-config-sync.md) | Make ~/.claude a private git repo with an allowlist .gitignore; SessionStart/Stop hooks commit, pull --rebase and push. Gotchas for Windows, secrets,  |
 | [Terraform — AWS EC2 Setup](guides/terraform-aws-ec2.md) | Provisioning an EC2 instance with VPC, security groups, IAM role, and Elastic IP using Terraform >= 1.6 with the AWS provider ~> 5.0. |
 | [Terraform — AWS Frontend Hosting (S3 + CloudFront OAC + ACM + Route53)](guides/terraform-aws-frontend-hosting.md) |  |
 | [Toronto City Open Data — Ferry Service Status API](guides/toronto-city-open-data-ferry.md) | The City of Toronto publishes a live, no-auth JSON endpoint for ferry service status: |
@@ -151,7 +157,10 @@ Override the port with the `PORT` env var (e.g. `PORT=3000 npm run preview`).
 | [Unity URP 2D — ParticleSystem renders magenta / ignores color](guides/unity-urp-2d-particle-materials.md) |  |
 | [Unity URP — Particle System colors render magenta / ignore Start Color](guides/unity-urp-particle-material-color.md) |  |
 | [Unity — Editing the Physics2D Layer Collision Matrix from a Script (persisted)](guides/unity-physics2d-layer-collision-matrix-scripting.md) |  |
+| [Unity — Runtime Mesh Slicing with OpenFracture](guides/unity-openfracture-runtime-mesh-slicing.md) | Installing OpenFracture on Unity 6, calling Fragmenter.Slice with your own fragment template, and preparing a model (closed, single sub-mesh, no neste |
 | [Unity — Third Person Controller with Mixamo Clips, Input System & Cinemachine 3](guides/unity-third-person-controller-mixamo.md) | Recipe for a camera-relative third person controller in Unity 6: Mixamo FBX import fixes (Generic→Humanoid), scripted movement instead of root motion, |
+| [Unity: in-game video capture piped to ffmpeg, and capturing old commits](guides/unity-in-game-video-capture-ffmpeg.md) | captureFramerate + AsyncGPUReadback piped to ffmpeg for smooth unattended capture in built players; row-order and NVENC gotchas; a virtual-gamepad bot |
+| [Unity: test builds for the Steam Deck, and building from an editor-automation tool](guides/unity-steam-deck-test-build.md) | Windows x64 Unity builds run on Steam Deck via Proton; BuildPlayer must be deferred with delayCall when invoked from the editor loop; sideloading step |
 | [Vector Database Options: Embedded vs Managed](guides/vector-db-options.md) | Vector databases store embeddings alongside metadata and answer "nearest neighbor" queries efficiently. The key fork in the road is **embedded vs. ser |
 | [Vite Dev Server Proxy](guides/vite-dev-proxy.md) |  |
 | [vite-plugin-pwa — PWA Setup with Vite + Workbox](guides/vite-plugin-pwa.md) |  |
