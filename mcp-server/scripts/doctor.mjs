@@ -2,10 +2,11 @@
 /**
  * doctor.mjs — diagnose Alexandria's native read path.
  *
- * The semantic index rests on two native modules (better-sqlite3, sqlite-vec). When either
- * fails to load, search.js degrades to a substring scan and the server keeps answering, which
- * is the right runtime behaviour but a terrible diagnostic: every tool still returns text, so
- * the failure reads as "the knowledge base is empty" rather than "the index is down".
+ * The semantic index rests on two native modules (better-sqlite3, sqlite-vec), and every query
+ * and write is embedded through ONNX Runtime. When any of them fails to load, search.js
+ * degrades to a substring scan and the server keeps answering, which is the right runtime
+ * behaviour but a terrible diagnostic: every tool still returns text, so the failure reads as
+ * "the knowledge base is empty" rather than "the index is down".
  *
  * This script makes the failure legible and names the remedy. Run it whenever a search result
  * carries the DEGRADED READ PATH banner:
@@ -24,10 +25,16 @@ const require = createRequire(import.meta.url);
 const SERVER_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const problems = [];
+const warnings = [];
 const ok = (m) => console.log(`  ok    ${m}`);
 const bad = (m, remedy) => {
   console.log(`  FAIL  ${m}`);
   problems.push({ m, remedy });
+};
+// Working, but on a slower path than intended — reported with a remedy, does not fail.
+const warn = (m, remedy) => {
+  console.log(`  WARN  ${m}`);
+  warnings.push({ m, remedy });
 };
 
 console.log('Alexandria doctor');
@@ -93,7 +100,46 @@ if (Database) {
   }
 }
 
+// The embedder: onnxruntime-node's native binary, else the WebAssembly fallback in
+// lib/onnx-backend.js. Check the native binding by itself so a working fallback cannot hide
+// its failure, then embed one query end to end through whichever backend the server would use.
+try {
+  require('onnxruntime-node');
+  ok(`onnxruntime-node ${require('onnxruntime-node/package.json').version} native binary loads`);
+} catch (err) {
+  const msg = String(err && err.message).split(/\r?\n/)[0];
+  // DllMain failing with no missing export: onnxruntime 1.21+ is built with VS 2022 17.10+,
+  // whose std::mutex change breaks against msvcp140.dll older than 14.40.
+  const oldVcRuntime = process.platform === 'win32' && /initialization routine failed/i.test(msg);
+  warn(
+    `onnxruntime-node native binary does not load (${msg}); embedding falls back to WebAssembly`,
+    oldVcRuntime
+      ? 'the Visual C++ runtime is older than onnxruntime needs (msvcp140.dll 14.40+). Install the '
+        + 'current Microsoft Visual C++ 2015-2022 Redistributable (x64): '
+        + 'https://aka.ms/vs/17/release/vc_redist.x64.exe — then re-run the doctor'
+      : 'reinstall with `npm install` on this machine; search keeps working on the slower WebAssembly backend meanwhile'
+  );
+}
+
+if (!fs.existsSync(path.join(SERVER_DIR, '.models'))) {
+  console.log('  ..    embedding model not cached yet; downloading it once (~130 MB)');
+}
+try {
+  const embedder = require('../lib/embedder');
+  const vec = await embedder.embedQuery('alexandria doctor');
+  if (vec.length !== 384) throw new Error(`expected a 384-dim vector, got ${vec.length}`);
+  ok(`embedder produces 384-dim vectors (${embedder.getOnnxBackend().backend} backend)`);
+} catch (err) {
+  bad(
+    `embedder fails: ${String(err && err.message).split(/\r?\n/)[0]}`,
+    'semantic search and embed-on-write are both down until this is fixed. If the native binary '
+      + 'failed above, fix that; otherwise check network access to huggingface.co for the first '
+      + 'model download, then `npm run reindex`'
+  );
+}
+
 console.log('');
+for (const w of warnings) console.log(`Note: ${w.m}\n      ${w.remedy}\n`);
 if (problems.length === 0) {
   console.log('Semantic search is healthy.');
   process.exit(0);

@@ -16,6 +16,7 @@
 
 const path = require('path');
 const { recordEmbedLatency } = require('./metrics-hooks');
+const { selectOnnxBackend } = require('./onnx-backend');
 
 // 384-dim, higher MTEB than all-MiniLM at the same dimensionality.
 const MODEL_ID = 'Xenova/bge-small-en-v1.5';
@@ -33,6 +34,10 @@ async function getPipeline() {
   if (pipelinePromise) return pipelinePromise;
 
   pipelinePromise = (async () => {
+    // Before the import: falls back to WebAssembly when the native ONNX binary
+    // will not load (see onnx-backend.js).
+    selectOnnxBackend();
+
     // Dynamic import: ESM-only package loaded from a CommonJS module.
     const { pipeline, env } = await import('@huggingface/transformers');
 
@@ -103,4 +108,4 @@ async function embedQuery(text) {
   return embed('query: ', text);
 }
 
-module.exports = { embedPassage, embedQuery };
+module.exports = { embedPassage, embedQuery, getOnnxBackend: selectOnnxBackend };
