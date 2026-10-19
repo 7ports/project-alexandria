@@ -110,6 +110,7 @@ Override the port with the `PORT` env var (e.g. `PORT=3000 npm run preview`).
 | [AWS CLI v2](guides/aws-cli.md) | AWS CLI v2 is the unified command-line tool for managing AWS services. Used in this ecosystem primarily for S3 static site deployments, CloudFront CDN |
 | [Beads — Distributed Graph Issue Tracker for AI Agents](guides/beads.md) | Beads (`bd` CLI) is a distributed graph issue tracker designed for AI coding agents, powered by Dolt (a version-controlled SQL database). It provides  |
 | [Claude Code in GitHub Actions](guides/claude-code-github-actions.md) |  |
+| [Claude Code Remote Control: offload sessions to an always-on machine](guides/claude-code-remote-control-offload.md) | Use this when long or overnight work should keep running while your laptop sleeps, and you still want to watch/steer it from the laptop or phone. Alte |
 | [Claude in Chrome (Browser Automation)](guides/claude-in-chrome.md) | Claude in Chrome is a browser extension that allows Claude Code to control a Chrome browser — taking screenshots, clicking elements, filling forms, re |
 | [Claude Preview MCP Server](guides/claude-preview-mcp-server.md) | Claude Preview provides a built-in dev server launcher and browser preview for Claude Code. It can start local development servers, take screenshots,  |
 | [Client-Side Embedding Visualizer (static site / GitHub Pages)](guides/client-side-embedding-visualizer.md) | > |
