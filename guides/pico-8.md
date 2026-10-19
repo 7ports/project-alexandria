@@ -5,6 +5,13 @@ title: pico-8
 embedding_version: 1
 ---
 
+---
+id: pico-8
+type: guide
+title: pico-8
+embedding_version: 1
+---
+
 # PICO-8 (Lexaloffle fantasy console): agent development guide
 
 <!-- Researched against PICO-8 v0.2.7 (cart "version 43") on Windows 10. Items tagged [VERIFIED-LOCAL] were smoke-tested on a real install; [MANUAL] = official manual; [SRC] = read in tool source; [UNVERIFIED] = test before relying on it. -->
@@ -30,7 +37,8 @@ shrinko8 game.p8 --lint --no-lint-fail --count --error-format tabbed
 ```bash
 P="/c/Program Files (x86)/PICO-8/pico8.exe"
 timeout -k 2 30 "$P" -home "$(pwd)/.build/p8home" -root_path "$(pwd)" -volume 0 -x "$(cygpath -m test_run.p8)" 2>&1 | tee .build/run.log
-# printh() lines arrive on stdout prefixed "INFO: "; grep for "runtime error"/"syntax error"
+# printh() lines arrive prefixed "INFO: " on STDERR (Windows) - always merge stderr (2>&1, or
+# subprocess stderr=STDOUT in Python); grep for "runtime error"/"syntax error"
 ```
 
 **Launch for a human playtest:**
@@ -130,8 +138,8 @@ __lua__
 | `-desktop dir` | where screenshots/GIFs/wavs go. |
 | `-windowed 1 -width N -height N`, `-volume 0`, `-screenshot_scale N`, `-gif_len N`, `-accept_future 1`, `-global_api 1` | misc. No `-frames` switch exists. |
 
-### Headless `-x` behaviour [VERIFIED-LOCAL, v0.2.7, Win10, Git Bash]
-- **stdout is capturable when piped** (`2>&1 | cat`). `printh(s)` → `INFO: s`. Top-level output comes before a `RUNNING: <path>` line.
+### Headless `-x` behaviour [VERIFIED-LOCAL, v0.2.7, Win10]
+- **Output is capturable when piped, but `printh(s)` → `INFO: s` goes to stderr** on Windows; only the `RUNNING: <path>` banner is on stdout. Capturing stdout alone gets you nothing — merge the streams (`2>&1`; in Python `subprocess.run(..., stdout=PIPE, stderr=STDOUT)`). Top-level output comes before the `RUNNING:` line.
 - **The game loop runs**: `_update`/`_draw` are called at real-time speed. Without a stop condition it runs forever → always end with `extcmd("shutdown")` (works under `-x`, exits within ~1 s) and wrap in `timeout`.
 - **Runtime error → prints and exits** (exit code 0):
   ```
@@ -150,7 +158,7 @@ __lua__
 - Use `-home <project>/.build/p8home` so tests don't touch the user's config, cartdata or backups.
 
 ### Test-driver pattern (headless, deterministic)
-Runner copies `game.p8` → `.test_run.p8` **next to it** (so `#include`s resolve), appends a tab, runs `-x`, parses stdout:
+Runner copies `game.p8` → `.test_run.p8` **next to it** (so `#include`s resolve), appends a tab, runs `-x`, parses stdout+stderr:
 ```lua
 -->8
 -- test driver
@@ -176,7 +184,7 @@ printh("@done")
 _init=nil _update=nil _update60=nil _draw=nil
 extcmd("shutdown")
 ```
-A ~50-line stdlib Python script maps `@px` lines through `@pal` + the RGB table below and writes a PNG (zlib+struct, scale ×4) the agent can view. Use `b\16` not `b>>4` (`>>` keeps fraction bits). Also run soak tests (thousands of frames, random input) to catch nil errors and 32767 overflow.
+A ~50-line stdlib Python script maps `@px` lines through `@pal` + the RGB table below and writes a PNG (zlib+struct, scale ×4) the agent can view. Use `b\16` not `b>>4` (`>>` keeps fraction bits). Also run soak tests (thousands of frames, random input) to catch nil errors and 32767 overflow. Overriding `btn`/`btnp` as globals in the appended tab works: game code looks them up at call time.
 
 Alternative screenshot (window, `-run`): `-desktop <dir> -screenshot_scale 1`, then in a debug build `extcmd("set_filename","shot") extcmd("screen")` (no `%d` → overwrite). Keys: Ctrl+6 screenshot, Ctrl+7 label, Ctrl+8/9 GIF, Ctrl+P CPU meter.
 
@@ -190,9 +198,31 @@ Secret 128-143: #291814 #111D35 #422136 #125359 #742F29 #49333B #A28879 #F3EF7D 
 
 **PNG → `__gfx__`:** quantize to the 16 colours first (nearest RGB, no dithering), then either PICO-8 console `import sheet.png`, or `shrinko8 game.p8 .build/out.p8 --merge sheet.png gfx spritesheet` — **shrinko8's .p8 output inlines `#include`s**, so splice only the `__gfx__` block back into the real cart; or a Pillow script emitting 128 lines × 128 hex. Reverse: `--extra-output sheet.png spritesheet`. No WAV→sfx importer exists; generate sfx rows by script (or MIDI converters: midi2pico, Denote).
 
+## Converting existing asset-pack art (higher-res / more colours than PICO-8)
+
+What worked, and what looked bad, converting a 16px, ~30-colour pack:
+- **Downscale by one integer factor per pack** (e.g. 1/2 for 16px art → 8px). Non-integer factors silently crop or distort; mixing factors makes the set look inconsistent.
+- **Per-block majority colour** (ties → darker) keeps lines crisper than nearest-neighbour or box-averaging; mark a block transparent when < half its pixels are opaque.
+- **One fixed colour table per pack** (source hex → PICO-8 index), edited by hand so the pack's dark-to-light steps stay distinct (grey ramp 0 < 1 < 5 < 13 < 6 < 7) and materials keep meaning (water → 12). Nearest-colour matching collapses dark slate greys into one navy blob; an optimised "best 16 of 32" palette shifted greys brown. Both looked bad.
+- 1-2 px details (small highlights, lights) vanish at 1/2 — pick different source sprites instead of hand-repairing.
+- **Black art vs transparency:** colour 0 is transparent by default, so black pixels inside sprites become holes. Emit transparent pixels as an unused key colour and draw with `palt(0,false) palt(key,true)`.
+
+## Runtime sprite tricks (saves cart space) [VERIFIED-LOCAL]
+
+- `spr` can only flip, not rotate. Rotate at boot into free slots (128-255 are free if the map uses only rows 0-31):
+  ```lua
+  function rot90(src,dst) -- clockwise
+   local sx,sy,dx,dy=src%16*8,src\16*8,dst%16*8,dst\16*8
+   for y=0,7 do for x=0,7 do sset(dx+x,dy+y,sget(sx+y,sy+7-x)) end end
+  end
+  ```
+- **Pipe/track join pieces from one straight piece:** build all 16 neighbour masks at boot. Thin pipes: take the half of the horizontal/vertical piece that reaches each joined edge (halves overlap the centre), then repeat with the outline colour skipped so bodies overwrite outlines at the joint. Full-width tracks/belts: mitre — each pixel comes from the piece of whichever joined direction has the nearest tile edge (picture-frame corners, clean T and cross).
+- Close visual gaps where a conduit meets a sprite with transparent margins: measure the margin with `sget` along the conduit's centre line and `sspr` that many pixels of the straight piece into it.
+- `pal(tbl)` recolours several at once (`pal({[12]=11,[1]=3})`); **`pal()` with no args also resets `palt`** — undo a recolour with `pal(k,k)` per entry if transparency is set.
+
 ## Language & API gotchas (top 20)
 
-1. **16.16 fixed point, silent wrap at 32767** (`32767+1==-32768`, `200*200==-25536`, literal `40000` wraps). Frame counters overflow after ~18 min at 30 fps; `for i=1,36000` runs 0 times; `dx*dx+dy*dy` overflows for dx>181 → scale down before squaring. **Money/scores:** store as 32-bit int `v>>16`, add `money+=n>>16`, compare `money>=n>>16`, print `tostr(money,2)`, parse `tonum(s,2)`; saves losslessly in one `dset` slot. (Don't multiply two shifted values.) Or hi/lo pair split at 10000.
+1. **16.16 fixed point, silent wrap at 32767** (`32767+1==-32768`, `200*200==-25536`, literal `40000` wraps). Frame counters overflow after ~18 min at 30 fps; `for i=1,36000` runs 0 times; `dx*dx+dy*dy` overflows for dx>181 → scale down before squaring. **Money/scores:** store as 32-bit int `v>>16` — make values from strings with `tonum("500000",2)` (flag 0x2 = read as shifted 32-bit int), print with `tostr(v,2)`; adding and multiplying by a plain small integer are fine; saves losslessly in one `dset` slot. (Don't multiply two shifted values.) When parsing data strings with big numbers use `split(s,",",false)` — default `split` converts to numbers and wraps them.
 2. Lowercase source (see format section).
 3. **Draw state persists across frames**: camera, clip, pal, palt, fillp, color. Call `camera()` before HUD; `pal()` resets palettes *and* transparency.
 4. Sprites 128-255 = map rows 32-63.
@@ -201,7 +231,7 @@ Secret 128-143: #291814 #111D35 #422136 #125359 #742F29 #49333B #A28879 #F3EF7D 
 7. Divide by zero → ±0x7fff.ffff, no error; `x%0==0`. Bugs show as huge numbers, not crashes.
 8. `del(t,v)` removes first element **equal to v**; `deli(t,i)` by index. Deleting inside `for v in all(t)` is safe; in forward numeric loops iterate backwards.
 9. `#t` undefined with nil holes; `pairs` order random → arrays for ordered update/draw.
-10. **No stdlib**: no `string.*/table.*/math.*/require/os/io`; no `s:sub()`. Use `sub ord chr tostr tonum split add del deli count all foreach flr ceil mid rnd srand`, `s[i]` single char.
+10. **No stdlib**: no `string.*/table.*/math.*/require/os/io`; no `s:sub()`. Use `sub ord chr tostr tonum split add del deli count all foreach flr ceil mid rnd srand`, `s[i]` single char. Globals by name: `_ENV["s_"..name]` works.
 11. `btnp` only meaningful in `_update` (state resets each update). Repeat = 15 frames then every 4; tune `poke(0x5f5c,delay) poke(0x5f5d,rate)` (255 = no repeat).
 12. Game logic belongs in `_update` (may run 2× per draw when over budget). `time()` counts updates, not wall-clock; wraps ~9 h [UNVERIFIED].
 13. **Mouse/keyboard are optional hardware** (`poke(0x5f2d,1)`; `stat(32/33)` x/y, `stat(34)` buttons, `stat(36)` wheel, `stat(30/31)` keys). Handhelds/phones lack them; "p"/Enter open pause (`poke(0x5f30,1)` suppresses one frame). Cursor-driven games (management sims): d-pad cursor primary, mouse optional.
@@ -211,7 +241,7 @@ Secret 128-143: #291814 #111D35 #422136 #125359 #742F29 #49333B #A28879 #F3EF7D 
 17. `cartdata("author_game")` once before `dget/dset`; version your save layout (magic number in slot 0).
 18. **Coroutine errors are silent** → `assert(coresume(c))`.
 19. `local _ENV=self` drops `self.` (saves tokens) but hides globals unless the object's metatable has `__index=_ENV`; never assign global `_ENV`. Breaks shrinko8 aggressive minify (use `--minify-safe-only`).
-20. Dialect: `+= -= ..= \=` etc. must be whole single-line statements (`local x+=1` illegal); `if (c) stmt` needs parens & one line; `!=` ok; `?x` = print; `tonum("abc")` returns *nothing* (flag 0x4 → 0). `print` without x,y scrolls the console. `rnd(str)` no longer works (0.2.5c); `rnd(tbl)` picks an element.
+20. Dialect: `+= -= ..= \=` etc. must be whole single-line statements (`local x+=1` illegal); `if (c) stmt` needs parens & one line (use a full `if ... then ... else ... end` when you need `else`); `!=` ok; `?x` = print; `tonum("abc")` returns *nothing* (flag 0x4 → 0). `print` without x,y scrolls the console. `rnd(str)` no longer works (0.2.5c); `rnd(tbl)` picks an element.
 
 Useful `stat()`: 0 mem KB, 1 CPU, 6 param, 7 fps, 46-49 sfx per channel, 54-57 music state, 80-95 date/time. Debug: `printh`, `stop(msg)` (then `resume`, `.` single-steps), `assert`, `trace()`.
 
@@ -245,7 +275,7 @@ Management sims: tick the simulation every N frames, draw static UI with one `ma
 
 1. Edit `src/*.lua` (data sections only via scripts, only when human has no unsaved PICO-8 edits).
 2. `shrinko8 game.p8 --lint --no-lint-fail --count --error-format tabbed` — fail on exit 1/4; fix or annotate lint (declare non-`_init` globals with `--$lint: name1, name2`). Keep tokens < ~7800 for headroom.
-3. Headless test: generate `.test_run.p8` with driver, `timeout 60 pico8.exe -home .build/p8home -x ...`, parse `@pass/@fail/@done` + error lines.
+3. Headless test: generate `.test_run.p8` with driver, `timeout 60 pico8.exe -home .build/p8home -x ...`, parse `@pass/@fail/@done` + error lines from stdout+stderr.
 4. Framebuffer dump → PNG → view it.
 5. Human playtest window (`-run`), Ctrl+R after each change; human judges feel/art/audio.
 6. Commit with LF; art in its own commits.
@@ -267,13 +297,15 @@ Management sims: tick the simulation every N frames, draw static UI with one `ma
 | Issue | Solution |
 |---|---|
 | `pip install shrinko8` → 404 | Package is `shrinko`. |
-| No `printh` output when launched normally | GUI exe; pipe stdout (`2>&1 \| cat`) or `printh(s,"f.txt")` (lands in root_path). |
+| No `printh` output when launched normally | GUI exe; capture **stderr** too (`2>&1 \| cat`) or `printh(s,"f.txt")` (lands in root_path). |
+| Test runner sees only `RUNNING: ...` and no `INFO:` lines | You captured stdout only; `printh` goes to stderr on Windows. |
 | `-x` never returns | Game loop running or **syntax error** (hangs). Use `extcmd("shutdown")` + `timeout`; check output for `syntax error`. |
 | Edits not picked up | PICO-8 has unsaved changes → "DIDN'T RELOAD". Save/discard in PICO-8 or relaunch. |
 | `X` and `x` treated differently / `PRINT` undefined | Uppercase = puny glyphs; lowercase everything. |
 | Score goes negative | 16.16 overflow; use `>>16` integer storage. |
 | Map bottom half corrupted | You drew in sprite banks 2-3 (shared memory). |
 | HUD scrolls with world | Reset `camera()` before drawing HUD. |
+| Holes inside converted sprites | Black mapped to colour 0 (transparent); use another key colour + `palt`. |
 | Cart won't save as .p8.png | Compressed > 15360 B; check `shrinko8 --count`, minify. |
 | "future version" error | `-accept_future 1`. |
 | Settings lost | config.txt written only on clean exit; killed process doesn't save. |
@@ -302,4 +334,4 @@ itch.io tag pages (`itch.io/game-assets/tag-pico-8`, `/free/tag-pico-8`, `/asset
 ---
 
 *Last updated: 2026-10-19*
-*Setup verified on: Windows 10, PICO-8 v0.2.7, Git Bash (headless -x behaviour smoke-tested; shrinko8 commands from source/docs, not yet run locally)*
+*Setup verified on: Windows 10, PICO-8 v0.2.7, Git Bash (headless -x behaviour, stderr capture, rot90/sset, tonum(s,2) money, _ENV lookup smoke-tested; shrinko8 commands from source/docs, not yet run locally)*
