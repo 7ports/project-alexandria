@@ -14,6 +14,7 @@
  * `passage: ` prefix and search queries with a `query: ` prefix.
  */
 
+const fs = require('fs');
 const path = require('path');
 const { recordEmbedLatency } = require('./metrics-hooks');
 const { selectOnnxBackend } = require('./onnx-backend');
@@ -25,6 +26,51 @@ const EMBEDDING_DIM = 384;
 // Pin the model cache to an absolute, gitignored dir so the ~120 MB download
 // persists across runs (and for later tasks). __dirname is mcp-server/lib.
 const MODELS_DIR = path.resolve(__dirname, '..', '.models');
+
+/**
+ * Why the model is never handed to onnxruntime as a path:
+ *
+ * With Transformers.js's own file cache (`env.useFSCache`), Node gets the model's PATH and
+ * onnxruntime opens the file itself, with a share mode that denies writers. On Windows any
+ * other handle on the file then fails the load with "system error number 13": on a cold
+ * cache that is Transformers.js's own unawaited write-stream close, and then antivirus
+ * scanning the fresh ~130 MB file, for longer than any sensible retry (7.5 s of backoff
+ * still failed in CI). Node's own reads share with everyone, so the model is instead read
+ * through Node and passed to onnxruntime as a buffer, which costs one transient copy of
+ * the model in memory while the session is built.
+ *
+ * With `useFSCache` off Transformers.js reads `<localModelPath>/<model>/<file>` (a warm
+ * cache) and otherwise downloads, but caches nothing. This custom cache fills that gap: it
+ * persists each download to the same layout before the load continues, awaiting the close
+ * and renaming into place so a crash never leaves a truncated model behind. `match` misses
+ * on purpose, since the local-path read already serves cached files.
+ */
+const modelCache = {
+  async match() {
+    return undefined;
+  },
+
+  /**
+   * @param {string} key - the remote URL, `<host>/<model>/resolve/<revision>/<file>`
+   * @param {Response} response
+   */
+  async put(key, response) {
+    const m = /^\/(.+?)\/resolve\/main\/(.+)$/.exec(new URL(key).pathname);
+    if (!m) return; // another revision: leave it uncached rather than shadow `main`
+    const dest = path.resolve(MODELS_DIR, decodeURIComponent(m[1]), decodeURIComponent(m[2]));
+    if (!dest.startsWith(MODELS_DIR + path.sep)) return;
+
+    const tmp = `${dest}.${process.pid}.tmp`;
+    await fs.promises.mkdir(path.dirname(dest), { recursive: true });
+    try {
+      await fs.promises.writeFile(tmp, Buffer.from(await response.arrayBuffer()));
+      await fs.promises.rename(tmp, dest);
+    } catch (err) {
+      await fs.promises.rm(tmp, { force: true });
+      throw err; // Transformers.js logs it and carries on with the downloaded buffer
+    }
+  },
+};
 
 // Lazy singletons — the in-flight init promise is cached so concurrent callers
 // share a single pipeline rather than racing to download/build the model.
@@ -41,29 +87,18 @@ async function getPipeline() {
     // Dynamic import: ESM-only package loaded from a CommonJS module.
     const { pipeline, env } = await import('@huggingface/transformers');
 
-    // Configure cache BEFORE building the pipeline so the downloaded model
+    // Configure the cache BEFORE building the pipeline so the downloaded model
     // lands under mcp-server/.models and is reused on subsequent runs.
-    env.cacheDir = MODELS_DIR;
     env.localModelPath = MODELS_DIR;
     // Allow fetching from the HF hub on first run; reuse the local cache after.
     env.allowRemoteModels = true;
     env.allowLocalModels = true;
+    // Load the model as a buffer, never a path (see modelCache above).
+    env.useFSCache = false;
+    env.useCustomCache = true;
+    env.customCache = modelCache;
 
-    // On Node, Transformers.js downloads the model, resolves without awaiting the cached
-    // file's close, and hands onnxruntime only the path. On a cold Windows cache the native
-    // open then hits a sharing violation ("system error number 13") — while the write handle
-    // closes, and for seconds longer when antivirus scans the fresh ~130 MB file (a single
-    // 500 ms retry still failed in CI). Every write was awaited, so the file is complete;
-    // back off and load it from the cache once the handle is released.
-    for (const delayMs of [500, 1000, 2000, 4000, 0]) {
-      try {
-        return await pipeline('feature-extraction', MODEL_ID);
-      } catch (err) {
-        if (!delayMs || !/system error number 13\b/.test(String(err && err.message))) throw err;
-        console.error(`[alexandria] model file still locked after download; retrying in ${delayMs} ms`);
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-      }
-    }
+    return pipeline('feature-extraction', MODEL_ID);
   })();
 
   try {

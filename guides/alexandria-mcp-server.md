@@ -243,11 +243,16 @@ with the remedy, and embeds one query end to end on whichever backend the server
 
 `ALEXANDRIA_ONNX_BACKEND=native` disables the fallback (fail loudly); `=wasm` forces it.
 
-**Windows cold-cache race.** Transformers.js's `FileCache.put` resolves a download without
-awaiting the cached file's close, so on a fresh Windows host onnxruntime-node can fail to open the
-model it has just downloaded: `Load model from ...\model.onnx failed:system error number 13`
-(a sharing violation). The embedder retries that first load once from the cache; if you see the
-error on an older build, simply run the operation again.
+**Windows `system error number 13`.** With Transformers.js's own file cache (`env.useFSCache`),
+onnxruntime-node is handed the model's *path* and opens it with a share mode that denies writers,
+so any other handle on the file fails the load: `Load model from ...\model.onnx failed:system error
+number 13` (a sharing violation). On a fresh host that handle is Transformers.js's unawaited
+download close, then antivirus scanning the ~130 MB file, often for longer than any retry. The
+embedder therefore turns `useFSCache` off and installs a custom cache that writes downloads to
+`.models/` itself (awaited, temp file + rename), so the model is always read through Node, which
+shares with everyone, and passed to onnxruntime as a *buffer*. That costs one transient copy of the
+model in memory while the session is built. `test/model-lock.test.js` reproduces the lock on
+Windows. If you see the error on an older build, run the operation again or update.
 
 ### Running the tests
 
