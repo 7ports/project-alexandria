@@ -16,6 +16,7 @@
 
 const path = require('path');
 const { recordEmbedLatency } = require('./metrics-hooks');
+const { selectOnnxBackend } = require('./onnx-backend');
 
 // 384-dim, higher MTEB than all-MiniLM at the same dimensionality.
 const MODEL_ID = 'Xenova/bge-small-en-v1.5';
@@ -33,6 +34,10 @@ async function getPipeline() {
   if (pipelinePromise) return pipelinePromise;
 
   pipelinePromise = (async () => {
+    // Before the import: falls back to WebAssembly when the native ONNX binary
+    // will not load (see onnx-backend.js).
+    selectOnnxBackend();
+
     // Dynamic import: ESM-only package loaded from a CommonJS module.
     const { pipeline, env } = await import('@huggingface/transformers');
 
@@ -44,7 +49,17 @@ async function getPipeline() {
     env.allowRemoteModels = true;
     env.allowLocalModels = true;
 
-    return pipeline('feature-extraction', MODEL_ID);
+    // Transformers.js resolves a download (FileCache.put) without awaiting the cached file's
+    // close. On Windows the native runtime then cannot open the just-downloaded model
+    // ("system error number 13", a sharing violation), so a cold-cache first load fails once.
+    // Every write was awaited, so the file is complete; a retry loads it from the cache.
+    try {
+      return await pipeline('feature-extraction', MODEL_ID);
+    } catch (err) {
+      if (!/system error number 13\b/.test(String(err && err.message))) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return pipeline('feature-extraction', MODEL_ID);
+    }
   })();
 
   try {
@@ -103,4 +118,4 @@ async function embedQuery(text) {
   return embed('query: ', text);
 }
 
-module.exports = { embedPassage, embedQuery };
+module.exports = { embedPassage, embedQuery, getOnnxBackend: selectOnnxBackend };
