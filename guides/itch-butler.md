@@ -49,14 +49,14 @@ butler push <build-dir> <user>/<game>:<channel> --userversion <version>
 - **Channel name sets the platform tag:** a name containing `windows`, `linux` or `osx`/`mac` gets
   that platform; `web`/`html5`/`webgl` makes it a browser upload.
 - **The game slug is what's in the page URL**, typos included (e.g. a page created as `my-gmae` stays `user/my-gmae`).
-- **After the first push**, `butler status user/game:channel` shows the build as processing, then `√ #<build>` once ready.
+- **After a push**, `butler status user/game:channel` shows the build as processing, then `√ #<build>` once ready (under a minute for a small web build).
 - **Browser games still need page settings** on the itch dashboard (butler can't set them): Kind of project = HTML, the upload ticked "This file will be played in the browser", an embed size, and visibility.
 - **Testers:** keep the page **Restricted** and share a password or download keys. Testers must
   *claim* a key to their account for the itch app to see the game.
 
 ## PICO-8 web builds on itch [VERIFIED 2026-10]
 
-- Export to a folder as `index.html` (+ `index.js`, ~1.7 MB): itch's HTML5 player loads `index.html`. Push the folder (not a zip) on an `html5` channel; butler diffs it (a second push of a changed cart sent ~575 KiB).
+- Export to a folder as `index.html` (+ `index.js`, ~1.7 MB): itch's HTML5 player loads `index.html`. Push the folder itself (no zip needed) on an `html5` channel. The first push of such a build uploaded 1.66 MiB as a ~575 KiB compressed patch; later pushes only send what changed.
 - The PICO-8 side (cart label required, minify before export) is in the pico-8 guide.
 - Suggested embed size: a multiple of 128 px, e.g. 512 × 512 or 640 × 640; the default PICO-8 player page adds its own controls around the canvas.
 
