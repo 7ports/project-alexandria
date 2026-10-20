@@ -5,6 +5,13 @@ title: pico-8
 embedding_version: 1
 ---
 
+---
+id: pico-8
+type: guide
+title: pico-8
+embedding_version: 1
+---
+
 # PICO-8 (Lexaloffle fantasy console): agent development guide
 
 <!-- Researched against PICO-8 v0.2.7 (cart "version 43") on Windows 10. Items tagged [VERIFIED-LOCAL] were smoke-tested on a real install; [MANUAL] = official manual; [SRC] = read in tool source; [UNVERIFIED] = test before relying on it. -->
@@ -17,6 +24,7 @@ embedding_version: 1
 ```bash
 python -m pip install --user shrinko   # PyPI name is "shrinko" (NOT shrinko8 -> 404). Gives `shrinko8` + `shrinkotron`; pulls pillow + lupaz8
 # Windows --user install: the exes land in %APPDATA%\Python\Python3XX\Scripts\ (not on PATH) - call by full path
+# the XX differs per machine (Python310 on one, Python312 on another): scripts should glob Python3*\Scripts, not hardcode
 # or standalone exe: https://github.com/thisismypassport/shrinko8/releases (shrinko.zip)
 ```
 
@@ -25,8 +33,10 @@ python -m pip install --user shrinko   # PyPI name is "shrinko" (NOT shrinko8 ->
 shrinko8 game.p8 --lint --no-lint-fail --count --error-format tabbed
 # exit: 0 ok | 1 syntax/compile error | 2 lint warnings | 3 failure | 4 #include not found
 # without --no-lint-fail, counts may not print when lint fails; it follows #include lines
+# #include paths resolve relative to the cart: a generated temp cart must sit next to the real one,
+# or --count prints nothing (exit 4)
 ```
-Lint notes [VERIFIED-LOCAL]: globals first assigned outside `_init` are reported as undefined — declare them with a comment line `--lint: name1, name2` (this does **not** silence "only ever assigned, never used" warnings). Globals read via `_ENV["name"]` are invisible to the linter (they show as unused) — look them up from a plain table instead. Locals named `t` (or other builtins) warn because they shadow `t()`.
+Lint notes [VERIFIED-LOCAL]: globals first assigned outside `_init` are reported as undefined — declare them with a comment line `--lint: name1, name2` (this does **not** silence "only ever assigned, never used" warnings). Globals read via `_ENV["name"]` are invisible to the linter (they show as unused) — look them up from a plain table instead. Locals named `t` (or other builtins) warn because they shadow `t()`. **shrinko8 accepts some lines real PICO-8 rejects** (see gotchas 21-22) — a clean lint doesn't prove the cart parses; run it.
 
 **Headless run with captured output (Git Bash)** [VERIFIED-LOCAL]:
 ```bash
@@ -56,7 +66,7 @@ Lessons from people who've used LLM agents on PICO-8: agents do logic, systems, 
 |---|---|---|
 | Tokens | **8192** | Usually the first wall. `#include`d code counts. |
 | Characters | 65535 | P8SCII chars (a glyph emoji = 1). |
-| Compressed code | **15360 B** (manual) / 15616 (code region, what tools report) | Only enforced for `.p8.png`/`.p8.rom`/exports. Target < 15360. shrinko8 compresses better than PICO-8 — leave margin. |
+| Compressed code | **15360 B** (manual) / 15616 (code region, what tools report) | Only enforced for `.p8.png`/`.p8.rom`/exports — a `.p8` over 100% still loads and runs. shrinko8 compresses better than PICO-8 — leave margin. Export through `shrinko8 game.p8 game.p8.png --minify` when the plain cart is over: a well-commented ~7.7k-token cart went from 102% to 53% [VERIFIED-LOCAL]. |
 | Lua RAM | 2 MB | `stat(0)` = KB used. |
 | CPU | `stat(1)` 1.0 = 100% of frame | `_update60` halves per-frame budget. Over budget → 30→15 fps (or 60→30), `_update` called twice per `_draw`. |
 | Sprites / map | 256 8x8 sprites; map 128x32 (128x64 using shared memory) | Sprites 128-255 **are** map rows 32-63 (0x1000-0x1fff). Use one or the other. |
@@ -147,6 +157,7 @@ __lua__
   ```
   Line numbers are 1-based **within the tab** (or within the included file).
 - **Syntax error → prints `syntax error` / `unclosed if at line 2 (tab 0)` then HANGS** until killed.
+- **A cart over 8192 tokens also just hangs** under `-x` (no message) → count tokens before running.
 - **Exit code is always 0 / meaningless** → parse output for `runtime error`, `syntax error`, your own `@fail` markers, and a final `@done` sentinel.
 - `printh(s, "out.txt", true)` writes to **root_path** (not OS cwd). Allowed extensions include `.txt`; rate limit 10 MB / 64 files per minute.
 - Kill by PID (Python `proc.kill()` / `timeout`), never `taskkill /IM pico8.exe` — that kills the human's playtest window too.
@@ -181,6 +192,8 @@ extcmd("shutdown")
 ```
 A ~50-line stdlib Python script maps `@px` lines through `@pal` + the RGB table below and writes a PNG (zlib+struct, scale ×4) the agent can view. Use `b\16` not `b>>4` (`>>` keeps fraction bits). Also run soak tests (thousands of frames, random input) to catch nil errors and 32767 overflow. Overriding `btn`/`btnp` as globals in the appended tab works: game code looks them up at call time.
 
+**When game + test tab won't fit in 8192 tokens** [VERIFIED-LOCAL]: the test tab counts against the same limit, so a game near the limit leaves no room for tests. Let each test declare source files it never calls (e.g. a first line `--exclude: src/ui.lua`) and have the runner drop those `#include` lines from the temp cart. Globals resolve at call time, so missing functions only fail if actually called; stub the few that are still reached (`function say() end`). Split shared test helpers into a core file and an optional fixtures file so a tiny test can drop the fixtures too. Keep one small whole-game soak test with nothing excluded.
+
 Alternative screenshot (window, `-run`): `-desktop <dir> -screenshot_scale 1`, then in a debug build `extcmd("set_filename","shot") extcmd("screen")` (no `%d` → overwrite). Keys: Ctrl+6 screenshot, Ctrl+7 label, Ctrl+8/9 GIF, Ctrl+P CPU meter.
 
 ## Palette
@@ -199,6 +212,7 @@ What worked, and what looked bad, converting a 16px, ~30-colour pack:
 - **Downscale by one integer factor per pack** (e.g. 1/2 for 16px art → 8px). Non-integer factors silently crop or distort; mixing factors makes the set look inconsistent.
 - **Per-block majority colour** (ties → darker) keeps lines crisper than nearest-neighbour or box-averaging; mark a block transparent when < half its pixels are opaque.
 - **One fixed colour table per pack** (source hex → PICO-8 index), edited by hand so the pack's dark-to-light steps stay distinct (grey ramp 0 < 1 < 5 < 13 < 6 < 7) and materials keep meaning (water → 12). Nearest-colour matching collapses dark slate greys into one navy blob; an optimised "best 16 of 32" palette shifted greys brown. Both looked bad.
+- **Watch rarely used dark tints** in the table: a dark blue-violet used only for the inside of a glass tank was mapped to the same grey as the floor, and the tank read as having a hole. Map such shades by material (liquid → dark blue 1), and when a player reports a "hole", check the colour table before suspecting transparency. To audit real holes: flood-fill transparent pixels from each sprite's border; any transparent pixel not reached is enclosed.
 - 1-2 px details (small highlights, lights) vanish at 1/2 — pick different source sprites instead of hand-repairing.
 - **Black art vs transparency:** colour 0 is transparent by default, so black pixels inside sprites become holes. Emit transparent pixels as an unused key colour and draw with `palt(0,false) palt(key,true)`.
 
@@ -215,9 +229,9 @@ What worked, and what looked bad, converting a 16px, ~30-colour pack:
 - Close visual gaps where a conduit meets a sprite with transparent margins: measure the margin with `sget` along the conduit's centre line and `sspr` that many pixels of the straight piece into it.
 - `pal(tbl)` recolours several at once (`pal({[12]=11,[1]=3})`); **`pal()` with no args also resets `palt`** — undo a recolour with `pal(k,k)` per entry if transparency is set.
 
-## Language & API gotchas (top 20)
+## Language & API gotchas (top 22)
 
-1. **16.16 fixed point, silent wrap at 32767** (`32767+1==-32768`, `200*200==-25536`, literal `40000` wraps). Frame counters overflow after ~18 min at 30 fps; `for i=1,36000` runs 0 times; `dx*dx+dy*dy` overflows for dx>181 → scale down before squaring. **Money/scores:** store as 32-bit int `v>>16` — make values from strings with `tonum("500000",2)` (flag 0x2 = read as shifted 32-bit int), print with `tostr(v,2)`; adding and multiplying by a plain small integer are fine; saves losslessly in one `dset` slot. (Don't multiply two shifted values.) When parsing data strings with big numbers use `split(s,",",false)` — default `split` converts to numbers and wraps them.
+1. **16.16 fixed point, silent wrap at 32767** (`32767+1==-32768`, `200*200==-25536`, literal `40000` wraps). Frame counters overflow after ~18 min at 30 fps; `for i=1,36000` runs 0 times; `dx*dx+dy*dy` overflows for dx>181 → scale down before squaring. Keep long-running tick counters bounded (`t=(t+1)%period`, plus a separate slow counter) instead of letting them wrap. **Money/scores:** store as 32-bit int `v>>16` — make values from strings with `tonum("500000",2)` (flag 0x2 = read as shifted 32-bit int), print with `tostr(v,2)`; adding and multiplying by a plain small integer are fine; saves losslessly in one `dset` slot. (Don't multiply two shifted values.) When parsing data strings with big numbers use `split(s,",",false)` — default `split` converts to numbers and wraps them.
 2. Lowercase source (see format section).
 3. **Draw state persists across frames**: camera, clip, pal, palt, fillp, color. Call `camera()` before HUD; `pal()` resets palettes *and* transparency.
 4. Sprites 128-255 = map rows 32-63.
@@ -226,7 +240,7 @@ What worked, and what looked bad, converting a 16px, ~30-colour pack:
 7. Divide by zero → ±0x7fff.ffff, no error; `x%0==0`. Bugs show as huge numbers, not crashes.
 8. `del(t,v)` removes first element **equal to v**; `deli(t,i)` by index. Deleting inside `for v in all(t)` is safe; in forward numeric loops iterate backwards.
 9. `#t` undefined with nil holes; `pairs` order random → arrays for ordered update/draw.
-10. **No stdlib**: no `string.*/table.*/math.*/require/os/io`; no `s:sub()`. Use `sub ord chr tostr tonum split add del deli count all foreach flr ceil mid rnd srand`, `s[i]` single char. Globals by name: `_ENV["s_"..name]` works at runtime but hides the use from shrinko8's linter/minifier — prefer a lookup table.
+10. **No stdlib**: no `string.*/table.*/math.*/require/os/io`; no `s:sub()`. Use `sub ord chr tostr tonum split add del deli count all foreach flr ceil mid rnd srand`, `s[i]` single char. Globals by name: `_ENV["s_"..name]` works at runtime but hides the use from shrinko8's linter/minifier — prefer a lookup table. `add(t,v,i)` inserts at index i (shuffle: `add(l,v,rnd(#l+1)\1+1)`); `add` returns v. `split"a,b,c"[j]` indexes the result directly.
 11. `btnp` only meaningful in `_update` (state resets each update). Repeat = 15 frames then every 4; tune `poke(0x5f5c,delay) poke(0x5f5d,rate)` (255 = no repeat).
 12. Game logic belongs in `_update` (may run 2× per draw when over budget). `time()` counts updates, not wall-clock; wraps ~9 h [UNVERIFIED].
 13. **Mouse/keyboard are optional hardware** (`poke(0x5f2d,1)`; `stat(32/33)` x/y, `stat(34)` buttons, `stat(36)` wheel, `stat(30/31)` keys). Handhelds/phones lack them; "p"/Enter open pause (`poke(0x5f30,1)` suppresses one frame). Cursor-driven games (management sims): d-pad cursor primary, mouse optional.
@@ -237,6 +251,8 @@ What worked, and what looked bad, converting a 16px, ~30-colour pack:
 18. **Coroutine errors are silent** → `assert(coresume(c))`.
 19. `local _ENV=self` drops `self.` (saves tokens) but hides globals unless the object's metatable has `__index=_ENV`; never assign global `_ENV`. Breaks shrinko8 aggressive minify (use `--minify-safe-only`).
 20. Dialect: `+= -= ..= \=` etc. must be whole single-line statements (`local x+=1` illegal); `if (c) stmt` needs parens & one line (use a full `if ... then ... else ... end` when you need `else`); `!=` ok; `?x` = print; `tonum("abc")` returns *nothing* (flag 0x4 → 0). `print` without x,y scrolls the console. `rnd(str)` no longer works (0.2.5c); `rnd(tbl)` picks an element.
+21. **`?` print shorthand eats the rest of its line** [VERIFIED-LOCAL]: `for o in all(l) do if (o.off) ?"!",x,y,8 end` → PICO-8 `syntax error ... '>>>' expected near 'end'` (the `end` became part of the print). shrinko8 lint accepts it. Put a `?` statement on its own line, with nothing after its arguments.
+22. **One-line `if (cond) stmt` with more code after it on the same line is fragile** [VERIFIED-LOCAL]: `for a in all(t) do if (f(a)) x=a end end end` → `<eof> expected near 'end'`, while similar lines with a non-call condition parse. When anything follows the statement on the line (an `end` closing an outer block), write `if c then ... end`.
 
 Useful `stat()`: 0 mem KB, 1 CPU, 6 param, 7 fps, 46-49 sfx per channel, 54-57 music state, 80-95 date/time. Debug: `printh`, `stop(msg)` (then `resume`, `.` single-steps), `assert`, `trace()`.
 
@@ -264,6 +280,8 @@ menuitem(1,"save game",function() save() end)
 ```
 Management sims: tick the simulation every N frames, draw static UI with one `map()` call, `print` with `\#c` background codes for panels, money as `>>16`. Tweening: `x+=(tx-x)*0.2`. Fades: per-colour darkening ramp applied with `pal(c,ramp[c],1)`.
 
+**CPU opponents in a sim** (lessons from a builder/economy game): give them the player's own building/placement/pathing functions rather than a separate abstract model, and have each one take a single action every few ticks (stagger players across ticks to spread CPU cost). Before buying, test the result (can the new unit reach its target? can a conduit join it?) and undo for free if not, otherwise it re-buys the same broken thing forever. Keep a reserve that scales with its running costs, take on work only when it pays more than the upkeep it implies, and run a headless "CPUs alone for N cycles, several seeds" log — first versions went bankrupt in most seeds.
+
 **Token savers** (manual): data as strings + `split"1,2,3"` (any-length string = 1 token), `a,b,c=1,2,3`, paren-less calls `f"x"`/`f{}`, `t.k` over `t["k"]`, `\` for `flr(a/b)`, `?` for print, shorthand `if`, `_ENV`, `foreach`/`all`. Generated constant files (sprite numbers etc.) should only emit names the code uses — each unused `name=value` still costs ~3 tokens. shrinko8 `--minify` handles renames/whitespace/const-folding (`--[[$const]] DEBUG=false` strips dead branches). Parens-8 compiler mode saves more but is AGPLv3 and slower.
 
 ## Recommended agent loop
@@ -279,7 +297,7 @@ Management sims: tick the simulation every N frames, draw static UI with one `ma
 
 | Tool | Verdict |
 |---|---|
-| **shrinko8** (thisismypassport) | Active, supports 0.2.7 (v1.2.7d verified). Lint, count, minify, convert p8/png/rom/lua/js, gfx merge, `.bin` export via `--pico8-dat`. Parses full dialect, follows `#include`. **Use it.** |
+| **shrinko8** (thisismypassport) | Active, supports 0.2.7 (v1.2.7d verified). Lint, count, minify, convert p8/png/rom/lua/js, gfx merge, `.bin` export via `--pico8-dat`. Parses full dialect, follows `#include`. **Use it** — but it is more lenient than PICO-8's parser (gotchas 21-22). |
 | **lupaz8** (`pip install lupaz8`) | z8lua (PICO-8 dialect + fixed point) in Python; good for logic unit tests outside PICO-8 with a hand-written API shim (sub/add/del/all/rnd/spr/btn… must be stubbed). |
 | pico8-ls (VS Code `PollywogGames.pico8-ls`) | Active editor language server; no CLI. |
 | pico-8-mcp (nutshot2000, Windows-first, Python/uv) | MCP server: validate, count, headless simulate w/ scripted inputs, window capture, set_sprite/set_sfx. Its SKILL.md "hard rules" are worth reading. smartfrog/pico8-mcp (Node) does lockstep stdin/stdout play, Linux-tested. |
@@ -292,19 +310,21 @@ Management sims: tick the simulation every N frames, draw static UI with one `ma
 | Issue | Solution |
 |---|---|
 | `pip install shrinko8` → 404 | Package is `shrinko`. |
-| `shrinko8: command not found` after `pip install --user` | Windows puts it in `%APPDATA%\Python\Python3XX\Scripts\`; use the full path or add it to PATH. |
+| `shrinko8: command not found` after `pip install --user` | Windows puts it in `%APPDATA%\Python\Python3XX\Scripts\`; use the full path or add it to PATH. Scripts that hardcode one Python version silently skip the check on another machine — glob it. |
+| `shrinko8 --count` prints no count for a generated cart | The temp cart is in a different folder, so its `#include`s don't resolve (exit 4). Write it next to the real cart. |
 | Lint: "Identifier 'x' not found" for a real global | It's first assigned outside `_init`; add `--lint: x` comment. |
 | Lint: "only ever assigned to, never used" for something read via `_ENV[...]` | The linter can't see dynamic lookups; use a table. |
+| Lint clean but PICO-8 says `syntax error` | A `?` print or one-line `if (...)` with more code after it on the line (gotchas 21-22). |
 | No `printh` output when launched normally | GUI exe; capture **stderr** too (`2>&1 \| cat`) or `printh(s,"f.txt")` (lands in root_path). |
 | Test runner sees only `RUNNING: ...` and no `INFO:` lines | You captured stdout only; `printh` goes to stderr on Windows. |
-| `-x` never returns | Game loop running or **syntax error** (hangs). Use `extcmd("shutdown")` + `timeout`; check output for `syntax error`. |
+| `-x` never returns | Game loop running, **syntax error**, or cart **over 8192 tokens** (all hang). Use `extcmd("shutdown")` + `timeout`; check output for `syntax error`; count tokens first. |
 | Edits not picked up | PICO-8 has unsaved changes → "DIDN'T RELOAD". Save/discard in PICO-8 or relaunch. |
 | `X` and `x` treated differently / `PRINT` undefined | Uppercase = puny glyphs; lowercase everything. |
 | Score goes negative | 16.16 overflow; use `>>16` integer storage. |
 | Map bottom half corrupted | You drew in sprite banks 2-3 (shared memory). |
 | HUD scrolls with world | Reset `camera()` before drawing HUD. |
-| Holes inside converted sprites | Black mapped to colour 0 (transparent); use another key colour + `palt`. |
-| Cart won't save as .p8.png | Compressed > 15360 B; check `shrinko8 --count`, minify. |
+| Holes inside converted sprites | Black mapped to colour 0 (transparent); use another key colour + `palt`. Or not a hole at all: a dark tint mapped to the background's colour — check the colour table. |
+| Cart won't save as .p8.png | Compressed > 15360 B; check `shrinko8 --count`, export with `--minify`. |
 | "future version" error | `-accept_future 1`. |
 | Settings lost | config.txt written only on clean exit; killed process doesn't save. |
 
@@ -331,5 +351,5 @@ itch.io tag pages (`itch.io/game-assets/tag-pico-8`, `/free/tag-pico-8`, `/asset
 
 ---
 
-*Last updated: 2026-10-19*
-*Setup verified on: Windows 10, PICO-8 v0.2.7, shrinko8 v1.2.7d, Git Bash (headless -x behaviour, stderr capture, rot90/sset, tonum(s,2) money, shrinko8 lint/count with #include all run locally)*
+*Last updated: 2026-10-20*
+*Setup verified on: Windows 10, PICO-8 v0.2.7, shrinko8 v1.2.7d, Git Bash (headless -x behaviour, stderr capture, rot90/sset, tonum(s,2) money, shrinko8 lint/count with #include all run locally; `?`/one-line-if parse gotchas and test-cart include exclusion verified 2026-10-20)*
