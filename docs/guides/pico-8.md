@@ -5,20 +5,13 @@ title: pico-8
 embedding_version: 1
 ---
 
----
-id: pico-8
-type: guide
-title: pico-8
-embedding_version: 1
----
-
 # PICO-8 (Lexaloffle fantasy console): agent development guide
 
 <!-- Researched against PICO-8 v0.2.7 (cart "version 43") on Windows 10. Items tagged [VERIFIED-LOCAL] were smoke-tested on a real install; [MANUAL] = official manual; [SRC] = read in tool source; [UNVERIFIED] = test before relying on it. -->
 
 ## Quick Reference
 
-**Install:** PICO-8 is paid (lexaloffle.com). The Windows installer puts it in `C:\Program Files (x86)\PICO-8\` (`pico8.exe`, `pico8.dat`, `SDL2.dll`, `pico-8_manual.txt` — the full manual + changelog; read it locally). User data: `%APPDATA%\pico-8\` (carts/, backup/, cdata/, plates/, log.txt; `config.txt` only appears after the first *clean* exit).
+**Install:** PICO-8 is paid (lexaloffle.com). The Windows installer puts it in `C:\Program Files (x86)\PICO-8\` (`pico8.exe`, `pico8.dat`, `SDL2.dll`, `pico-8_manual.txt` — the full manual + changelog; read it locally). User data: `%APPDATA%\pico-8\` (carts/, backup/, cdata/, plates/, log.txt; `config.txt` only appears after the first *clean* exit). Lua runtime errors are **not** written to log.txt — reproduce them headless (`-x`) instead.
 
 **Companion tool (recommended)** [VERIFIED-LOCAL, shrinko8 v1.2.7d]:
 ```bash
@@ -66,7 +59,7 @@ Lessons from people who've used LLM agents on PICO-8: agents do logic, systems, 
 |---|---|---|
 | Tokens | **8192** | Usually the first wall. `#include`d code counts. |
 | Characters | 65535 | P8SCII chars (a glyph emoji = 1). |
-| Compressed code | **15360 B** (manual) / 15616 (code region, what tools report) | Only enforced for `.p8.png`/`.p8.rom`/exports — a `.p8` over 100% still loads and runs. shrinko8 compresses better than PICO-8 — leave margin. Export through `shrinko8 game.p8 game.p8.png --minify` when the plain cart is over: a well-commented ~7.7k-token cart went from 102% to 53% [VERIFIED-LOCAL]. |
+| Compressed code | **15360 B** (manual) / 15616 (code region, what tools report) | Only enforced for `.p8.png`/`.p8.rom`/exports — a `.p8` over 100% still loads and runs. shrinko8 compresses better than PICO-8 — leave margin. Export through `shrinko8 --minify` when the plain cart is over: a well-commented ~8k-token cart went from 113% to 56% [VERIFIED-LOCAL]. |
 | Lua RAM | 2 MB | `stat(0)` = KB used. |
 | CPU | `stat(1)` 1.0 = 100% of frame | `_update60` halves per-frame budget. Over budget → 30→15 fps (or 60→30), `_update` called twice per `_draw`. |
 | Sprites / map | 256 8x8 sprites; map 128x32 (128x64 using shared memory) | Sprites 128-255 **are** map rows 32-63 (0x1000-0x1fff). Use one or the other. |
@@ -96,14 +89,14 @@ Order is what PICO-8 writes; reader is header-driven. Omitted sections / trailin
 |---|---|---|
 | `__gfx__` | ≤128 lines × 128 hex | **1 digit per pixel, visual left→right** (RAM is nibble-swapped: low nibble = left pixel — the file is NOT). Sprite n top-left = x `(n%16)*8`, y `(n\16)*8`. Lines 64-127 = shared memory = map rows 32-63 (map byte written low nibble first there). |
 | `__gff__` | 2 lines × 256 hex | 1 byte (2 hex, MSB first) of flags per sprite; flag 0 = bit value 1. |
-| `__label__` | 128 × 128 | like gfx but `0-9a-v` = 32 colours (`g`-`v` = secret colours 128-143). |
+| `__label__` | 128 × 128 | like gfx but `0-9a-v` = 32 colours (`g`-`v` = secret colours 128-143). **Required for HTML exports** (see Web export). |
 | `__map__` | ≤32 lines × 256 hex | 1 byte per tile, rows 0-31. |
 | `__sfx__` | 64 lines × 168 hex | 8 hex header = 4 bytes: editor mode/filters, **speed** (≈1/120 s per note per unit), loop start, loop end (end=0 → start acts as length). Then 32 notes × 5 hex `PPWVE`: pitch 00-3f (C0..D#5), waveform 0-7 (8-f = custom instrument sfx 0-7), volume 0-7 (0 = rest), effect 0-7 (none, slide, vibrato, drop, fade-in, fade-out, arp fast, arp slow). Waveforms: 0 triangle, 1 tilted saw, 2 saw, 3 square, 4 pulse, 5 organ, 6 noise, 7 phaser. Empty sfx 1-63 default speed 16: `00100000` + `00000`×32. |
 | `__music__` | 64 lines `FF AABBCCDD` | flags bit0 loop-start, bit1 loop-end, bit2 stop. Channel byte = sfx id; **0x40 bit = channel off** (empty pattern `00 41424344`). |
 | `__meta:name__` | free text | preserved by PICO-8; for tools. |
 
 Generation pitfalls:
-- **Lowercase code only.** Uppercase ASCII = "puny" glyphs and distinct identifiers (`PRINT` is undefined). Only exception: `_ENV`.
+- **Lowercase code only.** Uppercase ASCII = "puny" glyphs and distinct identifiers (`PRINT` is undefined). Only exception: `_ENV`. Lowercase text prints in PICO-8's capital-looking font, so `?"cosmic // conquest"` shows as COSMIC // CONQUEST.
 - Never start/end code with `-->8` or put two in a row.
 - A line that starts and ends with `__` inside code (e.g. in a multiline string) is parsed as a section header.
 - Button glyphs (`⬅️➡️⬆️⬇️🅾️❎`) are multi-codepoint UTF-8 — prefer `btn(0..5)`.
@@ -112,10 +105,10 @@ Generation pitfalls:
 ## Recommended project layout & editing workflow
 
 ```
-game.p8          # thin cart: header, __lua__ with only #include lines, + gfx/map/sfx/music data
+game.p8          # thin cart: header, __lua__ with only #include lines, + gfx/label/map/sfx/music data
 src/*.lua        # all code (agent edits these)
 tests/*.lua      # test drivers
-tools/           # runner, framebuffer->png, png->gfx scripts
+tools/           # runner, framebuffer->png, png->gfx, label, web-export scripts
 .build/ shots/   # gitignored
 ```
 ```
@@ -136,12 +129,17 @@ __lua__
 |---|---|
 | `-run cart` | load & run (window). Pause menu gains SHUTDOWN. |
 | `-x cart` | headless run (see below). |
-| `-export "args"` | headless EXPORT then exit, e.g. `pico8.exe game.p8 -export "-f game.html"` / `"game.p8.png"` / `"-i 32 -s 2 -c 12 game.bin"`. Args lowercase. |
+| `-export "args"` | headless EXPORT then exit, e.g. `pico8.exe game.p8 -export "-f game.html"` / `"index.html"` / `"game.p8.png"` / `"-i 32 -s 2 -c 12 game.bin"`. Args lowercase. |
 | `-p "str"` | param readable via `stat(6)` (e.g. test mode flags). |
 | `-home dir` | config/log/backup/cdata location — **sandbox test runs with this**. |
 | `-root_path dir` | virtual drive root. |
 | `-desktop dir` | where screenshots/GIFs/wavs go. |
 | `-windowed 1 -width N -height N`, `-volume 0`, `-screenshot_scale N`, `-gif_len N`, `-accept_future 1`, `-global_api 1` | misc. No `-frames` switch exists. |
+
+### Web export (HTML) [VERIFIED-LOCAL]
+1. **The cart needs a label.** Without a `__label__` section, `-export "index.html"` prints `please capture a label first` and writes nothing. Make one by script: run the cart headless (`-x`) with a driver that draws a representative frame, dump the screen through the display palette, map each colour to a label digit (`0-f`, `g-v` for secret colours) and write 128 lines into `__label__`. Pick a frame without transient text (e.g. flashing banners).
+2. **Exports enforce the compressed-code limit.** If the plain cart is over, minify first: `shrinko8 game.p8 .build/build.p8 --minify` (this inlines the `#include`s and keeps the data sections), then export the minified cart.
+3. Export from the output folder (paths are relative to the OS cwd): `cd .build/web && pico8.exe ../build.p8 -export "index.html"` → `index.html` + `index.js` (~1.7 MB). Naming it `index.html` is what itch.io's HTML5 player expects. Then push the folder with butler on an `html5` channel (see the itch-butler guide).
 
 ### Headless `-x` behaviour [VERIFIED-LOCAL, v0.2.7, Win10]
 - **Output is capturable when piped, but `printh(s)` → `INFO: s` goes to stderr** on Windows; only the `RUNNING: <path>` banner is on stdout. Capturing stdout alone gets you nothing — merge the streams (`2>&1`; in Python `subprocess.run(..., stdout=PIPE, stderr=STDOUT)`). Top-level output comes before the `RUNNING:` line.
@@ -192,7 +190,12 @@ extcmd("shutdown")
 ```
 A ~50-line stdlib Python script maps `@px` lines through `@pal` + the RGB table below and writes a PNG (zlib+struct, scale ×4) the agent can view. Use `b\16` not `b>>4` (`>>` keeps fraction bits). Also run soak tests (thousands of frames, random input) to catch nil errors and 32767 overflow. Overriding `btn`/`btnp` as globals in the appended tab works: game code looks them up at call time.
 
+- **Idle tests too.** A test that presses Z on the title within a frame or two never runs the title's own update for long; one game crashed on its title screen after half a second (an uninitialised global compared in the sim tick) and every test missed it. Leave each screen idle for a couple of seconds in at least one test.
+- **Soak drivers:** loop counts over 32767 silently become 0 iterations — nest loops (`for i=1,4000 do for _=1,30 do ... end end`). Restart a game whenever random input lands on the title/game-over screen, or the soak never reaches the late game.
+
 **When game + test tab won't fit in 8192 tokens** [VERIFIED-LOCAL]: the test tab counts against the same limit, so a game near the limit leaves no room for tests. Let each test declare source files it never calls (e.g. a first line `--exclude: src/ui.lua`) and have the runner drop those `#include` lines from the temp cart. Globals resolve at call time, so missing functions only fail if actually called; stub the few that are still reached (`function say() end`). Split shared test helpers into a core file and an optional fixtures file so a tiny test can drop the fixtures too. Keep one small whole-game soak test with nothing excluded.
+
+**Profiling headless** [VERIFIED-LOCAL]: `stat(1)` is the fraction of the current frame used so far, so `local a=stat(1) f() local d=stat(1)-a` measures a call in frames (1 = a whole 30 fps frame) even under `-x`. Wrap many functions at once from a test tab with `_ENV[name]` and log totals and call counts.
 
 Alternative screenshot (window, `-run`): `-desktop <dir> -screenshot_scale 1`, then in a debug build `extcmd("set_filename","shot") extcmd("screen")` (no `%d` → overwrite). Keys: Ctrl+6 screenshot, Ctrl+7 label, Ctrl+8/9 GIF, Ctrl+P CPU meter.
 
@@ -215,6 +218,7 @@ What worked, and what looked bad, converting a 16px, ~30-colour pack:
 - **Watch rarely used dark tints** in the table: a dark blue-violet used only for the inside of a glass tank was mapped to the same grey as the floor, and the tank read as having a hole. Map such shades by material (liquid → dark blue 1), and when a player reports a "hole", check the colour table before suspecting transparency. To audit real holes: flood-fill transparent pixels from each sprite's border; any transparent pixel not reached is enclosed.
 - 1-2 px details (small highlights, lights) vanish at 1/2 — pick different source sprites instead of hand-repairing.
 - **Black art vs transparency:** colour 0 is transparent by default, so black pixels inside sprites become holes. Emit transparent pixels as an unused key colour and draw with `palt(0,false) palt(key,true)`.
+- **More variants from few sprites:** bake palette-swapped copies into free sheet slots with the build script (costs slots, not tokens). Never swap a colour *to* the transparent key colour — those pixels vanish; make the script assert it.
 
 ## Runtime sprite tricks (saves cart space) [VERIFIED-LOCAL]
 
@@ -226,8 +230,9 @@ What worked, and what looked bad, converting a 16px, ~30-colour pack:
   end
   ```
 - **Pipe/track join pieces from one straight piece:** build all 16 neighbour masks at boot. Thin pipes: take the half of the horizontal/vertical piece that reaches each joined edge (halves overlap the centre), then repeat with the outline colour skipped so bodies overwrite outlines at the joint. Full-width tracks/belts: mitre — each pixel comes from the piece of whichever joined direction has the nearest tile edge (picture-frame corners, clean T and cross).
-- Close visual gaps where a conduit meets a sprite with transparent margins: measure the margin with `sget` along the conduit's centre line and `sspr` that many pixels of the straight piece into it.
+- Close visual gaps where a conduit meets a sprite with transparent margins: measure the margin with `sget` along the conduit's centre line and `sspr` that many pixels of the straight piece into it. (~200 tokens; a cheaper "is it connected" cue is to colour the store's fill bar only when it reaches its consumer.)
 - `pal(tbl)` recolours several at once (`pal({[12]=11,[1]=3})`); **`pal()` with no args also resets `palt`** — undo a recolour with `pal(k,k)` per entry if transparency is set.
+- Inline text colours: P8SCII `"\f8"` (form feed + hex digit) switches the print colour mid-string, e.g. `"\f8o10 \fcl20 \fbg5"` [VERIFIED-LOCAL]. Wide/tall text: `"\^w\^t"..s` (each char 8 px wide).
 
 ## Language & API gotchas (top 22)
 
@@ -240,7 +245,7 @@ What worked, and what looked bad, converting a 16px, ~30-colour pack:
 7. Divide by zero → ±0x7fff.ffff, no error; `x%0==0`. Bugs show as huge numbers, not crashes.
 8. `del(t,v)` removes first element **equal to v**; `deli(t,i)` by index. Deleting inside `for v in all(t)` is safe; in forward numeric loops iterate backwards.
 9. `#t` undefined with nil holes; `pairs` order random → arrays for ordered update/draw.
-10. **No stdlib**: no `string.*/table.*/math.*/require/os/io`; no `s:sub()`. Use `sub ord chr tostr tonum split add del deli count all foreach flr ceil mid rnd srand`, `s[i]` single char. Globals by name: `_ENV["s_"..name]` works at runtime but hides the use from shrinko8's linter/minifier — prefer a lookup table. `add(t,v,i)` inserts at index i (shuffle: `add(l,v,rnd(#l+1)\1+1)`); `add` returns v. `split"a,b,c"[j]` indexes the result directly.
+10. **No stdlib**: no `string.*/table.*/math.*/require/os/io`; no `s:sub()`. Use `sub ord chr tostr tonum split add del deli count all foreach flr ceil mid rnd srand`, `s[i]` single char. Globals by name: `_ENV["s_"..name]` works at runtime but hides the use from shrinko8's linter/minifier — prefer a lookup table. `add(t,v,i)` inserts at index i (shuffle: `add(l,v,rnd(#l+1)\1+1)`); `add` returns v. `split"a,b,c"[j]` indexes the result directly. `rnd(tbl)` and `tbl[rnd(#tbl)\1+1]` consume randomness differently: swapping one for the other changes seeded output.
 11. `btnp` only meaningful in `_update` (state resets each update). Repeat = 15 frames then every 4; tune `poke(0x5f5c,delay) poke(0x5f5d,rate)` (255 = no repeat).
 12. Game logic belongs in `_update` (may run 2× per draw when over budget). `time()` counts updates, not wall-clock; wraps ~9 h [UNVERIFIED].
 13. **Mouse/keyboard are optional hardware** (`poke(0x5f2d,1)`; `stat(32/33)` x/y, `stat(34)` buttons, `stat(36)` wheel, `stat(30/31)` keys). Handhelds/phones lack them; "p"/Enter open pause (`poke(0x5f30,1)` suppresses one frame). Cursor-driven games (management sims): d-pad cursor primary, mouse optional.
@@ -277,12 +282,17 @@ function wait(n) for i=1,n do yield() end end
 
 -- pause menu (index 1-5, label <=16 chars)
 menuitem(1,"save game",function() save() end)
+
+-- game speed: a sim tick every tick_frames frames, twice as often at spd=2
+subt+=spd if subt>=tick_frames then subt-=tick_frames --[[tick]] end
 ```
 Management sims: tick the simulation every N frames, draw static UI with one `map()` call, `print` with `\#c` background codes for panels, money as `>>16`. Tweening: `x+=(tx-x)*0.2`. Fades: per-colour darkening ramp applied with `pal(c,ramp[c],1)`.
 
-**CPU opponents in a sim** (lessons from a builder/economy game): give them the player's own building/placement/pathing functions rather than a separate abstract model, and have each one take a single action every few ticks (stagger players across ticks to spread CPU cost). Before buying, test the result (can the new unit reach its target? can a conduit join it?) and undo for free if not, otherwise it re-buys the same broken thing forever. Keep a reserve that scales with its running costs, take on work only when it pays more than the upkeep it implies, and run a headless "CPUs alone for N cycles, several seeds" log — first versions went bankrupt in most seeds.
+**Grid path searches:** a breadth-first search that accepts a *list* of start cells costs one search where "try each start in turn" costs one per start. Laying a conduit from "any free cell next to building A" this way took a CPU opponent's step from ~2 frames (worst 6) to 0.05 (worst ~1) [VERIFIED-LOCAL].
 
-**Token savers** (manual): data as strings + `split"1,2,3"` (any-length string = 1 token), `a,b,c=1,2,3`, paren-less calls `f"x"`/`f{}`, `t.k` over `t["k"]`, `\` for `flr(a/b)`, `?` for print, shorthand `if`, `_ENV`, `foreach`/`all`. Generated constant files (sprite numbers etc.) should only emit names the code uses — each unused `name=value` still costs ~3 tokens. shrinko8 `--minify` handles renames/whitespace/const-folding (`--[[$const]] DEBUG=false` strips dead branches). Parens-8 compiler mode saves more but is AGPLv3 and slower.
+**CPU opponents in a sim** (lessons from a builder/economy game): give them the player's own building/placement/pathing functions rather than a separate abstract model, and have each one take a single action every few ticks (stagger players across ticks to spread CPU cost; profile one step's `stat(1)` cost). Before buying, test the result (can the new unit reach its target? can a conduit join it?) and undo for free if not, otherwise it re-buys the same broken thing forever. Keep a reserve that scales with its running costs, take on work only when it pays more than the upkeep it implies, and run a headless "CPUs alone for N cycles, several seeds" log, past any periodic events (one bug only appeared after the first 64-cycle re-roll). Failure modes found that way, all invisible in unit tests: workers sharing one target cell collide forever; storage packed against the main building leaves no free cell for workers to unload; working through needs in a fixed order with a "backlog → aim higher" rule starves the last need; counting setup time towards "this job is stalled" drops fresh jobs; flagging a resource "unreachable" when its cells were merely all taken locks the asteroid out for good.
+
+**Token savers** (manual): data as strings + `split"1,2,3"` (any-length string = 1 token), `a,b,c=1,2,3`, paren-less calls `f"x"`/`f{}`, `t.k` over `t["k"]`, `\` for `flr(a/b)`, `?` for print, shorthand `if`, `_ENV`, `foreach`/`all`. Generated constant files (sprite numbers etc.) should only emit names the code uses — each unused `name=value` still costs ~3 tokens. shrinko8 `--minify` handles renames/whitespace/const-folding (`--[[$const]] DEBUG=false` strips dead branches) but barely changes the token count. Parens-8 compiler mode saves more but is AGPLv3 and slower. Near the limit, a pass that folds repeated loops into small helpers (e.g. "every building and robot on a map", "a building's footprint cells") saved ~3% on an 8k cart with no behaviour change; compare screenshots before/after with a pixel-diff script.
 
 ## Recommended agent loop
 
@@ -318,13 +328,14 @@ Management sims: tick the simulation every N frames, draw static UI with one `ma
 | No `printh` output when launched normally | GUI exe; capture **stderr** too (`2>&1 \| cat`) or `printh(s,"f.txt")` (lands in root_path). |
 | Test runner sees only `RUNNING: ...` and no `INFO:` lines | You captured stdout only; `printh` goes to stderr on Windows. |
 | `-x` never returns | Game loop running, **syntax error**, or cart **over 8192 tokens** (all hang). Use `extcmd("shutdown")` + `timeout`; check output for `syntax error`; count tokens first. |
+| `-export "index.html"` writes nothing, prints `please capture a label first` | Add a `__label__` section (generate it, see Web export). |
+| Export fails or cart won't save as .p8.png | Compressed > limit; `shrinko8 --minify` into a build cart and export that. |
 | Edits not picked up | PICO-8 has unsaved changes → "DIDN'T RELOAD". Save/discard in PICO-8 or relaunch. |
 | `X` and `x` treated differently / `PRINT` undefined | Uppercase = puny glyphs; lowercase everything. |
 | Score goes negative | 16.16 overflow; use `>>16` integer storage. |
 | Map bottom half corrupted | You drew in sprite banks 2-3 (shared memory). |
 | HUD scrolls with world | Reset `camera()` before drawing HUD. |
 | Holes inside converted sprites | Black mapped to colour 0 (transparent); use another key colour + `palt`. Or not a hole at all: a dark tint mapped to the background's colour — check the colour table. |
-| Cart won't save as .p8.png | Compressed > 15360 B; check `shrinko8 --count`, export with `--minify`. |
 | "future version" error | `-accept_future 1`. |
 | Settings lost | config.txt written only on clean exit; killed process doesn't save. |
 
@@ -333,6 +344,7 @@ Management sims: tick the simulation every N frames, draw static UI with one `ma
 - Detach the playtest window with `cmd //c start` or PowerShell `Start-Process` (a backgrounded `&` may die with the shell).
 - Backups accumulate in `%APPDATA%\pico-8\backup`.
 - Exported binaries write `printh` files next to the exe.
+- Writing Lua that contains `\1`, `\f`, `\^` from a Python heredoc: Python's own string escapes eat backslashes in non-raw strings (`'\1'` becomes chr(1)) — write such edit scripts to a file with raw strings, or edit with a text tool.
 
 ## Asset sources
 itch.io tag pages (`itch.io/game-assets/tag-pico-8`, `/free/tag-pico-8`, `/assets-cc0/free/tag-pico-8`), OpenGameArt "pico-8", Lexaloffle BBS carts (viewable source; default BBS licence CC4-BY-NC-SA → non-commercial). Learning: Lazy Devs (YouTube), NerdyTeachers, awesome-pico-8.
@@ -352,4 +364,4 @@ itch.io tag pages (`itch.io/game-assets/tag-pico-8`, `/free/tag-pico-8`, `/asset
 ---
 
 *Last updated: 2026-10-20*
-*Setup verified on: Windows 10, PICO-8 v0.2.7, shrinko8 v1.2.7d, Git Bash (headless -x behaviour, stderr capture, rot90/sset, tonum(s,2) money, shrinko8 lint/count with #include all run locally; `?`/one-line-if parse gotchas and test-cart include exclusion verified 2026-10-20)*
+*Setup verified on: Windows 10, PICO-8 v0.2.7, shrinko8 v1.2.7d, Git Bash (headless -x behaviour, stderr capture, rot90/sset, tonum(s,2) money, shrinko8 lint/count with #include, test-cart include exclusion, `?`/one-line-if parse gotchas, HTML export with generated label + minified build, stat(1) profiling all run locally)*
