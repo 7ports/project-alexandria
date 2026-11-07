@@ -1,13 +1,26 @@
 ---
 id: aws-cli
 type: guide
+title: AWS CLI v2
+summary: AWS CLI v2 is the unified command-line tool for managing AWS services.
+tags:
+  - cloud-iac
+status: active
+created: 2026-06-17
+updated: 2026-06-17
+embedding_version: 1
+---
+
+---
+id: aws-cli
+type: guide
 title: "AWS CLI v2"
 summary: >
   AWS CLI v2 is the unified command-line tool for managing AWS services.
 tags: [cloud-iac]
 status: active
 created: 2026-06-17
-updated: 2026-06-17
+updated: 2026-11-07
 embedding_version: 1
 ---
 
@@ -23,8 +36,18 @@ embedding_version: 1
 # Download MSI installer
 curl -o "$env:TEMP\awscli.msi" "https://awscli.amazonaws.com/AWSCLIV2.msi"
 
-# Install silently (requires admin elevation)
+# Optional but recommended: verify the Authenticode signature (expect Status=Valid, signer "Amazon Web Services, Inc.")
+$s = Get-AuthenticodeSignature "$env:TEMP\awscli.msi"; $s.Status; $s.SignerCertificate.Subject
+
+# Install silently (requires admin elevation — triggers a UAC prompt the user must accept)
 Start-Process msiexec.exe -ArgumentList '/i',"$env:TEMP\awscli.msi",'/qn' -Verb RunAs -Wait
+```
+
+**Install (Windows, driven from Git Bash / an agent's bash tool):**
+```bash
+MSI=$(cygpath -w "<path/to/AWSCLIV2.msi>")
+powershell.exe -NoProfile -Command "\$p=Start-Process msiexec.exe -ArgumentList '/i','\"$MSI\"','/qn' -Verb RunAs -Wait -PassThru; 'exit=' + \$p.ExitCode"
+"/c/Program Files/Amazon/AWSCLIV2/aws.exe" --version   # exit=0 means success
 ```
 
 **Install (macOS):**
@@ -72,6 +95,10 @@ The MSI installer is the only supported method. **winget and bash `msiexec` may 
 curl -o "$env:TEMP\awscli.msi" "https://awscli.amazonaws.com/AWSCLIV2.msi"
 Start-Process msiexec.exe -ArgumentList '/i',"$env:TEMP\awscli.msi",'/qn' -Verb RunAs -Wait
 ```
+
+- `-Verb RunAs` pops a UAC consent dialog; an unattended agent can't click it, so tell the user to accept it.
+- Add `-PassThru` and read `.ExitCode` to know whether the install succeeded (`/qn` is otherwise silent on failure).
+- Quote the MSI path inside `-ArgumentList` if it may contain spaces.
 
 Default install path: `C:\Program Files\Amazon\AWSCLIV2\aws.exe`
 
@@ -142,6 +169,8 @@ resource "aws_acm_certificate" "cert" {
 }
 ```
 
+When an account has resources spread across several regions, pass `--region` explicitly on inventory/cost commands rather than relying on the profile default — otherwise resources in other regions are silently omitted.
+
 ### IAM User Setup for Static Site Projects
 
 IAM is a global service — IAM users and policies have no region. Create them from any region.
@@ -180,6 +209,7 @@ Typical permissions needed for S3 + CloudFront static sites:
 |-------|----------|
 | `aws` not found after install (Windows) | Use full path: `"/c/Program Files/Amazon/AWSCLIV2/aws.exe"` or open a new terminal |
 | `msiexec` returns exit code 103 in bash | Use PowerShell `Start-Process -Verb RunAs` instead of calling msiexec directly from bash |
+| Silent install "did nothing" | Add `-PassThru` and print `.ExitCode`; a declined UAC prompt or bad path fails silently under `/qn` |
 | winget not available in Git Bash / MSYS2 | winget is a Windows Store app, not available in all shell environments — use MSI installer directly |
 | Access denied creating IAM resources | Ensure you're using root or an admin user for initial IAM setup |
 | CloudFront SSL cert validation failing | ACM cert must be in us-east-1, not your default region — use a Terraform provider alias |
@@ -187,7 +217,7 @@ Typical permissions needed for S3 + CloudFront static sites:
 
 ## Platform Notes
 
-- **Windows (Git Bash/MSYS2)**: The `aws` binary installs to `C:\Program Files\Amazon\AWSCLIV2\` which may not be in PATH for the current bash session. Either use the full path or restart the terminal.
+- **Windows (Git Bash/MSYS2)**: The `aws` binary installs to `C:\Program Files\Amazon\AWSCLIV2\` which may not be in PATH for the current bash session. Either use the full path or restart the terminal. Convert POSIX paths with `cygpath -w` before handing them to `powershell.exe`.
 - **CI/CD (GitHub Actions)**: AWS CLI is pre-installed on `ubuntu-latest` runners. Just configure credentials via `aws-actions/configure-aws-credentials`.
 - **IAM is global**: IAM users, groups, policies, and roles have no region. They work across all regions.
 - **CloudFront is global**: The CloudFront API is hosted in us-east-1 but distributions serve globally. Your S3 origin can be in any region.
@@ -201,5 +231,5 @@ Typical permissions needed for S3 + CloudFront static sites:
 
 ---
 
-*Last updated: 2026-04-04*
-*Setup verified on: Windows 10 Pro (Git Bash), AWS CLI 2.34.24*
+*Last updated: 2026-11-07*
+*Setup verified on: Windows 10 Home (Git Bash → powershell.exe elevated MSI), AWS CLI 2.39.6; earlier on Windows 10 Pro, AWS CLI 2.34.24*
