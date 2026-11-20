@@ -135,7 +135,12 @@ docs — `guide`, `concept`, `article`, `reference` — through a second set of 
 | `read_knowledge` / `list_knowledge` | Read and list across all types |
 | `search_knowledge` | Primary search. Semantic when the vector index is up, lexical substring otherwise |
 | `recall_context` | Topic briefing; wrapper over `search_knowledge` |
-| `reindex_knowledge` | Rebuild the vector index from the markdown source-of-record |
+| `reindex_knowledge` | Rebuild the vector index from the markdown source-of-record; also prunes rows whose file was deleted |
+| `knowledge_health` | Read-only drift report: docs on disk vs in the index vs in the published manifest, named differences (unindexed, phantom, stale, 0-chunk, mistyped), and the git-sync conflict flag |
+| `get_template` | Authoring template by type (`guide`, `concept`, `article`, `reference`) |
+
+Directory placement decides a doc's type: a file in `concepts/` is a concept even without
+frontmatter. Each content dir's `README.md` is a directory description and is never indexed.
 
 ### Frontmatter is merged, not recomposed (fixed 2026-09-28)
 

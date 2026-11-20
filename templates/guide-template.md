@@ -1,6 +1,6 @@
 # [Tool Name]
 
-<!-- Write-back trigger reminder: you owe a guide (write_knowledge / update_guide) after ANY of these — (1) setting up/installing/configuring a tool, (2) resolving a non-obvious error, (3) discovering a version-compat fact or platform quirk, (4) getting a tricky config/command/API right, or (5) session close. Recording is the default, not an afterthought. Record ONLY general, project-agnostic knowledge; genericise host/path/secret/client/project specifics first (see the RECORD / DO NOT record examples below). -->
+<!-- Write-back trigger reminder: you owe a guide (write_knowledge / update_guide) after ANY of these — (1) setting up/installing/configuring a tool, (2) resolving a non-obvious error, (3) discovering a version-compat fact or platform quirk, (4) getting a tricky config/command/API right, (5) session close, or (6) understanding why something works — that one is a concept, not a guide (get_template type:concept). Recording is the default, not an afterthought. Record ONLY general, project-agnostic knowledge; genericise host/path/secret/client/project specifics first (see the RECORD / DO NOT record examples below). -->
 
 ## Quick Reference
 

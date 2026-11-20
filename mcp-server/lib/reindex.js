@@ -29,12 +29,13 @@ const { chunk } = require('./chunker');
 const { embedPassage } = require('./embedder');
 const { upsertDoc } = require('./index-store');
 const { addReembedded, setIndexSize } = require('./metrics-hooks');
+const { listContentFiles, isContentFile, typeForDir, CONTENT_DIRS } = require('./content');
 
 // Bumped when the model or chunking changes → forces a full reindex. Kept in
 // sync with the design's frontmatter `embedding_version` default of 1.
 const EMBEDDING_VERSION = 1;
 
-const DEFAULT_CONTENT_DIRS = ['guides', 'concepts', 'articles', 'references'];
+const DEFAULT_CONTENT_DIRS = CONTENT_DIRS;
 
 // __dirname is mcp-server/lib → repo root is two levels up.
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -44,31 +45,11 @@ function sha256(text) {
 }
 
 /**
- * List every *.md file under the given content dirs that actually exist.
- * @param {string[]} contentDirs - repo-root-relative dir names
- * @returns {Array<{ relPath: string, absPath: string, dir: string, filename: string }>}
+ * Every knowledge doc under the given content dirs (README.md excluded, type taken from
+ * the directory). See content.js — the single definition every walker shares.
  */
 function listMarkdown(contentDirs) {
-  const out = [];
-  for (const dir of contentDirs) {
-    const absDir = path.resolve(REPO_ROOT, dir);
-    let entries;
-    try {
-      entries = fs.readdirSync(absDir);
-    } catch {
-      continue; // dir does not exist yet — skip
-    }
-    for (const f of entries) {
-      if (!f.endsWith('.md')) continue;
-      out.push({
-        relPath: `${dir}/${f}`,
-        absPath: path.join(absDir, f),
-        dir,
-        filename: f,
-      });
-    }
-  }
-  return out;
+  return listContentFiles({ contentDirs, repoRoot: REPO_ROOT });
 }
 
 /**
@@ -77,6 +58,8 @@ function listMarkdown(contentDirs) {
  * @returns {Promise<{ skipped: boolean, chunks: number }>}
  */
 async function embedAndUpsert(store, file, body, meta, contentHash) {
+  // Directory placement wins over the frontmatter `type` (and its `guide` default).
+  meta = { ...meta, type: file.type || typeForDir(file.dir) };
   const chunks = chunk({ meta, body });
 
   const embeddings = [];
@@ -134,7 +117,7 @@ function removeDoc(store, docId) {
  *
  * @param {{ db, stmts }} store
  * @param {{ contentDirs?: string[], force?: boolean }} [opts]
- * @returns {Promise<{ docs: number, chunksEmbedded: number, skipped: number }>}
+ * @returns {Promise<{ docs: number, chunksEmbedded: number, skipped: number, pruned: number }>}
  */
 async function reindexAll(store, opts) {
   const options = opts || {};
@@ -170,9 +153,22 @@ async function reindexAll(store, opts) {
     else chunksEmbedded += res.chunks;
   }
 
+  // Prune rows whose file is gone (or was never a doc, e.g. the README rows older builds
+  // indexed). Without this a full rebuild only ever adds: a deleted doc kept answering
+  // searches until someone hand-edited the DB. Scoped to the dirs being rebuilt.
+  const keep = new Set(files.map((f) => f.relPath));
+  const inScope = (p) => contentDirs.some((d) => String(p || '').startsWith(`${d}/`));
+  let pruned = 0;
+  for (const row of store.db.prepare('SELECT doc_id, path FROM docs').all()) {
+    if (inScope(row.path) && !keep.has(row.path)) {
+      removeDoc(store, row.doc_id);
+      pruned++;
+    }
+  }
+
   setIndexSize('docs', files.length - skipped);
   setIndexSize('chunks', chunksEmbedded);
-  return { docs: files.length, chunksEmbedded, skipped };
+  return { docs: files.length, chunksEmbedded, skipped, pruned };
 }
 
 /**
@@ -243,7 +239,7 @@ function normalizeChangedPaths(changedPaths, contentDirs) {
   const dirs = new Set(contentDirs);
   const out = [];
   for (const raw of changedPaths || []) {
-    if (!raw || !String(raw).endsWith('.md')) continue;
+    if (!raw || !isContentFile(String(raw).split(/[\\/]/).pop())) continue;
     const rel = path.isAbsolute(raw) ? path.relative(REPO_ROOT, raw) : raw;
     const norm = rel.split(path.sep).join('/');
     const top = norm.split('/')[0];
@@ -253,6 +249,7 @@ function normalizeChangedPaths(changedPaths, contentDirs) {
       absPath: path.resolve(REPO_ROOT, norm),
       dir: top,
       filename: norm.split('/').pop(),
+      type: typeForDir(top),
     });
   }
   return out;

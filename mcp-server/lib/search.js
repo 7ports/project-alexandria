@@ -28,19 +28,9 @@ const { embedQuery } = require('./embedder');
 const { knn } = require('./index-store');
 const { parseFrontmatter } = require('./frontmatter');
 
-// __dirname is mcp-server/lib → repo root is two levels up. Same anchor the
-// reindex pipeline uses so the lexical scan walks the identical source dirs.
-const REPO_ROOT = path.resolve(__dirname, '..', '..');
-
-const CONTENT_DIRS = ['guides', 'concepts', 'articles', 'references'];
-
-// Map a content dir name → the singular `type` value used in frontmatter.
-const DIR_TYPE = {
-  guides: 'guide',
-  concepts: 'concept',
-  articles: 'article',
-  references: 'reference',
-};
+// Same walker the reindex pipeline uses, so the lexical scan sees the identical doc set
+// (README.md excluded, type decided by directory — see content.js).
+const { listContentFiles } = require('./content');
 
 const SNIPPET_LEN = 200;
 
@@ -114,72 +104,59 @@ function lexicalSearch(query, opts) {
 
   const hits = [];
 
-  for (const dir of CONTENT_DIRS) {
-    const absDir = path.resolve(REPO_ROOT, dir);
-    let entries;
+  for (const file of listContentFiles()) {
+    const { filename } = file;
+    let raw;
     try {
-      entries = fs.readdirSync(absDir);
+      raw = fs.readFileSync(file.absPath, 'utf-8');
     } catch {
-      continue; // dir does not exist yet — skip
+      continue;
     }
 
-    for (const filename of entries) {
-      if (!filename.endsWith('.md')) continue;
+    let meta;
+    let body;
+    try {
+      ({ meta, body } = parseFrontmatter(raw, filename));
+    } catch {
+      meta = { id: file.slug, title: filename };
+      body = raw;
+    }
+    // Directory placement wins over the frontmatter `type`.
+    meta = { ...meta, type: file.type };
 
-      let raw;
-      try {
-        raw = fs.readFileSync(path.join(absDir, filename), 'utf-8');
-      } catch {
+    // Honor the type filter even in the fallback path.
+    if (type && meta.type !== type) continue;
+
+    const lines = body.split('\n');
+    let headingPath = '';
+    let matchCount = 0;
+    let firstHit = null;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const hm = line.match(/^#{1,6}[ \t]+(.+?)\s*$/);
+      if (hm) {
+        headingPath = hm[1].trim();
         continue;
       }
-
-      let meta;
-      let body;
-      try {
-        ({ meta, body } = parseFrontmatter(raw, filename));
-      } catch {
-        meta = {
-          id: filename.replace(/\.md$/i, ''),
-          type: DIR_TYPE[dir] || 'guide',
-          title: filename,
-        };
-        body = raw;
-      }
-
-      // Honor the type filter even in the fallback path.
-      if (type && meta.type !== type) continue;
-
-      const lines = body.split('\n');
-      let headingPath = '';
-      let matchCount = 0;
-      let firstHit = null;
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const hm = line.match(/^#{1,6}[ \t]+(.+?)\s*$/);
-        if (hm) {
-          headingPath = hm[1].trim();
-          continue;
-        }
-        if (needle && line.toLowerCase().includes(needle)) {
-          matchCount++;
-          if (firstHit === null) {
-            firstHit = { heading_path: headingPath, text: line.trim() };
-          }
+      if (needle && line.toLowerCase().includes(needle)) {
+        matchCount++;
+        if (firstHit === null) {
+          firstHit = { heading_path: headingPath, text: line.trim() };
         }
       }
+    }
 
-      if (matchCount > 0 && firstHit) {
-        hits.push({
-          doc_id: meta.id,
-          type: meta.type,
-          title: meta.title,
-          heading_path: firstHit.heading_path,
-          // No semantic distance available — rank by match frequency.
-          score: matchCount,
-          snippet: snippetOf(firstHit.text),
-        });
-      }
+    if (matchCount > 0 && firstHit) {
+      hits.push({
+        doc_id: meta.id,
+        type: meta.type,
+        title: meta.title,
+        heading_path: firstHit.heading_path,
+        // No semantic distance available — rank by match frequency.
+        score: matchCount,
+        snippet: snippetOf(firstHit.text),
+      });
     }
   }
 

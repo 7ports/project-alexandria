@@ -5,11 +5,12 @@ This is a living tooling documentation repository. It contains setup guides for 
 ## Key Rules
 
 - **Always update guides** when setting up new tooling or discovering fixes
-- **`docs/index.html` is now dynamic** — the guide count badge and guide cards are rendered from `docs/guides/manifest.json` at page load. You do NOT need to manually edit `docs/index.html` when adding or removing guides. Run `scripts/sync-docs.sh` instead to regenerate the manifest and README.
-- **Use the guide template** in `templates/guide-template.md` for new guides
+- **`docs/index.html` is now dynamic** — the doc count badge and cards are rendered from `docs/guides/manifest.json` at page load. You do NOT need to manually edit `docs/index.html` when adding or removing docs. Run `scripts/sync-docs.sh` instead to regenerate the manifest and README.
+- **All four content types are published** — guides, concepts, articles and references are copied into `docs/<dir>/` by `scripts/publish-content.sh` and listed in the manifest with a `type` field. Directory `README.md` files are never published or indexed.
+- **Use the templates** in `templates/` (`guide`, `concept`, `article`, `reference`) — `get_template` serves them
 - **Keep guides practical** — focus on step-by-step instructions, config snippets, and troubleshooting
 - **Include platform notes** — this setup runs primarily on Windows 10
-- **Run `scripts/sync-docs.sh`** before committing guide changes — this regenerates `docs/guides/manifest.json` and the `README.md` Guides table. CI will also do this automatically, but running locally keeps your commit clean.
+- **Run `scripts/sync-docs.sh`** before committing doc changes — this publishes content to `docs/`, regenerates `docs/guides/manifest.json` and the `README.md` Guides table, reindexes, and rebuilds the 3D map. CI will also do this automatically, but running locally keeps your commit clean.
 
 ## Structure
 
@@ -78,6 +79,7 @@ You do not need to change how you start Claude Code. Run it normally on your des
   3. You **discovered a version-compatibility fact or a platform quirk** (e.g. "vX breaks with vY", "Windows needs Z").
   4. You **found a working config / command / API pattern** that took more than one try to get right.
   5. **Session close** — before ending, sweep the session for any of the above you haven't recorded yet.
+  6. You **understood why something works** — a design pattern, trade-off, failure shape, or architecture insight. Record a concept (`type: concept`); for a longer synthesized narrative across several sources, record an article (`type: article`). `get_template` returns the shape for each type.
 
   Recording is the **default**, not an afterthought. If a trigger fired and you are not writing back, that is the exception and you should be able to say why (e.g. "already covered by guide X", or "purely project-specific — see §boundary"). **"I was busy / it was small" is not a valid reason to skip.**
 
@@ -110,7 +112,7 @@ mcp__project-voltron__submit_reflection({
 
 Even a brief reflection is valuable. Focus on gaps in agent instructions that required workarounds.
 
-**Session-close write-back sweep.** Before ending, sweep the whole session against the Alexandria **write-back triggers** (see the `alexandria` bullet under *MCP Tools Available*): any tool setup / MCP-server or integration config, any **non-obvious fix** (the answer wasn't in the first doc you read), any **version-compatibility fact or platform quirk**, and any **tricky config / command / API pattern** that took more than one try. For each one you haven't recorded yet, call `mcp__alexandria__update_guide` (or `write_knowledge`) now — recording is the default, not an afterthought. Record only general, project-agnostic knowledge; **genericise** host/path/secret/client/project specifics first (`<your-project>`, `<API_KEY>`, `<path/to/repo>`) rather than skipping. Never record project-specific content (business logic, custom architecture, project configs) in Alexandria; that belongs in CLAUDE.md.
+**Session-close write-back sweep.** Before ending, sweep the whole session against the Alexandria **write-back triggers** (see the `alexandria` bullet under *MCP Tools Available*): any tool setup / MCP-server or integration config, any **non-obvious fix** (the answer wasn't in the first doc you read), any **version-compatibility fact or platform quirk**, any **tricky config / command / API pattern** that took more than one try, and any **conceptual lesson** (why something works — record a concept, or an article for a longer narrative). For each one you haven't recorded yet, call `mcp__alexandria__update_guide` (or `write_knowledge`) now — recording is the default, not an afterthought. Record only general, project-agnostic knowledge; **genericise** host/path/secret/client/project specifics first (`<your-project>`, `<API_KEY>`, `<path/to/repo>`) rather than skipping. Never record project-specific content (business logic, custom architecture, project configs) in Alexandria; that belongs in CLAUDE.md.
 
 ---
 

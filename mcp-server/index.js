@@ -53,6 +53,9 @@ try {
 // non-blocking background pull+reconcile (refreshFromRemote). It pulls in
 // reindex/index-store (native deps), so guard the require — without it, reads
 // simply skip the freshness check and serve the local index as before.
+// Pure text renderers with no native deps — safe to require unguarded.
+const { describeEmbed, describeSync } = require('./lib/write-report');
+const healthLib = require('./lib/health');
 let refreshLib = null;     // CJS module: getLastSyncOk/setLastSyncOk/maybeRefresh/refreshFromRemote
 try {
   refreshLib = require('./lib/refresh');
@@ -121,46 +124,6 @@ const TEMPLATES_DIR = path.resolve(normalizedScriptDir, "..", "templates");
 const RECOMMENDATIONS_PATH = path.resolve(normalizedScriptDir, "..", "recommendations.json");
 const ONBOARDING_PATH = path.resolve(normalizedScriptDir, "..", "onboarding.json");
 
-/**
- * Human-readable durability summary for a writeKnowledge() result. Makes a
- * `pushed:false` outcome VISIBLE in the tool response (not merely logged) so a
- * caller knows whether their write actually reached the remote, and if not, why.
- */
-// Render the embed-on-write outcome honestly. A failed embed leaves the doc on
-// disk but ABSENT from the semantic index — it must never read as a plain
-// success, and a 0-chunk result must be qualified, never presented as OK.
-function describeEmbed(r) {
-  if (r.embed_error) {
-    return `❌ NOT searchable — embed-on-write FAILED (${r.embed_error}). The markdown is saved on disk (durable) but is ABSENT from the semantic index; resolve the error and reindex to make it searchable`;
-  }
-  if (r.indexed === false) {
-    return "❌ NOT searchable — embed-on-write did not complete; the doc is on disk but absent from the index";
-  }
-  if (r.indexed == null) {
-    return `${r.chunks} chunk(s) embedded (indexing not attempted — no store)`;
-  }
-  if (r.chunks === 0) {
-    return "⚠️ indexed but produced 0 searchable chunks (empty body?) — the doc is saved but will not surface in search";
-  }
-  return `${r.chunks} chunk(s) embedded`;
-}
-
-function describeSync(r) {
-  if (r.pushed) {
-    const target = `${r.remote || "origin"}/${r.branch || "?"}`;
-    return `✅ committed and pushed to ${target}.`;
-  }
-  const why = r.reason || (r.error ? "error" : "unknown");
-  const detail = r.error ? `: ${r.error}` : "";
-  if (r.sync_conflict) {
-    return `⚠️ committed LOCALLY but NOT pushed — sync conflict (${why}${detail}). Manual reconciliation needed; the doc is saved locally.`;
-  }
-  if (r.committed) {
-    return `⚠️ committed LOCALLY but NOT pushed (${why}${detail}). The doc is saved locally and will sync on the next successful write.`;
-  }
-  return `⚠️ NOT committed and NOT pushed (${why}${detail}). The markdown + local index are updated; git sync did not run.`;
-}
-
 function getGuideFiles() {
   try {
     return fs.readdirSync(GUIDES_DIR)
@@ -213,7 +176,7 @@ function noResultsText(label, term, mode) {
 // Surfaced to every client on `initialize` (SDK: server/index.js returns options.instructions).
 // Universal push of Alexandria's recall-before / record-after / boundary contract.
 const ALEXANDRIA_INSTRUCTIONS =
-  "Alexandria is a shared, project-agnostic knowledge base. **Recall before acting:** call `recall_context`/`search_knowledge` before any tool setup or non-trivial technical decision. **Record after:** after (1) setting up a tool, (2) fixing a non-obvious error, (3) finding a version/platform gotcha, (4) getting a tricky config/command/API right, or (5) at session close, call `write_knowledge`/`update_guide` — recording is the default, not an afterthought. **Boundary:** record ONLY general knowledge that would help an unrelated project. If a finding names a host/path/secret/client/project, genericise it (`<your-project>`, `<API_KEY>`, `<path/to/repo>`) and record the general lesson; never record the specifics — those stay in the project's CLAUDE.md.";
+  "Alexandria is a shared, project-agnostic knowledge base. **Recall before acting:** call `recall_context`/`search_knowledge` before any tool setup or non-trivial technical decision. **Record after:** after (1) setting up a tool, (2) fixing a non-obvious error, (3) finding a version/platform gotcha, (4) getting a tricky config/command/API right, (5) at session close, or (6) understanding *why* something works — a design pattern, trade-off, or architecture insight — call `write_knowledge`/`update_guide` — recording is the default, not an afterthought. For (6), record a concept (`type: concept`); for a longer synthesized narrative across several sources, record an article (`type: article`). Templates: `get_template`. **Boundary:** record ONLY general knowledge that would help an unrelated project. If a finding names a host/path/secret/client/project, genericise it (`<your-project>`, `<API_KEY>`, `<path/to/repo>`) and record the general lesson; never record the specifics — those stay in the project's CLAUDE.md.";
 
 const server = new McpServer(
   {
@@ -391,7 +354,7 @@ server.tool(
 // Tool: Update or create a guide
 server.tool(
   "update_guide",
-  "Update an existing guide or create a new one in Project Alexandria. Use this to keep documentation current as you learn new things about tool setup. Call this after any write-back trigger (tool setup, non-obvious fix, version/platform gotcha, tricky config, or session close). Record ONLY general, project-agnostic knowledge; genericise host/path/secret/client/project specifics first.",
+  "Update an existing guide or create a new one in Project Alexandria. Use this to keep documentation current as you learn new things about tool setup. Call this after any write-back trigger (tool setup, non-obvious fix, version/platform gotcha, tricky config, session close, or a conceptual lesson — when you understood WHY something works, record a concept; for a longer synthesized narrative, an article). Record ONLY general, project-agnostic knowledge; genericise host/path/secret/client/project specifics first.",
   {
     name: z.string().describe("Guide name (e.g., 'my-new-tool'). Will create/overwrite guides/<name>.md"),
     content: z.string().describe("Full markdown content for the guide"),
@@ -440,6 +403,50 @@ server.tool(
         return { content: [{ type: "text", text: content }] };
       } catch {
         return { content: [{ type: "text", text: "Template not found." }] };
+      }
+    });
+  }
+);
+
+// Tool: Get the template for any content type
+const TEMPLATE_FILES = {
+  guide: "guide-template.md",
+  concept: "concept-template.md",
+  article: "article-template.md",
+  reference: "reference-template.md",
+};
+server.tool(
+  "get_template",
+  "Get the authoring template for a knowledge doc type: guide (tool setup steps), concept (why/how something works — a pattern, trade-off, or architecture insight), article (longer synthesized narrative across sources), or reference (a short pointer or gotcha). Use it before write_knowledge so the doc has the expected shape.",
+  {
+    type: z.enum(["guide", "concept", "article", "reference"]).optional()
+      .describe("Content type (default guide)"),
+  },
+  async ({ type }) => {
+    return withMetrics("get_template", async () => {
+      const t = type || "guide";
+      try {
+        const content = fs.readFileSync(path.join(TEMPLATES_DIR, TEMPLATE_FILES[t]), "utf-8");
+        return { content: [{ type: "text", text: content }] };
+      } catch {
+        return { content: [{ type: "text", text: `Template for '${t}' not found.` }] };
+      }
+    });
+  }
+);
+
+// Tool: Read-only consistency report across disk / index / manifest / git sync
+server.tool(
+  "knowledge_health",
+  "Read-only consistency check. Reports doc counts on disk, in the semantic index, and in the published manifest, the named differences between them (unindexed docs, phantom or stale index rows, docs not yet listed on the site), and whether git sync hit a conflict. Call it when search results look thin, after bulk edits, or before trusting that a write landed everywhere.",
+  {},
+  async () => {
+    return withMetrics("knowledge_health", async () => {
+      try {
+        const h = healthLib.knowledgeHealth(getStore());
+        return { content: [{ type: "text", text: healthLib.formatHealth(h) }] };
+      } catch (err) {
+        return { content: [{ type: "text", text: `knowledge_health failed: ${err.message}` }] };
       }
     });
   }
@@ -598,7 +605,7 @@ server.tool(
         return {
           content: [{
             type: "text",
-            text: `Reindex complete: ${r.docs} docs scanned, ${r.chunksEmbedded} chunks embedded, ${r.skipped} skipped${force ? " (forced)" : ""}.`,
+            text: `Reindex complete: ${r.docs} docs scanned, ${r.chunksEmbedded} chunks embedded, ${r.skipped} skipped, ${r.pruned || 0} stale rows pruned${force ? " (forced)" : ""}.`,
           }],
         };
       } catch (err) {
@@ -706,7 +713,7 @@ server.tool(
 // Tool: Write (create/update) a knowledge doc of any content type
 server.tool(
   "write_knowledge",
-  "Create or update a knowledge doc of ANY type (guide|concept|article|reference). Composes YAML frontmatter from metadata, writes <type-dir>/<name>.md as the source-of-record, embeds it into the semantic index immediately (embed-on-write), then commits & syncs to git asynchronously. Prefer this over update_guide for non-guide content. Call this after any write-back trigger (tool setup, non-obvious fix, version/platform gotcha, tricky config, or session close). Record ONLY general, project-agnostic knowledge; genericise host/path/secret/client/project specifics first.",
+  "Create or update a knowledge doc of ANY type (guide|concept|article|reference). Composes YAML frontmatter from metadata, writes <type-dir>/<name>.md as the source-of-record, embeds it into the semantic index immediately (embed-on-write), then commits & syncs to git asynchronously. Prefer this over update_guide for non-guide content. Call this after any write-back trigger (tool setup, non-obvious fix, version/platform gotcha, tricky config, session close, or a conceptual lesson — when you understood WHY something works, record a concept; for a longer synthesized narrative, an article). Record ONLY general, project-agnostic knowledge; genericise host/path/secret/client/project specifics first.",
   {
     name: z.string().describe("Slug (filename without .md), e.g. 'embed-on-write'"),
     type: z.enum(["guide", "concept", "article", "reference"]).describe("Content type → target directory"),
@@ -823,7 +830,7 @@ function startupSelfHeal() {
 
       console.error("[alexandria] index drift detected — rebuilding in background…");
       const r = await reindexLib.reindexAll(store, { contentDirs: CONTENT_DIRS });
-      console.error(`[alexandria] background reindex done: ${r.docs} docs, ${r.chunksEmbedded} chunks, ${r.skipped} skipped.`);
+      console.error(`[alexandria] background reindex done: ${r.docs} docs, ${r.chunksEmbedded} chunks, ${r.skipped} skipped, ${r.pruned || 0} pruned.`);
     } catch (err) {
       console.error(`[alexandria] startup self-heal failed (lexical fallback remains): ${err.message}`);
     }

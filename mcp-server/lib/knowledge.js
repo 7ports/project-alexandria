@@ -26,37 +26,19 @@ const { chunk } = require('./chunker');
 const { embedPassage } = require('./embedder');
 const { upsertDoc } = require('./index-store');
 const { syncCommitAndPush } = require('./git-sync');
-
-// __dirname is mcp-server/lib → repo root is two levels up.
-const REPO_ROOT = path.resolve(__dirname, '..', '..');
+const {
+  REPO_ROOT,
+  TYPE_DIRS,
+  CONTENT_DIRS,
+  dirForType,
+  listContentFiles,
+} = require('./content');
 
 // Kept in sync with reindex.js / the frontmatter `embedding_version` default.
 const EMBEDDING_VERSION = 1;
 
-const TYPE_DIRS = {
-  guide: 'guides',
-  concept: 'concepts',
-  article: 'articles',
-  reference: 'references',
-};
-const DIR_TYPES = {
-  guides: 'guide',
-  concepts: 'concept',
-  articles: 'article',
-  references: 'reference',
-};
-const CONTENT_DIRS = Object.values(TYPE_DIRS);
-
 function sha256(text) {
   return crypto.createHash('sha256').update(String(text == null ? '' : text)).digest('hex');
-}
-
-function dirForType(type) {
-  return TYPE_DIRS[type] || TYPE_DIRS.guide;
-}
-
-function typeForDir(dir) {
-  return DIR_TYPES[dir] || 'guide';
 }
 
 /** Render a single YAML scalar, quoting only when the minimal parser needs it. */
@@ -293,28 +275,16 @@ function listKnowledge(input = {}) {
   const { type } = input;
   const dirs = type ? [dirForType(type)] : CONTENT_DIRS;
   const out = [];
-  for (const dir of dirs) {
-    const absDir = path.resolve(REPO_ROOT, dir);
-    let entries;
+  for (const f of listContentFiles({ contentDirs: dirs })) {
+    let title = f.slug;
     try {
-      entries = fs.readdirSync(absDir);
+      const { meta } = parseFrontmatter(fs.readFileSync(f.absPath, 'utf-8'), f.filename);
+      title = meta.title || f.slug;
     } catch {
-      continue; // dir does not exist yet
+      /* fall back to the slug */
     }
-    for (const f of entries) {
-      if (!f.endsWith('.md')) continue;
-      const slug = f.replace(/\.md$/i, '');
-      let title = slug;
-      let dtype = typeForDir(dir);
-      try {
-        const { meta } = parseFrontmatter(fs.readFileSync(path.join(absDir, f), 'utf-8'), f);
-        title = meta.title || slug;
-        dtype = meta.type || dtype;
-      } catch {
-        /* fall back to slug/dir-derived type */
-      }
-      out.push(`${slug} — ${title} [${dtype}]`);
-    }
+    // Directory placement wins over frontmatter `type` (see content.js).
+    out.push(`${f.slug} — ${title} [${f.type}]`);
   }
   return out;
 }

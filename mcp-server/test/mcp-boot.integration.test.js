@@ -17,7 +17,7 @@ describe('mcp-boot.integration', () => {
     }
   });
 
-  it('boots the MCP server and advertises all 6 new tools', async () => {
+  it('boots the MCP server and advertises the knowledge, health and template tools', async () => {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         if (server) server.kill();
@@ -113,7 +113,7 @@ function validateResponses(responses, resolve, reject) {
     const tools = toolsResponse.result.tools || [];
     const toolNames = tools.map((t) => t.name);
 
-    // The 6 new semantic/vector tools must be present
+    // The semantic/vector tools, the health report and the typed template tool must be present
     const requiredTools = [
       'search_knowledge',
       'recall_context',
@@ -121,6 +121,8 @@ function validateResponses(responses, resolve, reject) {
       'write_knowledge',
       'list_knowledge',
       'reindex_knowledge',
+      'knowledge_health',
+      'get_template',
     ];
 
     for (const toolName of requiredTools) {

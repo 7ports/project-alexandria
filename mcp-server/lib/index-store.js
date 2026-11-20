@@ -269,4 +269,4 @@ function close(store) {
   if (store && store.db && store.db.open) store.db.close();
 }
 
-module.exports = { openIndex, upsertDoc, knn, close, EMBEDDING_DIM };
+module.exports = { openIndex, upsertDoc, knn, close, EMBEDDING_DIM, DEFAULT_DB_PATH };
