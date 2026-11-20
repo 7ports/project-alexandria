@@ -20,9 +20,19 @@
     "description": "Beads (`bd` CLI) is a distributed graph issue tracker designed for AI coding agents, powered by Dolt (a version-controlled SQL database). It provides "
   },
   {
+    "name": "claude-code-config-sync",
+    "title": "Syncing Claude Code config across machines",
+    "description": "Make ~/.claude a private git repo with an allowlist .gitignore; SessionStart/Stop hooks commit, pull --rebase and push. Gotchas for Windows, secrets, "
+  },
+  {
     "name": "claude-code-github-actions",
     "title": "Claude Code in GitHub Actions",
     "description": ""
+  },
+  {
+    "name": "claude-code-remote-control-offload",
+    "title": "Claude Code Remote Control: offload sessions to an always-on machine",
+    "description": "Use this when long or overnight work should keep running while your laptop sleeps, and you still want to watch/steer it from the laptop or phone. Alte"
   },
   {
     "name": "claude-in-chrome",
@@ -40,9 +50,29 @@
     "description": ">"
   },
   {
+    "name": "cloudflare-worker-custom-domain",
+    "title": "Cloudflare Worker on a custom domain (wrangler)",
+    "description": "routes with custom_domain: true; workers_dev turns off by default once routes exist"
+  },
+  {
+    "name": "cloudflare-workers-vite-d1",
+    "title": "Cloudflare Workers + Vite + D1 (and Claude Code agent setup)",
+    "description": ""
+  },
+  {
     "name": "coplay-mcp-server",
-    "title": "CoPlay MCP Server (Unity Integration)",
-    "description": "CoPlay MCP Server provides deep Unity Editor integration via the Model Context Protocol. It allows AI assistants to read/write scene hierarchies, crea"
+    "title": "coplay-mcp-server (Unity Editor MCP)",
+    "description": ""
+  },
+  {
+    "name": "coplay-mcp-unity-editor-gotchas",
+    "title": "Coplay MCP (Unity Editor) — Gotchas & Workarounds",
+    "description": "Per-tool gotchas for driving the Unity Editor through Coplay MCP, and the file-based fallback playbook for when the Editor bridge is unavailable."
+  },
+  {
+    "name": "coplay-unity-mcp",
+    "title": "Coplay (now Aura) — Unity Plugin & MCP",
+    "description": "Coplay (→ Aura) is an in-Editor AI assistant plugin for Unity. It exposes an MCP server (`coplay-mcp`) that lets external AI clients drive the Unity E"
   },
   {
     "name": "embeddings-local-vs-hosted",
@@ -63,6 +93,11 @@
     "name": "fetch-mcp-server",
     "title": "Fetch MCP Server",
     "description": "Provides web content fetching capabilities via MCP. Allows AI assistants to retrieve and process content from URLs, converting HTML to readable text. "
+  },
+  {
+    "name": "ffmpeg-gifski-windows",
+    "title": "ffmpeg and gifski on Windows",
+    "description": ""
   },
   {
     "name": "firebase-mcp-server",
@@ -105,6 +140,16 @@
     "description": ""
   },
   {
+    "name": "itch-butler",
+    "title": "itch.io butler (CLI for pushing builds)",
+    "description": ""
+  },
+  {
+    "name": "itch-dl",
+    "title": "itch-dl (download itch.io games and assets from the CLI)",
+    "description": "Install itch-dl with pip --user on Windows, find its exe off-PATH, authenticate with a full itch.io API key (butler's key is rejected), and what a dow"
+  },
+  {
     "name": "loki-grafana-stack",
     "title": "Loki + Grafana Stack (LGTM)",
     "description": ""
@@ -128,6 +173,16 @@
     "name": "npm-publish-2fa-tokens",
     "title": "Publishing to npm — 2FA / access token gotcha",
     "description": ""
+  },
+  {
+    "name": "pico-8",
+    "title": "PICO-8 (Lexaloffle fantasy console): agent development guide",
+    "description": "PICO-8 is a fantasy console: 128x128 screen, 16 colours (+16 \"secret\" ones), 4-channel audio, Lua 5.2-derived dialect, carts saved as plain-text `.p8`"
+  },
+  {
+    "name": "project-spider",
+    "title": "project-spider",
+    "description": "Install and setup notes for project-spider, a PowerShell supervisor that keeps one `claude remote-control --spawn worktree` server per project running"
   },
   {
     "name": "project-voltron-docker",
@@ -157,6 +212,11 @@
   {
     "name": "sse-server-sent-events",
     "title": "Server-Sent Events (SSE)",
+    "description": ""
+  },
+  {
+    "name": "steamcmd-steampipe-uploads",
+    "title": "steamcmd — uploading game builds to Steam (SteamPipe) on Windows",
     "description": ""
   },
   {
@@ -193,6 +253,46 @@
     "name": "unity-asmdef-assembly-csharp-reference",
     "title": "Unity asmdef: Referencing Assembly-CSharp from Test Assemblies",
     "description": ""
+  },
+  {
+    "name": "unity-in-game-video-capture-ffmpeg",
+    "title": "Unity: in-game video capture piped to ffmpeg, and capturing old commits",
+    "description": "captureFramerate + AsyncGPUReadback piped to ffmpeg for smooth unattended capture in built players; row-order and NVENC gotchas; a virtual-gamepad bot"
+  },
+  {
+    "name": "unity-openfracture-runtime-mesh-slicing",
+    "title": "Unity — Runtime Mesh Slicing with OpenFracture",
+    "description": "Installing OpenFracture on Unity 6, calling Fragmenter.Slice with your own fragment template, and preparing a model (closed, single sub-mesh, no neste"
+  },
+  {
+    "name": "unity-physics2d-layer-collision-matrix-scripting",
+    "title": "Unity — Editing the Physics2D Layer Collision Matrix from a Script (persisted)",
+    "description": ""
+  },
+  {
+    "name": "unity-steam-deck-test-build",
+    "title": "Unity: test builds for the Steam Deck, and building from an editor-automation tool",
+    "description": "Windows x64 Unity builds run on Steam Deck via Proton; BuildPlayer must be deferred with delayCall when invoked from the editor loop; sideloading step"
+  },
+  {
+    "name": "unity-third-person-controller-mixamo",
+    "title": "Unity — Third Person Controller with Mixamo Clips, Input System & Cinemachine 3",
+    "description": "Recipe for a camera-relative third person controller in Unity 6: Mixamo FBX import fixes (Generic→Humanoid), scripted movement instead of root motion,"
+  },
+  {
+    "name": "unity-urp-2d-particle-materials",
+    "title": "Unity URP 2D — ParticleSystem renders magenta / ignores color",
+    "description": ""
+  },
+  {
+    "name": "unity-urp-particle-material-color",
+    "title": "Unity URP — Particle System colors render magenta / ignore Start Color",
+    "description": ""
+  },
+  {
+    "name": "vcredist-windows",
+    "title": "Microsoft Visual C++ Redistributable (Windows)",
+    "description": "The VC++ 2015-2022 redistributable is a single, binary-compatible runtime (`msvcp140.dll`, `vcruntime140.dll`, `vcruntime140_1.dll` in System32) share"
   },
   {
     "name": "vector-db-options",
