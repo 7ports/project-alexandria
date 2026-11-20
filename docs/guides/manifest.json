@@ -1,317 +1,548 @@
 [
   {
     "name": "aisstream-io",
+    "type": "guide",
     "title": "aisstream.io — Real-Time AIS WebSocket API",
     "description": ""
   },
   {
     "name": "alexandria-mcp-server",
+    "type": "guide",
     "title": "Alexandria MCP Server",
     "description": "A custom MCP server that exposes Project Alexandria's tooling setup guides as searchable, queryable resources. This allows Claude to access documentat"
   },
   {
     "name": "aws-cli",
+    "type": "guide",
     "title": "AWS CLI v2",
     "description": "AWS CLI v2 is the unified command-line tool for managing AWS services. Used in this ecosystem primarily for S3 static site deployments, CloudFront CDN"
   },
   {
     "name": "beads",
+    "type": "guide",
     "title": "Beads — Distributed Graph Issue Tracker for AI Agents",
     "description": "Beads (`bd` CLI) is a distributed graph issue tracker designed for AI coding agents, powered by Dolt (a version-controlled SQL database). It provides "
   },
   {
     "name": "claude-code-config-sync",
+    "type": "guide",
     "title": "Syncing Claude Code config across machines",
     "description": "Make ~/.claude a private git repo with an allowlist .gitignore; SessionStart/Stop hooks commit, pull --rebase and push. Gotchas for Windows, secrets, "
   },
   {
     "name": "claude-code-github-actions",
+    "type": "guide",
     "title": "Claude Code in GitHub Actions",
     "description": ""
   },
   {
     "name": "claude-code-remote-control-offload",
+    "type": "guide",
     "title": "Claude Code Remote Control: offload sessions to an always-on machine",
     "description": "Use this when long or overnight work should keep running while your laptop sleeps, and you still want to watch/steer it from the laptop or phone. Alte"
   },
   {
     "name": "claude-in-chrome",
+    "type": "guide",
     "title": "Claude in Chrome (Browser Automation)",
     "description": "Claude in Chrome is a browser extension that allows Claude Code to control a Chrome browser — taking screenshots, clicking elements, filling forms, re"
   },
   {
     "name": "claude-preview-mcp-server",
+    "type": "guide",
     "title": "Claude Preview MCP Server",
     "description": "Claude Preview provides a built-in dev server launcher and browser preview for Claude Code. It can start local development servers, take screenshots, "
   },
   {
     "name": "client-side-embedding-visualizer",
+    "type": "guide",
     "title": "Client-Side Embedding Visualizer (static site / GitHub Pages)",
     "description": ">"
   },
   {
     "name": "cloudflare-worker-custom-domain",
+    "type": "guide",
     "title": "Cloudflare Worker on a custom domain (wrangler)",
     "description": "routes with custom_domain: true; workers_dev turns off by default once routes exist"
   },
   {
     "name": "cloudflare-workers-vite-d1",
+    "type": "guide",
     "title": "Cloudflare Workers + Vite + D1 (and Claude Code agent setup)",
     "description": ""
   },
   {
     "name": "coplay-mcp-server",
+    "type": "guide",
     "title": "coplay-mcp-server (Unity Editor MCP)",
     "description": ""
   },
   {
     "name": "coplay-mcp-unity-editor-gotchas",
+    "type": "guide",
     "title": "Coplay MCP (Unity Editor) — Gotchas & Workarounds",
     "description": "Per-tool gotchas for driving the Unity Editor through Coplay MCP, and the file-based fallback playbook for when the Editor bridge is unavailable."
   },
   {
     "name": "coplay-unity-mcp",
+    "type": "guide",
     "title": "Coplay (now Aura) — Unity Plugin & MCP",
     "description": "Coplay (→ Aura) is an in-Editor AI assistant plugin for Unity. It exposes an MCP server (`coplay-mcp`) that lets external AI clients drive the Unity E"
   },
   {
     "name": "embeddings-local-vs-hosted",
+    "type": "guide",
     "title": "Local vs Hosted Embeddings for Semantic Search",
     "description": "Embedding models turn text into dense vectors so you can do semantic similarity search — \"find docs that mean the same thing as this query\" even when "
   },
   {
     "name": "environment-canada-weather-api",
+    "type": "guide",
     "title": "Environment Canada Weather API (GeoMet OGC API)",
     "description": "Environment Canada exposes real-time surface weather observations (SWOB) through the MSC GeoMet OGC API at `https://api.weather.gc.ca/`. No API key is"
   },
   {
     "name": "express-5-node-typescript",
+    "type": "guide",
     "title": "Express 5 + Node.js 20 + TypeScript",
     "description": ""
   },
   {
     "name": "fetch-mcp-server",
+    "type": "guide",
     "title": "Fetch MCP Server",
     "description": "Provides web content fetching capabilities via MCP. Allows AI assistants to retrieve and process content from URLs, converting HTML to readable text. "
   },
   {
     "name": "ffmpeg-gifski-windows",
+    "type": "guide",
     "title": "ffmpeg and gifski on Windows",
     "description": ""
   },
   {
     "name": "firebase-mcp-server",
+    "type": "guide",
     "title": "Firebase MCP Server",
     "description": "Provides Firebase project management via MCP. Allows AI assistants to manage Firebase projects, apps, authentication, Firestore, Realtime Database, Ho"
   },
   {
     "name": "flyio-deployment",
+    "type": "guide",
     "title": "Fly.io Deployment — Node.js / TypeScript",
     "description": ""
   },
   {
     "name": "git-mcp-server",
+    "type": "guide",
     "title": "Git MCP Server",
     "description": "Provides Git repository operations via MCP. Allows AI assistants to perform git status, diff, log, commit, branch management, and other git operations"
   },
   {
     "name": "github-actions-ec2-deploy",
+    "type": "guide",
     "title": "GitHub Actions — Deploy to EC2 via SSH",
     "description": "Auto-deploy a Docker Compose stack to an EC2 instance on push to main, using the `appleboy/ssh-action` action."
   },
   {
     "name": "github-cli",
+    "type": "guide",
     "title": "GitHub CLI (gh)",
     "description": "The GitHub CLI (`gh`) provides GitHub functionality directly from the terminal — pull requests, issues, releases, gists, GitHub Actions, Pages deploym"
   },
   {
     "name": "github-mcp-server",
+    "type": "guide",
     "title": "GitHub MCP Server",
     "description": "Provides GitHub API access via MCP, enabling AI assistants to interact with repositories, issues, pull requests, branches, releases, and more through "
   },
   {
     "name": "github-pages-jekyll-actions",
+    "type": "guide",
     "title": "GitHub Pages — Jekyll via GitHub Actions",
     "description": "Deploy a Jekyll site from a `docs/` subdirectory using GitHub Actions (not the legacy \"Deploy from branch\" method). Required when using `actions/deplo"
   },
   {
     "name": "go-stringer",
+    "type": "guide",
     "title": "Go + Stringer Setup (Windows)",
     "description": ""
   },
   {
     "name": "itch-butler",
+    "type": "guide",
     "title": "itch.io butler (CLI for pushing builds)",
     "description": ""
   },
   {
     "name": "itch-dl",
+    "type": "guide",
     "title": "itch-dl (download itch.io games and assets from the CLI)",
     "description": "Install itch-dl with pip --user on Windows, find its exe off-PATH, authenticate with a full itch.io API key (butler's key is rejected), and what a dow"
   },
   {
     "name": "loki-grafana-stack",
+    "type": "guide",
     "title": "Loki + Grafana Stack (LGTM)",
     "description": ""
   },
   {
     "name": "maplibre-react-map-gl",
+    "type": "guide",
     "title": "MapLibre GL JS + react-map-gl Setup Guide",
     "description": "MapLibre GL JS is an open-source fork of Mapbox GL JS. `react-map-gl` v8 provides a React adapter that works with both MapLibre and Mapbox. Together t"
   },
   {
     "name": "maplibre-vessel-animation",
+    "type": "guide",
     "title": "MapLibre Vessel Animation — lerp + requestAnimationFrame",
     "description": ""
   },
   {
     "name": "memory-mcp-server",
+    "type": "guide",
     "title": "Memory MCP Server",
     "description": "Provides a persistent knowledge graph for AI assistants via MCP. Stores entities, observations, and relations that persist across conversations. Usefu"
   },
   {
     "name": "npm-publish-2fa-tokens",
+    "type": "guide",
     "title": "Publishing to npm — 2FA / access token gotcha",
     "description": ""
   },
   {
     "name": "pico-8",
+    "type": "guide",
     "title": "PICO-8 (Lexaloffle fantasy console): agent development guide",
     "description": "PICO-8 is a fantasy console: 128x128 screen, 16 colours (+16 \"secret\" ones), 4-channel audio, Lua 5.2-derived dialect, carts saved as plain-text `.p8`"
   },
   {
     "name": "project-spider",
+    "type": "guide",
     "title": "project-spider",
     "description": "Install and setup notes for project-spider, a PowerShell supervisor that keeps one `claude remote-control --spawn worktree` server per project running"
   },
   {
     "name": "project-voltron-docker",
+    "type": "guide",
     "title": "Project Voltron — Docker Agent Setup",
     "description": "Project Voltron runs specialist Claude Code agents inside Docker containers via `run_agent_in_docker`. The container mounts the project workspace and "
   },
   {
     "name": "project-voltron",
+    "type": "guide",
     "title": "Project Voltron",
     "description": "Project Voltron is an MCP server that provides a team of specialized Claude Code subagents (`.claude/agents/`) along with CLAUDE.md project context te"
   },
   {
     "name": "prometheus-grafana-docker-compose",
+    "type": "guide",
     "title": "Prometheus + Grafana on Docker Compose",
     "description": "Running a full observability stack (Prometheus, Grafana, exporters) via Docker Compose on a Linux host (tested on Amazon Linux 2023 on EC2 t3.small)."
   },
   {
     "name": "r-windows-setup",
+    "type": "guide",
     "title": "R / Rscript on Windows — Setup Guide",
     "description": ""
   },
   {
     "name": "rancher-desktop-windows",
+    "type": "guide",
     "title": "Rancher Desktop on Windows (Colima equivalent)",
     "description": ""
   },
   {
     "name": "sse-server-sent-events",
+    "type": "guide",
     "title": "Server-Sent Events (SSE)",
     "description": ""
   },
   {
     "name": "steamcmd-steampipe-uploads",
+    "type": "guide",
     "title": "steamcmd — uploading game builds to Steam (SteamPipe) on Windows",
     "description": ""
   },
   {
     "name": "supertest",
+    "type": "guide",
     "title": "Supertest",
     "description": ""
   },
   {
     "name": "terraform-aws-ec2",
+    "type": "guide",
     "title": "Terraform — AWS EC2 Setup",
     "description": "Provisioning an EC2 instance with VPC, security groups, IAM role, and Elastic IP using Terraform >= 1.6 with the AWS provider ~> 5.0."
   },
   {
     "name": "terraform-aws-frontend-hosting",
+    "type": "guide",
     "title": "Terraform — AWS Frontend Hosting (S3 + CloudFront OAC + ACM + Route53)",
     "description": ""
   },
   {
     "name": "toronto-city-open-data-ferry",
+    "type": "guide",
     "title": "Toronto City Open Data — Ferry Service Status API",
     "description": "The City of Toronto publishes a live, no-auth JSON endpoint for ferry service status:"
   },
   {
     "name": "transformers-js-browser-embeddings",
+    "type": "guide",
     "title": "Transformers.js — In-Browser Embeddings (no backend)",
     "description": ">"
   },
   {
     "name": "trello-mcp-server",
+    "type": "guide",
     "title": "Trello MCP Server",
     "description": ""
   },
   {
     "name": "unity-asmdef-assembly-csharp-reference",
+    "type": "guide",
     "title": "Unity asmdef: Referencing Assembly-CSharp from Test Assemblies",
     "description": ""
   },
   {
     "name": "unity-in-game-video-capture-ffmpeg",
+    "type": "guide",
     "title": "Unity: in-game video capture piped to ffmpeg, and capturing old commits",
     "description": "captureFramerate + AsyncGPUReadback piped to ffmpeg for smooth unattended capture in built players; row-order and NVENC gotchas; a virtual-gamepad bot"
   },
   {
     "name": "unity-openfracture-runtime-mesh-slicing",
+    "type": "guide",
     "title": "Unity — Runtime Mesh Slicing with OpenFracture",
     "description": "Installing OpenFracture on Unity 6, calling Fragmenter.Slice with your own fragment template, and preparing a model (closed, single sub-mesh, no neste"
   },
   {
     "name": "unity-physics2d-layer-collision-matrix-scripting",
+    "type": "guide",
     "title": "Unity — Editing the Physics2D Layer Collision Matrix from a Script (persisted)",
     "description": ""
   },
   {
     "name": "unity-steam-deck-test-build",
+    "type": "guide",
     "title": "Unity: test builds for the Steam Deck, and building from an editor-automation tool",
     "description": "Windows x64 Unity builds run on Steam Deck via Proton; BuildPlayer must be deferred with delayCall when invoked from the editor loop; sideloading step"
   },
   {
     "name": "unity-third-person-controller-mixamo",
+    "type": "guide",
     "title": "Unity — Third Person Controller with Mixamo Clips, Input System & Cinemachine 3",
     "description": "Recipe for a camera-relative third person controller in Unity 6: Mixamo FBX import fixes (Generic→Humanoid), scripted movement instead of root motion,"
   },
   {
     "name": "unity-urp-2d-particle-materials",
+    "type": "guide",
     "title": "Unity URP 2D — ParticleSystem renders magenta / ignores color",
     "description": ""
   },
   {
     "name": "unity-urp-particle-material-color",
+    "type": "guide",
     "title": "Unity URP — Particle System colors render magenta / ignore Start Color",
     "description": ""
   },
   {
     "name": "vcredist-windows",
+    "type": "guide",
     "title": "Microsoft Visual C++ Redistributable (Windows)",
     "description": "The VC++ 2015-2022 redistributable is a single, binary-compatible runtime (`msvcp140.dll`, `vcruntime140.dll`, `vcruntime140_1.dll` in System32) share"
   },
   {
     "name": "vector-db-options",
+    "type": "guide",
     "title": "Vector Database Options: Embedded vs Managed",
     "description": "Vector databases store embeddings alongside metadata and answer \"nearest neighbor\" queries efficiently. The key fork in the road is **embedded vs. ser"
   },
   {
     "name": "vite-dev-proxy",
+    "type": "guide",
     "title": "Vite Dev Server Proxy",
     "description": ""
   },
   {
     "name": "vite-plugin-pwa",
+    "type": "guide",
     "title": "vite-plugin-pwa — PWA Setup with Vite + Workbox",
     "description": ""
   },
   {
     "name": "vitest",
+    "type": "guide",
     "title": "Vitest",
     "description": ""
+  },
+  {
+    "name": "committed-generated-artifacts-regenerate-never-merge",
+    "type": "concept",
+    "title": "Generated artifacts committed to git must be regenerated on conflict, never side-selected",
+    "description": "Derived files checked into a repo conflict on every parallel branch. Picking --ours or --theirs commits an artifact that matches neither branch's sour"
+  },
+  {
+    "name": "coplay-execute-script-marks-scene-dirty",
+    "type": "concept",
+    "title": "Coplay MCP execute_script marks the active Unity scene dirty after every call",
+    "description": "Coplay's execute_script calls MarkSceneDirty on the active scene after each script, so Scene.isDirty is meaningless in Coplay-driven workflows; compar"
+  },
+  {
+    "name": "globally-registered-process-cwd-trap",
+    "type": "concept",
+    "title": "Globally-registered servers must anchor paths to the module, never process.cwd()",
+    "description": "A server registered once and launched from arbitrary working directories will scatter or lose data if any path resolves from process.cwd(). Anchor to "
+  },
+  {
+    "name": "unity-automation-modal-dialogs",
+    "type": "concept",
+    "title": "Unity editor automation: modal dialogs, background-idle editor, and paused tests",
+    "description": "What stalls Unity automation (open-scene git restores, dirty scenes, BuildPlayer in the loop, background editor not ticking delayCall, paused tests) a"
+  },
+  {
+    "name": "unity-charactercontroller-bounce-reflection",
+    "type": "concept",
+    "title": "Unity CharacterController: reflecting off contacts sticks to ceilings",
+    "description": "When bouncing a CharacterController by reflecting its direction in OnControllerColliderHit, ignore contacts it is moving away from; step-offset lift r"
+  },
+  {
+    "name": "unity-charactercontroller-high-fps-stall",
+    "type": "concept",
+    "title": "Unity CharacterController: easing speed from controller.velocity stalls at high frame rates",
+    "description": "The Starter Assets pattern Lerp(controller.velocity, target, dt*rate) can leave the player unable to walk from a standstill above a few hundred fps (u"
+  },
+  {
+    "name": "unity-field-default-change-does-not-reach-prefabs",
+    "type": "concept",
+    "title": "Unity: changing a field's default in code does not update existing prefabs or scene objects",
+    "description": "Existing prefabs and scene objects keep their old serialized or in-memory values when a MonoBehaviour field's initializer changes; set the value on th"
+  },
+  {
+    "name": "unity-play-mode-test-runner-deferred-compile",
+    "type": "concept",
+    "title": "Unity: unattended play-mode test runs that survive code edits",
+    "description": "Run play-mode checks from an editor runner that writes result files; defer script recompiles during the run; isCompiling stays true while a deferred c"
+  },
+  {
+    "name": "unity-ui-toolkit-editor-setup-gotchas",
+    "type": "concept",
+    "title": "Unity UI Toolkit: pitfalls when building UI from editor scripts",
+    "description": "Assets held across EditorSceneManager.OpenScene come back destroyed (PanelSettings saves as null); a UIDocument without PanelSettings keeps elements b"
+  },
+  {
+    "name": "write-path-durability-must-be-loud",
+    "type": "concept",
+    "title": "Write-path durability must be loud, not fire-and-forget",
+    "description": "A persistence layer that reports success before its remote sync is attempted will silently lose data for months. Return the real sync outcome; never f"
+  },
+  {
+    "name": "unity-humanoid-root-yaw-discarded",
+    "type": "article",
+    "title": "Unity Humanoid: static RootQ yaw is discarded in play mode unless baked into pose",
+    "description": "A constant root yaw in a generated humanoid clip shows in edit-mode sampling but is stripped as root motion in game; set loopBlendOrientation + keepOr"
+  },
+  {
+    "name": "claude-code-remote-control-auth-and-resume",
+    "type": "reference",
+    "title": "Claude Code Remote Control: setup-tokens are rejected; continuing an existing conversation",
+    "description": "Remote Control refuses CLAUDE_CODE_OAUTH_TOKEN (inference-only) even when a full login exists; and how to bring an existing terminal conversation into"
+  },
+  {
+    "name": "docker-agent-git-failures-large-bind-mount",
+    "type": "reference",
+    "title": "Two distinct git failure modes for containerized coding agents on Docker Desktop (Windows) with a large bind-mounted repo",
+    "description": "Rebuilding the agent image fixes the 'gitconfig Device or resource busy' error; a separate failure — git status/diff hanging on a large bind-mounted w"
+  },
+  {
+    "name": "docker-gitconfig-readonly-mount-ebusy",
+    "type": "reference",
+    "title": "Docker: never bind-mount host gitconfig read-only onto the container global-config path (EBUSY)",
+    "description": "Mounting ~/.gitconfig RO onto the container's global git-config path makes every `git config --global` / `gh auth setup-git` fail with 'Device or reso"
+  },
+  {
+    "name": "free-low-poly-character-asset-sources",
+    "type": "reference",
+    "title": "Free / cheap low-poly rigged character & monster sources (Unity-compatible) — licensing gotchas",
+    "description": "Where to get free CC0 low-poly rigged humanoids and monsters, which share rigs, and the licence traps (Quaternius QAL, Meshy CC BY, Tripo free non-com"
+  },
+  {
+    "name": "onnxruntime-node-cuda-download-404-in-ci",
+    "type": "reference",
+    "title": "onnxruntime-node npm install fails in Linux CI: CUDA binary download 404",
+    "description": "onnxruntime-node's linux-x64 postinstall downloads CUDA GPU binaries from GitHub releases; when that asset 404s, npm install fails. Set ONNXRUNTIME_NO"
+  },
+  {
+    "name": "pico-8-mobile-distribution",
+    "type": "reference",
+    "title": "PICO-8 on phones: no native mobile export; ship the HTML export",
+    "description": "How to get a PICO-8 game onto Android/iOS without changing engine: built-in touch controls in the HTML export, PWA, WebView store wrappers, licence an"
+  },
+  {
+    "name": "pico-8-old-version-could-not-load",
+    "type": "reference",
+    "title": "PICO-8: 'could not load <cart>' means the installed PICO-8 is older than the cart",
+    "description": "An old PICO-8 (e.g. v0.2.1b) prints only 'could not load' for a .p8 saved by a newer version. The fix is a real upgrade, and the Windows installer sil"
+  },
+  {
+    "name": "pico-8-token-micro-savings",
+    "type": "reference",
+    "title": "PICO-8 token micro-savings that keep code readable (verified on 0.2.7)",
+    "description": "Small, behaviour-neutral token savings verified on PICO-8 0.2.7, plus how to prove a token pass changed nothing (tests + pixel-identical screenshot di"
+  },
+  {
+    "name": "powershell-51-convertfrom-json-array-nesting",
+    "type": "reference",
+    "title": "Windows PowerShell 5.1: @($raw | ConvertFrom-Json) nests JSON arrays",
+    "description": "In PS 5.1 ConvertFrom-Json emits a JSON array as one pipeline object, so wrapping the pipeline in @() creates an array inside an array; saving it back"
+  },
+  {
+    "name": "scryfall-bulk-data-and-tagger-tags",
+    "type": "reference",
+    "title": "Scryfall bulk data incl. Tagger art/oracle tags",
+    "description": "Scryfall bulk files (oracle_cards, art_tags, oracle_tags) — structure, keys, gotchas (User-Agent required, tags are jsonl.gz)."
+  },
+  {
+    "name": "transformers-js-windows-model-lock",
+    "type": "reference",
+    "title": "Transformers.js on Windows: 'system error number 13' loading an ONNX model",
+    "description": "Why Transformers.js (Node) fails to load a freshly cached model on Windows with a sharing violation, and the buffer-loading fix that retries can't mat"
+  },
+  {
+    "name": "unity-batchmode-saveopenscenes-untitled",
+    "type": "reference",
+    "title": "Unity batch mode: SaveOpenScenes cancels on untitled scene",
+    "description": "Headless -executeMethod builds exit 0 but build nothing when the script calls SaveOpenScenes; open a saved scene first and exit with EditorApplication"
+  },
+  {
+    "name": "unity-character-controller-gotchas",
+    "type": "reference",
+    "title": "Unity — CharacterController & Editor-Automation Gotchas",
+    "description": "A ground probe that detects the character's own collider (pinning Grounded true, breaking fall states and multi-jump budgets), CopySerialized blanking"
+  },
+  {
+    "name": "unity-cli-with-coplay-mcp",
+    "type": "reference",
+    "title": "Unity CLI 1.0 with an MCP bridge (Coplay): setup gotchas and routing",
+    "description": "Windows install/PATH gotcha, Pipeline package requirement, what the unity CLI does better than an MCP bridge (status, dialogs, recompile, headless run"
+  },
+  {
+    "name": "unity-configurablejoint-hanging-spring",
+    "type": "reference",
+    "title": "Unity ConfigurableJoint: a hanging object that swings and springs back",
+    "description": "Ball joint plus angular drives for a hanging object. Per-axis drives damp it; the slerp drive barely does. Size the spring against gravity's pull."
+  },
+  {
+    "name": "unity-humanoid-animation-gotchas",
+    "type": "reference",
+    "title": "Unity — Humanoid Animation & Prefab Gotchas (Mecanim)",
+    "description": "Non-obvious Mecanim/prefab behaviours that present as character bugs: empty override-layer states snap to bind pose, root channels need different Bake"
+  },
+  {
+    "name": "unity-physics-props-gotchas",
+    "type": "reference",
+    "title": "Unity physics props: silent failures and their causes",
+    "description": "Empty MeshCollider shapes after a model reimport, trigger colliders that props pass through, interpolated bodies ignoring transform moves, edit-mode s"
   }
 ]

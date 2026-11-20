@@ -1,4 +1,11 @@
-"""Generate docs/guides/manifest.json from the guides/ directory."""
+"""Generate docs/guides/manifest.json from every content dir.
+
+One entry per knowledge doc across guides/, concepts/, articles/ and references/
+(README.md in each dir is a directory description, not a doc). Each entry carries
+`type`, which the site uses to locate the published copy: guides live next to the
+manifest in docs/guides/, the other types in docs/<dir>/. The README.md Guides
+table stays guides-only.
+"""
 import json, re, os
 
 
@@ -34,34 +41,47 @@ def split_frontmatter(content):
     return fm, body
 
 
-guides_dir = 'guides'
+CONTENT_DIRS = [('guide', 'guides'), ('concept', 'concepts'),
+                ('article', 'articles'), ('reference', 'references')]
 out_path = 'docs/guides/manifest.json'
 
 entries = []
-for fname in sorted(os.listdir(guides_dir)):
-    if not fname.endswith('.md'):
+for doc_type, content_dir in CONTENT_DIRS:
+    if not os.path.isdir(content_dir):
         continue
-    name = fname[:-3]
-    with open(os.path.join(guides_dir, fname), encoding='utf-8') as f:
-        content = f.read()
-    fm, body = split_frontmatter(content)
-    # Extract title from first # heading (body), falling back to frontmatter.
-    m = re.search(r'^# (.+)', body, re.MULTILINE)
-    title = m.group(1).strip() if m else (fm.get('title') or name)
-    # Extract description: first plain-text line after ## Overview,
-    # falling back to the frontmatter summary.
-    m2 = re.search(r'^## Overview\s*\n+((?:[A-Za-z\[]).+)', body, re.MULTILINE)
-    desc = m2.group(1).strip()[:150] if m2 else (fm.get('summary', '') or '')[:150]
-    entries.append({'name': name, 'title': title, 'description': desc})
+    for fname in sorted(os.listdir(content_dir)):
+        if not fname.endswith('.md') or fname.lower() == 'readme.md':
+            continue
+        name = fname[:-3]
+        with open(os.path.join(content_dir, fname), encoding='utf-8') as f:
+            content = f.read()
+        fm, body = split_frontmatter(content)
+        # Guides: title from the first # heading (body), falling back to frontmatter.
+        # Other types are written via write_knowledge, which always sets a frontmatter
+        # title, and often have no H1 (a `# comment` in a code block would match).
+        m = re.search(r'^# (.+)', body, re.MULTILINE)
+        h1 = m.group(1).strip() if m else None
+        if doc_type == 'guide':
+            title = h1 or fm.get('title') or name
+        else:
+            title = fm.get('title') or h1 or name
+        # Extract description: first plain-text line after ## Overview,
+        # falling back to the frontmatter summary.
+        m2 = re.search(r'^## Overview\s*\n+((?:[A-Za-z\[]).+)', body, re.MULTILINE)
+        desc = m2.group(1).strip()[:150] if m2 else (fm.get('summary', '') or '')[:150]
+        entries.append({'name': name, 'type': doc_type, 'title': title, 'description': desc})
 
 with open(out_path, 'w', encoding='utf-8') as f:
     json.dump(entries, f, indent=2, ensure_ascii=False)
 
-print(f'Generated {out_path} with {len(entries)} guides')
+counts = {}
+for e in entries:
+    counts[e['type']] = counts.get(e['type'], 0) + 1
+print(f'Generated {out_path} with {len(entries)} docs ' + str(counts))
 
 # Update the ## Guides section in README.md
 readme_path = 'README.md'
-sorted_entries = sorted(entries, key=lambda e: e['title'].lower())
+sorted_entries = sorted((e for e in entries if e['type'] == 'guide'), key=lambda e: e['title'].lower())
 table_lines = [
     '| Guide | Description |',
     '|-------|-------------|',

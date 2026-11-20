@@ -100,6 +100,13 @@ Override the port with the `PORT` env var (e.g. `PORT=3000 npm run preview`).
 | `get_guide_template` | Get the standard template for new guides |
 | `get_project_setup_recommendations` | Get required/recommended tools for new project setup |
 | `get_onboarding` | Get the collaborative maintenance contract for a new Claude instance |
+| `recall_context` | Semantic briefing on a topic — best chunk per doc, across all content types |
+| `search_knowledge` | Semantic search over guides, concepts, articles and references (substring fallback) |
+| `write_knowledge` | Create/update a doc of any type; embedded into the index on write |
+| `read_knowledge` / `list_knowledge` | Read one doc / list all docs, any type |
+| `get_template` | Authoring template for a guide, concept, article or reference |
+| `knowledge_health` | Read-only drift report: disk vs semantic index vs published manifest, plus git sync conflicts |
+| `reindex_knowledge` | Rebuild the semantic index from the markdown (also prunes rows for deleted docs) |
 
 ## Guides
 
@@ -213,7 +220,7 @@ Alexandria is strictly for **non-project-specific, reusable documentation**. A g
 Every Claude instance with Alexandria installed is automatically a contributor. The behavioral contract (served by `get_onboarding`) requires:
 
 1. **Consult before setup** — Check if a guide exists before setting up any tool. This is mandatory — never skip it.
-2. **Record after any write-back trigger** — Recording is the default, not an afterthought. After ANY of these, write the learning back before you move on: (1) you set up, installed, or configured a tool, MCP server, or integration; (2) you resolved a non-obvious error (the fix wasn't in the first doc you read); (3) you discovered a version-compatibility fact or a platform quirk; (4) you found a working config / command / API pattern that took more than one try to get right; (5) session close — sweep the session for any of the above you haven't recorded yet. "I was busy / it was small" is not a valid reason to skip; if a trigger fired and you're not writing back, you should be able to say why (already covered, or purely project-specific — genericise it instead per the examples above).
+2. **Record after any write-back trigger** — Recording is the default, not an afterthought. After ANY of these, write the learning back before you move on: (1) you set up, installed, or configured a tool, MCP server, or integration; (2) you resolved a non-obvious error (the fix wasn't in the first doc you read); (3) you discovered a version-compatibility fact or a platform quirk; (4) you found a working config / command / API pattern that took more than one try to get right; (5) session close — sweep the session for any of the above you haven't recorded yet; (6) you understood *why* something works — a pattern, trade-off or architecture insight — record a concept (or an article for a longer synthesized narrative). "I was busy / it was small" is not a valid reason to skip; if a trigger fired and you're not writing back, you should be able to say why (already covered, or purely project-specific — genericise it instead per the examples above).
 3. **Document troubleshooting** — Add error/fix pairs when you resolve issues
 4. **Use the template** — Follow the standard format for new guides
 5. **Recommend on project init** — Surface required tools when setting up new projects
@@ -252,11 +259,17 @@ project-alexandria/
 ├── CLAUDE.md                  # Project conventions for Claude
 ├── docs/                      # GitHub Pages site
 │   ├── index.html             # Landing page
-│   └── guides/
-│       └── index.html         # Interactive guide browser
-├── guides/                    # Individual setup guides (one per tool)
-├── templates/
-│   └── guide-template.md      # Standard format for new guides
+│   ├── explore.html           # 3D embedding map of every doc
+│   ├── guides/
+│   │   ├── index.html         # Knowledge browser (all types, filterable)
+│   │   ├── manifest.json      # Generated: one entry per doc, with its type
+│   │   └── *.md               # Published copies of guides/
+│   └── concepts/ articles/ references/   # Published copies (scripts/publish-content.sh)
+├── guides/                    # Setup guides (one per tool)
+├── concepts/                  # Why/how something works — patterns, trade-offs
+├── articles/                  # Longer synthesized write-ups
+├── references/                # Short gotchas, error→fix pairs, lookup tables
+├── templates/                 # guide / concept / article / reference templates
 ├── recommendations.json       # Project setup recommendations data
 ├── onboarding.json            # Collaborative maintenance contract + memory templates
 └── mcp-server/
@@ -264,7 +277,7 @@ project-alexandria/
     └── index.js               # MCP server (Node.js, @modelcontextprotocol/sdk)
 ```
 
-The MCP server is a lightweight Node.js process that reads from the filesystem. No database, no external dependencies beyond the MCP SDK. Guides are plain markdown files that can be read and edited by humans or Claude.
+The MCP server is a Node.js process. Markdown on disk is the source of record; a local sqlite-vec index (`mcp-server/.index/`, gitignored, rebuildable) powers semantic search, with embeddings computed locally by Transformers.js. Docs are plain markdown files that can be read and edited by humans or Claude. `knowledge_health` reports any drift between the markdown, the index and the published manifest.
 
 ## License
 

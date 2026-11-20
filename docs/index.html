@@ -761,6 +761,34 @@ and save the maintenance contract."</code></pre>
             <td><code>get_guide_template</code></td>
             <td>Standard template for creating new guides</td>
           </tr>
+          <tr>
+            <td><code>recall_context</code> <span class="cost low">low</span></td>
+            <td>Semantic briefing on a topic &mdash; best chunk per doc, across every content type</td>
+          </tr>
+          <tr>
+            <td><code>search_knowledge</code> <span class="cost med">med</span></td>
+            <td>Semantic search over guides, concepts, articles and references (substring fallback)</td>
+          </tr>
+          <tr>
+            <td><code>write_knowledge</code></td>
+            <td>Create or update a doc of any type; embedded into the index on write</td>
+          </tr>
+          <tr>
+            <td><code>read_knowledge</code> / <code>list_knowledge</code></td>
+            <td>Full markdown of one doc / one line per doc, any type</td>
+          </tr>
+          <tr>
+            <td><code>get_template</code></td>
+            <td>Authoring template for a guide, concept, article or reference</td>
+          </tr>
+          <tr>
+            <td><code>knowledge_health</code></td>
+            <td>Read-only drift report: disk vs index vs published manifest, plus git sync conflicts</td>
+          </tr>
+          <tr>
+            <td><code>reindex_knowledge</code></td>
+            <td>Rebuild the semantic index from the markdown source-of-record</td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -860,7 +888,10 @@ and save the maintenance contract."</code></pre>
 
   <script>
     (function () {
-      function getTag(name) {
+      // Non-guide docs are tagged with their type; guides keep the name-based tag.
+      var TYPE_DIRS = { concept: 'concepts', article: 'articles', reference: 'references' };
+      function getTag(name, type) {
+        if (type && type !== 'guide') return type;
         if (name.includes('mcp')) return 'mcp';
         if (name.includes('github') || name.includes('git-')) return 'git';
         if (name.includes('aws') || name.includes('terraform') || name.includes('fly') || name.includes('ec2')) return 'cloud';
@@ -878,16 +909,19 @@ and save the maintenance contract."</code></pre>
           var grid = document.getElementById('guide-grid');
           var loading = document.getElementById('guides-loading');
 
-          if (badge) badge.textContent = guides.length + ' Guides';
+          var nGuides = guides.filter(function (g) { return !g.type || g.type === 'guide'; }).length;
+          var nOther = guides.length - nGuides;
+          if (badge) badge.textContent = nGuides + ' Guides' + (nOther ? ' + ' + nOther + ' Docs' : '');
           if (loading) loading.remove();
 
           guides.forEach(function (guide) {
             var a = document.createElement('a');
             a.className = 'guide-card';
-            a.href = 'guides/?guide=' + guide.name;
+            a.href = 'guides/?' + (TYPE_DIRS[guide.type] ? 'type=' + guide.type + '&' : '') +
+              'guide=' + encodeURIComponent(guide.name);
             a.innerHTML =
               '<h3>' + escapeHtml(guide.title) + '</h3>' +
-              '<span class="tag">' + escapeHtml(getTag(guide.name)) + '</span>' +
+              '<span class="tag">' + escapeHtml(getTag(guide.name, guide.type)) + '</span>' +
               '<p>' + escapeHtml(guide.description) + '</p>';
             if (grid) grid.appendChild(a);
           });
@@ -913,7 +947,7 @@ and save the maintenance contract."</code></pre>
   <section class="guides">
     <div class="container">
       <div class="section-header">
-        <h2>Setup Guides</h2>
+        <h2>Guides &amp; Knowledge</h2>
         <a href="./guides/">View all &rarr;</a>
       </div>
       <div class="guide-grid" id="guide-grid">

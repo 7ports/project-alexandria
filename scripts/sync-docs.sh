@@ -12,10 +12,13 @@ fi
 
 echo "Project Alexandria — Syncing docs..."
 
-python3 .github/gen_manifest.py
-echo "Publishing guides to docs/guides/..."
-mkdir -p docs/guides
-cp guides/*.md docs/guides/
+# `python3` is a broken Microsoft Store stub on some Windows boxes; fall back to `python`.
+PY=python3
+if ! python3 -c "" >/dev/null 2>&1; then PY=python; fi
+
+echo "Publishing guides, concepts, articles and references to docs/..."
+bash scripts/publish-content.sh
+"$PY" .github/gen_manifest.py
 echo "Regenerating embedding map (3D visualizer data)..."
 echo "Reindexing knowledge base (embeddings)..."
 node -e "const idx=require('./mcp-server/lib/index-store'); const {reindexAll}=require('./mcp-server/lib/reindex'); (async()=>{const s=idx.openIndex(); const r=await reindexAll(s,{force:true}); console.log('reindexed '+JSON.stringify(r)); idx.close(s);})().catch(e=>{console.error(e);process.exit(1);});"

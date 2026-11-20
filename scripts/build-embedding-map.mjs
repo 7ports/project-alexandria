@@ -4,7 +4,7 @@
  * for Alexandria's 3D embedding visualizer (docs/explore.html).
  *
  * Reads the sqlite-vec knowledge index (mcp-server/.index/knowledge.db), aggregates
- * chunk vectors to per-guide doc centroids, runs SEEDED UMAP 384->3 for both doc and
+ * chunk vectors to per-doc centroids (guides, concepts, articles, references), runs SEEDED UMAP 384->3 for both doc and
  * chunk granularities, runs SEEDED k-means (k chosen by silhouette over k in [4,10])
  * per granularity, joins curated front-matter `tags:`, and writes committed artifacts
  * under docs/data/:
@@ -14,8 +14,16 @@
  *
  * Modes:
  *   node scripts/build-embedding-map.mjs           write artifacts
- *   node scripts/build-embedding-map.mjs --check   regenerate in memory + diff vs
- *                                                   committed artifacts; exit 1 on drift
+ *   node scripts/build-embedding-map.mjs --check   regenerate in memory and compare the
+ *                                                   STRUCTURE (doc/chunk ids, titles, tags,
+ *                                                   urls) with the committed artifacts;
+ *                                                   exit 1 when they describe different docs
+ *
+ * Why --check ignores coordinates and vector bytes: ONNX embeddings differ in the last
+ * bits across CPUs, and UMAP amplifies that into a visibly different layout, so a byte
+ * compare failed and then passed on the same commit depending on the CI runner. What the
+ * PR guard exists to catch is a content change whose map was never regenerated, and that
+ * always shows up as a different doc/chunk set.
  *
  * Determinism: a fixed PRNG SEED makes UMAP + k-means produce stable, diff-clean
  * layouts. Build-time deps (umap-js, ml-kmeans) and the sqlite-vec index code live
@@ -32,7 +40,8 @@ const __dirname = path.dirname(__filename);
 const REPO_ROOT = path.resolve(__dirname, '..');
 const MCP_SERVER = path.join(REPO_ROOT, 'mcp-server');
 const DB_PATH = path.join(MCP_SERVER, '.index', 'knowledge.db');
-const GUIDES_DIR = path.join(REPO_ROOT, 'guides');
+// Content dir -> doc type. Non-guide docs have free-form tags, so they are coloured by type.
+const CONTENT_TYPES = { guides: 'guide', concepts: 'concept', articles: 'article', references: 'reference' };
 const OUT_DIR = path.join(REPO_ROOT, 'docs', 'data');
 
 // Resolve build-time deps from mcp-server/node_modules (the manifest that owns them).
@@ -72,6 +81,10 @@ const TAG_LEGEND = [
   { id: 'testing',         label: 'Testing',            color: '#9D755D' },
   { id: 'languages-build', label: 'Languages & Build',  color: '#BAB0AC' },
   { id: 'dev-tooling',     label: 'Dev Tooling',        color: '#1F77B4' },
+  // Non-guide content types (tagged by type, see readTags).
+  { id: 'concept',         label: 'Concepts',           color: '#17BECF' },
+  { id: 'article',         label: 'Articles',           color: '#BCBD22' },
+  { id: 'reference',       label: 'References',         color: '#E377C2' },
 ];
 const FALLBACK_PALETTE = ['#AEC7E8', '#FFBB78', '#98DF8A', '#FF9896', '#C5B0D5', '#C49C94', '#F7B6D2', '#C7C7C7', '#DBDB8D', '#9EDAE5'];
 
@@ -115,13 +128,13 @@ function readIndex() {
   sqliteVec.load(db);
 
   const docRows = db.prepare('SELECT doc_id, title, path FROM docs').all();
-  // Guides only — the visualizer maps guides; references/README and other content
-  // types are excluded (no curated tag, not a guide URL).
+  // Every content type; directory READMEs are not docs (older indexes may still hold them).
   const guideDocs = new Map();
   for (const d of docRows) {
-    if (d.path && d.path.startsWith('guides/')) {
-      guideDocs.set(d.doc_id, { id: d.doc_id, title: d.title || d.doc_id });
-    }
+    const [dir, file] = String(d.path || '').split('/');
+    const type = CONTENT_TYPES[dir];
+    if (!type || !file || file.toLowerCase() === 'readme.md') continue;
+    guideDocs.set(d.doc_id, { id: d.doc_id, title: d.title || d.doc_id, type, file: path.join(REPO_ROOT, dir, file) });
   }
 
   const chunkRows = db
@@ -149,11 +162,16 @@ function readIndex() {
   return { guideDocs, chunks };
 }
 
-// --- Curated single-primary tag from guide front-matter ---
-function readTags(guideIds) {
+// --- Tag per doc: guides use their curated single-primary front-matter tag; other types
+// carry free-form tags, so they are grouped by type instead. ---
+function readTags(guideDocs) {
   const tagOf = new Map();
-  for (const id of guideIds) {
-    const file = path.join(GUIDES_DIR, `${id}.md`);
+  for (const [id, doc] of guideDocs) {
+    if (doc.type !== 'guide') {
+      tagOf.set(id, doc.type);
+      continue;
+    }
+    const file = doc.file;
     let tag = '';
     try {
       const raw = fs.readFileSync(file, 'utf-8');
@@ -365,7 +383,7 @@ function build() {
   Math.random = mulberry32(SEED);
 
   const { guideDocs, chunks } = readIndex();
-  const tagOf = readTags([...guideDocs.keys()]);
+  const tagOf = readTags(guideDocs);
 
   // Deterministic ordering: chunks by (doc_id, chunk_index); docs by id.
   chunks.sort((a, b) => (a.doc_id < b.doc_id ? -1 : a.doc_id > b.doc_id ? 1 : a.chunk_index - b.chunk_index));
@@ -399,10 +417,16 @@ function build() {
   const docClus = clusterBySilhouette(docCentroids);
   const chunkClus = clusterBySilhouette(chunkVecs);
 
+  const urlOf = (id) => {
+    const t = guideDocs.get(id).type;
+    return t === 'guide' ? `./guides/?guide=${id}` : `./guides/?type=${t}&guide=${id}`;
+  };
+
   const docs = docOrder.map((d, i) => ({
     id: d.id,
+    type: guideDocs.get(d.id).type,
     title: guideDocs.get(d.id).title,
-    url: `./guides/?guide=${d.id}`,
+    url: urlOf(d.id),
     tag: tagOf.get(d.id) || '',
     cluster: docClus.clusters[i],
     pos: [round(docPos[i][0], POS_PRECISION), round(docPos[i][1], POS_PRECISION), round(docPos[i][2], POS_PRECISION)],
@@ -415,7 +439,7 @@ function build() {
     guide: c.doc_id,
     title: guideDocs.get(c.doc_id).title,
     heading: c.heading,
-    url: `./guides/?guide=${c.doc_id}`,
+    url: urlOf(c.doc_id),
     tag: tagOf.get(c.doc_id) || '',
     cluster: chunkClus.clusters[i],
     pos: [round(chunkPos[i][0], POS_PRECISION), round(chunkPos[i][1], POS_PRECISION), round(chunkPos[i][2], POS_PRECISION)],
@@ -432,7 +456,7 @@ function build() {
     schemaVersion: 2,
     model: MODEL,
     dim: DIM,
-    generatedFrom: { guides: docs.length, chunks: chunkPoints.length },
+    generatedFrom: { docs: docs.length, chunks: chunkPoints.length },
     umap: { seed: SEED, nNeighbors: UMAP_N_NEIGHBORS, minDist: UMAP_MIN_DIST },
     clustering: { algo: 'kmeans', k: docClus.k, chosenBy: 'silhouette' },
     tags,
@@ -455,6 +479,57 @@ function build() {
   return { json, guideBin, chunkBin };
 }
 
+// The identity of what the map shows, without the float-noisy parts (positions,
+// clusters, edge weights, vector bytes). See the --check note in the header.
+const SEP = '\u0000';
+function structureOf(map) {
+  return {
+    schemaVersion: map.schemaVersion,
+    model: map.model,
+    dim: map.dim,
+    docs: (map.docs || []).map((d) => [d.id, d.type, d.title, d.url, d.tag, d.chunkCount, d.vecIndex].join(SEP)),
+    chunks: (map.chunks || []).map((c) => [c.id, c.guide, c.heading, c.url, c.tag, c.vecIndex].join(SEP)),
+    tags: (map.tags || []).map((t) => t.id),
+  };
+}
+
+function checkStructure(artifacts, { jsonPath, guidePath, chunkPath }) {
+  const problems = [];
+  const rel = (p) => path.relative(REPO_ROOT, p);
+  for (const p of [jsonPath, guidePath, chunkPath]) {
+    if (!fs.existsSync(p)) problems.push(`missing: ${rel(p)}`);
+  }
+  if (problems.length) return problems;
+
+  let committed;
+  try {
+    committed = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+  } catch (err) {
+    return [`unparseable: ${rel(jsonPath)} (${err.message})`];
+  }
+  const want = structureOf(JSON.parse(artifacts.json));
+  const have = structureOf(committed);
+
+  for (const key of ['schemaVersion', 'model', 'dim']) {
+    if (want[key] !== have[key]) problems.push(`${key}: committed ${have[key]}, fresh ${want[key]}`);
+  }
+  const show = (xs) => xs.slice(0, 5).map((x) => x.split(SEP).slice(0, 2).join(' ')).join(', ');
+  for (const key of ['docs', 'chunks', 'tags']) {
+    const w = new Set(want[key]);
+    const h = new Set(have[key]);
+    const missing = [...w].filter((x) => !h.has(x));
+    const stale = [...h].filter((x) => !w.has(x));
+    if (missing.length) problems.push(`${key}: ${missing.length} missing from committed map (e.g. ${show(missing)})`);
+    if (stale.length) problems.push(`${key}: ${stale.length} stale in committed map (e.g. ${show(stale)})`);
+  }
+  // Vector files: one Float32 row per doc/chunk; only the size is stable across CPUs.
+  for (const [p, buf] of [[guidePath, artifacts.guideBin], [chunkPath, artifacts.chunkBin]]) {
+    const size = fs.statSync(p).size;
+    if (size !== buf.length) problems.push(`size: ${rel(p)} (have ${size}B, want ${buf.length}B)`);
+  }
+  return problems;
+}
+
 function main() {
   const checkMode = process.argv.includes('--check');
   const artifacts = build();
@@ -463,24 +538,13 @@ function main() {
   const chunkPath = path.join(OUT_DIR, 'chunk-vectors.bin');
 
   if (checkMode) {
-    const problems = [];
-    const cmp = (p, buf) => {
-      const want = Buffer.isBuffer(buf) ? buf : Buffer.from(buf);
-      if (!fs.existsSync(p)) {
-        problems.push(`missing: ${path.relative(REPO_ROOT, p)}`);
-        return;
-      }
-      const cur = fs.readFileSync(p);
-      if (!cur.equals(want)) problems.push(`drift: ${path.relative(REPO_ROOT, p)} (have ${cur.length}B, want ${want.length}B)`);
-    };
-    cmp(jsonPath, Buffer.from(artifacts.json, 'utf-8'));
-    cmp(guidePath, artifacts.guideBin);
-    cmp(chunkPath, artifacts.chunkBin);
+    const problems = checkStructure(artifacts, { jsonPath, guidePath, chunkPath });
     if (problems.length) {
-      console.error('[build-embedding-map] --check FAILED — committed artifacts are stale:\n  ' + problems.join('\n  '));
+      console.error('[build-embedding-map] --check FAILED — committed artifacts describe different docs than a fresh build:\n  ' + problems.join('\n  '));
+      console.error('Regenerate with `node scripts/build-embedding-map.mjs` (or scripts/sync-docs.sh) and commit docs/data/.');
       process.exit(1);
     }
-    console.log('[build-embedding-map] --check OK — committed artifacts match a fresh build.');
+    console.log('[build-embedding-map] --check OK — committed artifacts match a fresh build (structure).');
     return;
   }
 

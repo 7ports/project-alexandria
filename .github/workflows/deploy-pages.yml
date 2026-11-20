@@ -6,6 +6,11 @@ on:
   pull_request:
     paths:
       - 'guides/**'
+      - 'concepts/**'
+      - 'articles/**'
+      - 'references/**'
+      - '.github/gen_manifest.py'
+      - 'scripts/publish-content.sh'
       - 'scripts/build-embedding-map.mjs'
       - 'docs/data/**'
       - 'mcp-server/**'
@@ -38,11 +43,11 @@ jobs:
 
       - name: Build site
         run: |
-          # Copy guide markdown files into docs/guides/ so they are deployed
-          mkdir -p docs/guides
-          cp guides/*.md docs/guides/
+          # Copy every content type into docs/ so it is deployed (guides -> docs/guides,
+          # concepts -> docs/concepts, ...). Directory READMEs are not published.
+          bash scripts/publish-content.sh
 
-          # Generate a JSON manifest with name, title, and description for each guide
+          # Generate a JSON manifest (name, type, title, description) for every doc
           python3 .github/gen_manifest.py
 
       - name: Setup Node
@@ -80,7 +85,8 @@ jobs:
           # Stage the manifest (+ synced README) and the regenerated visualizer artifacts.
           # docs/data/* comes from build-embedding-map.mjs run against the freshly
           # rebuilt index, so newly added guides appear in the map served by Pages.
-          git add README.md docs/guides/*.md docs/guides/manifest.json docs/.nojekyll docs/data/embedding-map.json docs/data/guide-vectors.bin docs/data/chunk-vectors.bin
+          # -A on the content dirs also stages deletions of docs removed upstream.
+          git add -A README.md docs/guides docs/concepts docs/articles docs/references docs/.nojekyll docs/data/embedding-map.json docs/data/guide-vectors.bin docs/data/chunk-vectors.bin
 
           # Only commit when something actually changed. The [skip ci] tag prevents
           # this push from retriggering the workflow (infinite-loop guard).
