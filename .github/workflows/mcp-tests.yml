@@ -10,6 +10,11 @@ on:
       - 'mcp-server/**'
       - '.github/workflows/mcp-tests.yml'
 
+env:
+  # onnxruntime-node's postinstall downloads CUDA GPU binaries on linux-x64; that
+  # GitHub release asset 404s and we only run CPU inference, so skip it.
+  ONNXRUNTIME_NODE_INSTALL_CUDA: skip
+
 jobs:
   test:
     # Windows is in the matrix because the failures it catches are invisible on Linux and
