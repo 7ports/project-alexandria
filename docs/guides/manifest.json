@@ -396,6 +396,12 @@
     "description": "A server registered once and launched from arbitrary working directories will scatter or lose data if any path resolves from process.cwd(). Anchor to "
   },
   {
+    "name": "ml-derived-artifact-drift-checks-compare-structure",
+    "type": "concept",
+    "title": "CI drift checks on ML-derived artifacts must compare structure, not bytes",
+    "description": "Embeddings differ in the last bits across CPUs and UMAP/k-means amplify that, so a byte-for-byte 'is the committed artifact fresh?' check flaps betwee"
+  },
+  {
     "name": "unity-automation-modal-dialogs",
     "type": "concept",
     "title": "Unity editor automation: modal dialogs, background-idle editor, and paused tests",
@@ -466,6 +472,12 @@
     "type": "reference",
     "title": "Free / cheap low-poly rigged character & monster sources (Unity-compatible) — licensing gotchas",
     "description": "Where to get free CC0 low-poly rigged humanoids and monsters, which share rigs, and the licence traps (Quaternius QAL, Meshy CC BY, Tripo free non-com"
+  },
+  {
+    "name": "jsdom-test-static-site-fetch-routing",
+    "type": "reference",
+    "title": "jsdom: test a static site's client-side fetch + routing against a local server",
+    "description": "jsdom has no window.fetch; inject Node's fetch resolving relative URLs against window.location, stub CDN libraries, and load pages with JSDOM.fromURL "
   },
   {
     "name": "onnxruntime-node-cuda-download-404-in-ci",
