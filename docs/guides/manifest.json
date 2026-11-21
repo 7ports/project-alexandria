@@ -456,6 +456,12 @@
     "description": "A constant root yaw in a generated humanoid clip shows in edit-mode sampling but is stripped as root motion in game; set loopBlendOrientation + keepOr"
   },
   {
+    "name": "unity-predicting-charactercontroller-paths",
+    "type": "article",
+    "title": "Unity: predicting where a CharacterController-driven move will go (and matching it)",
+    "description": "Lessons from making a predicted dash/aim line match the real CharacterController movement: sweep the real capsule with skin, handle start-overlaps, ha"
+  },
+  {
     "name": "claude-code-remote-control-auth-and-resume",
     "type": "reference",
     "title": "Claude Code Remote Control: setup-tokens are rejected; continuing an existing conversation",
