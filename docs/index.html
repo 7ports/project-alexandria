@@ -96,7 +96,29 @@
       font-weight: 700; font-size: 0.85rem; margin-bottom: 12px;
     }
     .step h3 { margin-bottom: 6px; }
-    .step pre { margin-top: 12px; }
+    .step pre { margin-top: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+    /* Agent setup */
+    .agent-setup { padding: 28px; margin-bottom: 36px; background: var(--md-surface-container-highest); }
+    .section-alt .card.agent-setup { background: var(--md-surface-container-highest); }
+    .agent-setup-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+    .agent-setup-head h3 { font-size: 1.25rem; }
+    .agent-setup > p { max-width: 760px; }
+    .prompt-box pre {
+      margin: 16px 0; white-space: pre-wrap; word-break: break-word;
+      font-size: 0.92rem; border-left: 3px solid var(--md-primary);
+    }
+    .agent-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .copy-status { font-size: 0.85rem; color: var(--md-on-surface-variant); }
+    .agent-terminal { margin: 20px 0 8px; font-size: 0.85rem; }
+    .manual-head { font-size: 1.05rem; font-weight: 600; margin-bottom: 14px; color: var(--md-on-surface-variant); }
+    .agent-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .agent-tabs .chip { padding: 3px 10px; font-size: 0.78rem; }
+    .agent-tabs .chip[aria-selected="true"] {
+      background: var(--md-secondary-container); color: var(--md-on-secondary-container); border-color: transparent;
+    }
+    .tab-note { margin-top: 12px; font-size: 0.85rem; }
+    .step-note { margin-top: 12px; font-size: 0.82rem !important; }
 
     /* Tools */
     .tools-table { border-radius: var(--radius-m); overflow: hidden; background: var(--md-surface-container-high); }
@@ -182,9 +204,9 @@
         <span class="chip">MIT</span>
       </div>
       <div class="cta-row">
-        <a href="./guides/" class="btn btn-filled">Browse the knowledge base &rarr;</a>
-        <a href="./explore.html" class="btn btn-tonal">Explore the map</a>
-        <a href="https://github.com/7ports/project-alexandria" class="btn btn-outlined">GitHub</a>
+        <a href="#setup" class="btn btn-filled">Set up with your agent</a>
+        <a href="./guides/" class="btn btn-tonal">Browse the knowledge base &rarr;</a>
+        <a href="./explore.html" class="btn btn-outlined">Explore the map</a>
       </div>
     </div>
   </header>
@@ -291,37 +313,97 @@
     </div>
   </section>
 
-  <!-- Install -->
-  <section class="section section-alt">
+  <!-- Install: agent-first. The prompt points the agent at docs/install.md (install.md layout:
+       OBJECTIVE / DONE WHEN / TODO / steps), so the steps live in one file the agent fetches fresh. -->
+  <section class="section section-alt" id="setup">
     <div class="container">
-      <h2 class="section-title center-head" style="margin-bottom:24px">Quick Start</h2>
+      <h2 class="section-title center-head">Quick Start</h2>
+      <p class="section-sub center-head">Alexandria runs on your machine as an MCP server. The fastest way to set it up is to let your coding agent do it.</p>
+
+      <div class="card agent-setup">
+        <div class="agent-setup-head">
+          <span class="pill t-guide">Recommended</span>
+          <h3>Set up with your agent</h3>
+        </div>
+        <p>Paste this into Claude Code, Codex, Cursor, Copilot, Gemini CLI or any coding agent that can run commands. It reads <a href="./install.md">install.md</a>, checks your setup, asks where to put the clone, installs the server, registers it, and shows you each config change before making it.</p>
+        <div class="prompt-box">
+          <pre><code id="agent-prompt">Install the Alexandria MCP server for me: read https://7ports.github.io/project-alexandria/install.md and follow its steps.</code></pre>
+        </div>
+        <div class="agent-actions">
+          <button type="button" class="btn btn-filled" data-copy-target="agent-prompt">Copy prompt</button>
+          <a href="./install.md" class="btn btn-outlined">Read install.md first</a>
+          <span class="copy-status" role="status" aria-live="polite"></span>
+        </div>
+        <p class="agent-terminal">Or start Claude Code with it from a terminal:</p>
+        <div class="code-copy">
+          <pre><code id="agent-cli">claude "Install the Alexandria MCP server for me: read https://7ports.github.io/project-alexandria/install.md and follow its steps."</code></pre>
+          <button type="button" class="copy-btn" data-copy-target="agent-cli" aria-label="Copy command">Copy</button>
+        </div>
+      </div>
+
+      <h3 class="manual-head">Or set it up by hand</h3>
       <div class="steps">
         <div class="card step">
           <div class="step-num">1</div>
-          <h3>Clone &amp; Install</h3>
-          <p>Get the source and install dependencies:</p>
-          <pre><code>git clone https://github.com/7ports/project-alexandria.git
+          <h3>Clone &amp; install</h3>
+          <p>Needs git and Node.js 22 or newer.</p>
+          <div class="code-copy">
+            <pre><code id="cmd-clone">git clone https://github.com/7ports/project-alexandria.git
 cd project-alexandria/mcp-server
-npm install</code></pre>
+npm install
+npm run doctor</code></pre>
+            <button type="button" class="copy-btn" data-copy-target="cmd-clone" aria-label="Copy commands">Copy</button>
+          </div>
         </div>
         <div class="card step">
           <div class="step-num">2</div>
           <h3>Register</h3>
-          <p>Add as a global MCP server in <code>~/.claude.json</code>:</p>
-          <pre><code>{
-  "alexandria": {
-    "type": "stdio",
-    "command": "node",
-    "args": ["/path/to/mcp-server/index.js"]
+          <p>Use the absolute path to your clone.</p>
+          <div class="agent-tabs" role="tablist" aria-label="Coding agent">
+            <button type="button" role="tab" id="tab-claude" aria-controls="reg-claude" aria-selected="true" class="chip">Claude Code</button>
+            <button type="button" role="tab" id="tab-codex" aria-controls="reg-codex" aria-selected="false" tabindex="-1" class="chip">Codex</button>
+            <button type="button" role="tab" id="tab-gemini" aria-controls="reg-gemini" aria-selected="false" tabindex="-1" class="chip">Gemini</button>
+            <button type="button" role="tab" id="tab-vscode" aria-controls="reg-vscode" aria-selected="false" tabindex="-1" class="chip">VS Code</button>
+            <button type="button" role="tab" id="tab-cursor" aria-controls="reg-cursor" aria-selected="false" tabindex="-1" class="chip">Cursor</button>
+          </div>
+          <div class="tab-panel" role="tabpanel" id="reg-claude" aria-labelledby="tab-claude"><div class="code-copy">
+            <pre><code id="cmd-claude">claude mcp add --scope user alexandria -- node /path/to/project-alexandria/mcp-server/index.js</code></pre>
+            <button type="button" class="copy-btn" data-copy-target="cmd-claude" aria-label="Copy command">Copy</button>
+          </div></div>
+          <div class="tab-panel" role="tabpanel" id="reg-codex" aria-labelledby="tab-codex" hidden><div class="code-copy">
+            <pre><code id="cmd-codex">codex mcp add alexandria -- node /path/to/project-alexandria/mcp-server/index.js</code></pre>
+            <button type="button" class="copy-btn" data-copy-target="cmd-codex" aria-label="Copy command">Copy</button>
+          </div></div>
+          <div class="tab-panel" role="tabpanel" id="reg-gemini" aria-labelledby="tab-gemini" hidden><div class="code-copy">
+            <pre><code id="cmd-gemini">gemini mcp add --scope user alexandria node /path/to/project-alexandria/mcp-server/index.js</code></pre>
+            <button type="button" class="copy-btn" data-copy-target="cmd-gemini" aria-label="Copy command">Copy</button>
+          </div></div>
+          <div class="tab-panel" role="tabpanel" id="reg-vscode" aria-labelledby="tab-vscode" hidden><div class="code-copy">
+            <pre><code id="cmd-vscode">code --add-mcp '{"name":"alexandria","command":"node","args":["/path/to/project-alexandria/mcp-server/index.js"]}'</code></pre>
+            <button type="button" class="copy-btn" data-copy-target="cmd-vscode" aria-label="Copy command">Copy</button>
+          </div></div>
+          <div class="tab-panel" role="tabpanel" id="reg-cursor" aria-labelledby="tab-cursor" hidden>
+            <p class="tab-note">Merge into <code>~/.cursor/mcp.json</code>:</p>
+            <div class="code-copy">
+            <pre><code id="cmd-cursor">{
+  "mcpServers": {
+    "alexandria": {
+      "command": "node",
+      "args": ["/path/to/project-alexandria/mcp-server/index.js"]
+    }
   }
 }</code></pre>
+            <button type="button" class="copy-btn" data-copy-target="cmd-cursor" aria-label="Copy config">Copy</button>
+            </div>
+          </div>
         </div>
         <div class="card step">
           <div class="step-num">3</div>
-          <h3>Onboard</h3>
-          <p>In your first conversation, tell Claude:</p>
+          <h3>Restart &amp; onboard</h3>
+          <p>Restart your agent, then tell it:</p>
           <pre><code>"Call get_onboarding from Alexandria
 and save the maintenance contract."</code></pre>
+          <p class="step-note">In Claude Code, add <code>"mcp__alexandria__*"</code> to <code>permissions.allow</code> in <code>~/.claude/settings.json</code> so lookups don't prompt.</p>
         </div>
       </div>
     </div>
@@ -600,6 +682,80 @@ and save the maintenance contract."</code></pre>
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;');
       }
+    })();
+  </script>
+
+  <!-- Quick Start: copy buttons and agent tabs -->
+  <script>
+    (function () {
+      // Clipboard API needs a secure context (https or localhost); fall back to a hidden
+      // textarea + execCommand so the button still works from file:// or older browsers.
+      function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+        return new Promise(function (resolve, reject) {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          var ok = false;
+          try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+          ta.remove();
+          ok ? resolve() : reject(new Error('copy failed'));
+        });
+      }
+
+      document.querySelectorAll('[data-copy-target]').forEach(function (btn) {
+        var label = btn.textContent;
+        btn.addEventListener('click', function () {
+          var src = document.getElementById(btn.getAttribute('data-copy-target'));
+          if (!src) return;
+          var status = btn.parentNode.querySelector('.copy-status');
+          copyText(src.textContent).then(function () {
+            btn.textContent = 'Copied';
+            btn.classList.add('copied');
+            if (status) status.textContent = 'Copied. Paste it into your agent.';
+          }, function () {
+            // Could not reach the clipboard: select the text so the user can copy it by hand.
+            var range = document.createRange();
+            range.selectNodeContents(src);
+            var sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            if (status) status.textContent = 'Press Ctrl+C (or Cmd+C) to copy the selected text.';
+          });
+          clearTimeout(btn._reset);
+          btn._reset = setTimeout(function () {
+            btn.textContent = label;
+            btn.classList.remove('copied');
+            if (status) status.textContent = '';
+          }, 2000);
+        });
+      });
+
+      // Agent tabs (ARIA tabs pattern: click, or arrow keys to move between tabs).
+      var tabs = Array.prototype.slice.call(document.querySelectorAll('.agent-tabs [role="tab"]'));
+      function select(tab) {
+        tabs.forEach(function (t) {
+          var on = t === tab;
+          t.setAttribute('aria-selected', on ? 'true' : 'false');
+          t.tabIndex = on ? 0 : -1;
+          document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+        });
+      }
+      tabs.forEach(function (tab, i) {
+        tab.addEventListener('click', function () { select(tab); });
+        tab.addEventListener('keydown', function (e) {
+          var step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+          if (!step) return;
+          e.preventDefault();
+          var next = tabs[(i + step + tabs.length) % tabs.length];
+          select(next);
+          next.focus();
+        });
+      });
     })();
   </script>
 

@@ -35,30 +35,58 @@ Setting up development tools, MCP servers, and integrations is repetitive. Every
 
 ## Installation
 
+### Let your agent set it up (recommended)
+
+Paste this into Claude Code, Codex, Cursor, Copilot, Gemini CLI or any coding agent that can run commands:
+
+```text
+Install the Alexandria MCP server for me: read https://7ports.github.io/project-alexandria/install.md and follow its steps.
+```
+
+[`docs/install.md`](docs/install.md) is written for agents (the [install.md](https://www.installmd.org) layout: objective, done-when check, TODO list, steps). The agent checks for git and Node.js 22+, asks where to clone, installs the server, runs `npm run doctor`, registers the server with whichever agent it is, and shows you each config change before making it. [`docs/llms.txt`](docs/llms.txt) points agents that land on the site at it.
+
+Or set it up by hand:
+
 ### 1. Clone the Repository
+
+Needs git and Node.js 22 or newer.
 
 ```bash
 git clone https://github.com/7ports/project-alexandria /path/to/project-alexandria
-cd project-alexandria/mcp-server
+cd /path/to/project-alexandria/mcp-server
 npm install
+npm run doctor   # checks the native modules and downloads the embedding model
 ```
 
-### 2. Add to Claude Code Config
+### 2. Register the Server
 
-Add to `~/.claude.json` under `"mcpServers"`:
+Use the absolute path to your clone, at user scope so every project gets it:
+
+```bash
+# Claude Code
+claude mcp add --scope user alexandria -- node /path/to/project-alexandria/mcp-server/index.js
+# OpenAI Codex CLI
+codex mcp add alexandria -- node /path/to/project-alexandria/mcp-server/index.js
+# Gemini CLI
+gemini mcp add --scope user alexandria node /path/to/project-alexandria/mcp-server/index.js
+# VS Code (Copilot agent mode)
+code --add-mcp '{"name":"alexandria","command":"node","args":["/path/to/project-alexandria/mcp-server/index.js"]}'
+```
+
+For Cursor, Claude Desktop or another client, add this entry to its `mcpServers` config (`~/.cursor/mcp.json` for Cursor):
 
 ```json
 {
   "alexandria": {
-    "type": "stdio",
     "command": "node",
-    "args": ["/path/to/project-alexandria/mcp-server/index.js"],
-    "env": {}
+    "args": ["/path/to/project-alexandria/mcp-server/index.js"]
   }
 }
 ```
 
-### 3. Add Permissions
+The server commits docs your agent writes into the clone and pushes them to `origin`. Clone your own fork if you want those writes to sync; a clone of this repository keeps them as local commits.
+
+### 3. Add Permissions (Claude Code)
 
 In `~/.claude/settings.json`, add to `permissions.allow`:
 
@@ -66,7 +94,7 @@ In `~/.claude/settings.json`, add to `permissions.allow`:
 "mcp__alexandria__*"
 ```
 
-### 4. Restart Claude Code
+### 4. Restart Your Agent
 
 The `alexandria` MCP server will now be available in all conversations.
 

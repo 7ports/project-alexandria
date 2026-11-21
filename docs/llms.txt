@@ -1,0 +1,19 @@
+# Alexandria
+
+> Shared tooling knowledge base for AI coding agents, served over MCP: setup guides, concepts, references and articles, with semantic search and agent write-back.
+
+To install Alexandria for a user, read and follow install.md. It is written for agents: prerequisites, where to clone, installing the MCP server, registering it with Claude Code, Codex, Gemini CLI, VS Code or Cursor, and how to verify.
+
+## Setup
+
+- [install.md](https://7ports.github.io/project-alexandria/install.md): step-by-step, agent-executable installation instructions
+- [Alexandria MCP Server guide](https://7ports.github.io/project-alexandria/guides/alexandria-mcp-server.md): every tool the server exposes, and troubleshooting
+
+## Knowledge base
+
+- [manifest.json](https://7ports.github.io/project-alexandria/guides/manifest.json): every published doc with its name, type, title and description
+- Raw markdown for a doc: `https://7ports.github.io/project-alexandria/<dir>/<name>.md`, where `<dir>` is `guides`, `concepts`, `references` or `articles` to match the doc's type
+
+## Optional
+
+- [Repository](https://github.com/7ports/project-alexandria): source, issues and the MCP server code
