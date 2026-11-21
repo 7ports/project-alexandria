@@ -7,6 +7,7 @@ This is a living tooling documentation repository. It contains setup guides for 
 - **Always update guides** when setting up new tooling or discovering fixes
 - **`docs/index.html` is now dynamic** — the doc count badge and cards are rendered from `docs/guides/manifest.json` at page load. You do NOT need to manually edit `docs/index.html` when adding or removing docs. Run `scripts/sync-docs.sh` instead to regenerate the manifest and README.
 - **All four content types are published** — guides, concepts, articles and references are copied into `docs/<dir>/` by `scripts/publish-content.sh` and listed in the manifest with a `type` field. Directory `README.md` files are never published or indexed.
+- **Site colours are generated** — `docs/assets/theme.css` comes from `scripts/build-theme.mjs` (Material 3, seed `#f3c969`). Change the script and run `npm run theme`; never edit `theme.css` by hand (a PR check enforces this). Page CSS must use the `--md-*` / `--t-*` / `--logo-*` tokens, not hex values, so light and dark mode both work. Shared components are in `docs/assets/site.css`.
 - **Use the templates** in `templates/` (`guide`, `concept`, `article`, `reference`) — `get_template` serves them
 - **Keep guides practical** — focus on step-by-step instructions, config snippets, and troubleshooting
 - **Include platform notes** — this setup runs primarily on Windows 10

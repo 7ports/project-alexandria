@@ -16,8 +16,24 @@ var TRANSFORMERS_CDN = "https://esm.sh/@huggingface/transformers@3.6.3";
 var SEARCH_TOP_N = 8;
 var GUIDE_DIM = 384;
 
-// ---- relational edge underlay styling ----
-var EDGE_LINE_COLOR = "rgba(139,148,158,0.22)";
+// ---- theme ----
+// Plot colours come from the site theme (docs/assets/theme.css custom properties), read at
+// render time so the map follows the light/dark toggle. Fallbacks are the dark theme values.
+function themeColor(name, fallback) {
+  try {
+    var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  } catch (e) { return fallback; }
+}
+
+function withAlpha(hex, alpha) {
+  var m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || "");
+  if (!m) return hex;
+  return "rgba(" + parseInt(m[1], 16) + "," + parseInt(m[2], 16) + "," + parseInt(m[3], 16) + "," + alpha + ")";
+}
+
+// Content types are coloured like everywhere else on the site.
+var TYPE_TAGS = { concept: 1, article: 1, reference: 1, guide: 1 };
 
 export function hasWebGL() {
   try {
@@ -67,6 +83,7 @@ export function initEmbeddingMap(opts) {
   function colorForGroup(key) {
     if (state.color === "tag") {
       var t = tagById[key];
+      if (TYPE_TAGS[key]) return themeColor("--t-" + key, (t && t.color) || "#888");
       return (t && t.color) || "#888";
     }
     return CLUSTER_PALETTE[(Number(key) || 0) % CLUSTER_PALETTE.length];
@@ -98,7 +115,7 @@ export function initEmbeddingMap(opts) {
       type: "scatter3d",
       mode: "lines",
       x: x, y: y, z: z,
-      line: { color: EDGE_LINE_COLOR, width: 1.5 },
+      line: { color: withAlpha(themeColor("--md-outline", "#9c8f77"), 0.3), width: 1.5 },
       hoverinfo: "skip",
       showlegend: false
     };
@@ -168,10 +185,10 @@ export function initEmbeddingMap(opts) {
         hovertemplate: "<b>%{customdata[1]}</b><br>search match<extra></extra>",
         marker: {
           size: 12,
-          color: "#e3b341",
+          color: themeColor("--md-primary", "#f9bd00"),
           symbol: "circle-open",
           opacity: 1,
-          line: { width: 2, color: "#e3b341" }
+          line: { width: 2, color: themeColor("--md-primary", "#f9bd00") }
         }
       });
     }
@@ -182,17 +199,21 @@ export function initEmbeddingMap(opts) {
 
   function layout() {
     var ax = {
-      showgrid: true, gridcolor: "#21262d", zeroline: false,
+      showgrid: true, gridcolor: themeColor("--md-outline-variant", "#4f4631"), zeroline: false,
       showticklabels: false, title: "",
-      backgroundcolor: "#0d1117", showbackground: true
+      backgroundcolor: themeColor("--md-surface-container", "#1b1507"), showbackground: true
     };
     return {
-      paper_bgcolor: "#0d1117",
-      plot_bgcolor: "#0d1117",
-      font: { color: "#e6edf3", family: "-apple-system, Segoe UI, sans-serif" },
+      // Transparent paper: the plot sits on whatever surface its section uses.
+      paper_bgcolor: "rgba(0,0,0,0)",
+      plot_bgcolor: "rgba(0,0,0,0)",
+      font: { color: themeColor("--md-on-surface", "#efe1ca"), family: "Inter, -apple-system, Segoe UI, sans-serif" },
       margin: { l: 0, r: 0, t: 0, b: 0 },
       showlegend: true,
-      legend: { bgcolor: "rgba(22,27,34,0.7)", bordercolor: "#30363d", borderwidth: 1, font: { size: 11 } },
+      legend: {
+        bgcolor: withAlpha(themeColor("--md-surface-container-high", "#211b0d"), 0.85),
+        bordercolor: themeColor("--md-outline-variant", "#4f4631"), borderwidth: 1, font: { size: 11 }
+      },
       scene: {
         xaxis: ax, yaxis: Object.assign({}, ax), zaxis: Object.assign({}, ax),
         aspectmode: "cube"
@@ -207,7 +228,7 @@ export function initEmbeddingMap(opts) {
     if (wantEdges) updateEdgesEnabled();
     var pts = pointSet();
     if (metaNote) {
-      metaNote.textContent = pts.length + " " + (state.gran === "doc" ? "guides" : "chunks") +
+      metaNote.textContent = pts.length + " " + (state.gran === "doc" ? "docs" : "chunks") +
         " · colored by " + state.color;
     }
     window.Plotly.react(plotEl, buildTraces(), layout(), CONFIG);
@@ -448,6 +469,8 @@ export function initEmbeddingMap(opts) {
 
       wireSeg("seg-gran", "data-gran", "gran");
       wireSeg("seg-color", "data-color", "color");
+      // Re-colour when the site theme switches (docs/assets/theme.js dispatches this).
+      document.addEventListener("themechange", function () { render(); });
       if (wantEdges) initEdges();
       if (wantSearch) initSearch();
       render();

@@ -1,21 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Project Alexandria">
-  <title>Project Alexandria</title>
-  <defs>
-    <linearGradient id="alexFav" gradientUnits="userSpaceOnUse" x1="5" y1="4" x2="27" y2="28">
-      <stop offset="0" stop-color="#22d3ee"/>
-      <stop offset="1" stop-color="#f59e0b"/>
-    </linearGradient>
-  </defs>
-  <!-- BACK: point-down chevron (V) — flipped, dimmed amber, recedes. -->
-  <g transform="translate(0,32) scale(1,-1)" opacity="0.45"
-     fill="none" stroke="#f59e0b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M6 26 L16 6 L26 26"/>
-    <path d="M10 19 L22 19"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Alexandria">
+  <title>Alexandria</title>
+  <!-- Simplified Pharos mark for small sizes. Follows the OS colour scheme. -->
+  <style>
+    .tw { stroke: #f4c969 } .lamp { fill: #fff2dd; stroke: #f4c969 }
+    @media (prefers-color-scheme: light) { .tw { stroke: #785a00 } .lamp { fill: #ebc162; stroke: #785a00 } }
+  </style>
+  <g class="tw" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8.5 28 L14 12.5" stroke-width="3.2"/><path d="M23.5 28 L18 12.5" stroke-width="3.2"/>
+    <path d="M11.2 20.5 L20.8 20.5" stroke-width="2.6"/>
+    <path d="M6.5 28.4 L25.5 28.4" stroke-width="2.2"/>
   </g>
-  <!-- FRONT: upright chevron (A) — prominent duotone. -->
-  <g fill="none" stroke="url(#alexFav)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M6 26 L16 6 L26 26"/>
-    <path d="M10 19 L22 19"/>
-  </g>
-  <circle cx="16" cy="6" r="3" fill="url(#alexFav)"/>
+  <circle class="lamp" cx="16" cy="7.5" r="3.6" stroke-width="1.6"/>
 </svg>

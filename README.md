@@ -86,6 +86,21 @@ Then open **http://localhost:8000/** in your browser. Guide viewer deep-links wo
 
 Override the port with the `PORT` env var (e.g. `PORT=3000 npm run preview`).
 
+### Site theme
+
+The site's look ("Pharos": a lighthouse mark, lamp-gold on deep near-black, with a light mode) is generated, not hand-picked. `scripts/build-theme.mjs` derives every colour from one seed (`#f3c969`) with Google's Material Design 3 colour library and writes `docs/assets/theme.css`:
+
+- Material 3 Vibrant scheme, dark and light, with darker dark-mode surfaces for contrast.
+- One colour per content type (guide, concept, reference, article), harmonised toward the seed.
+- Logo colours that shift to deeper golds in light mode.
+
+```bash
+npm install          # once: installs the pinned colour library (dev dependency)
+npm run theme        # regenerate docs/assets/theme.css after editing the script
+```
+
+Never edit `theme.css` by hand; a PR check (`build-theme.mjs --check`) fails if it doesn't match the generator. Shared components live in `docs/assets/site.css`, and `docs/assets/theme.js` handles the light/dark toggle (follows the OS setting until the visitor picks one).
+
 > **Windows note:** do **not** use `python3 -m http.server` — `python3` often isn't on `PATH` on Windows, and common Node static servers (`serve`, `http-server`) return 404 for directory URLs like `/guides/?guide=aws-cli`. `npm run preview` handles this correctly and needs only Node (already required for the MCP server).
 
 ## Available Tools
@@ -260,6 +275,12 @@ project-alexandria/
 ├── docs/                      # GitHub Pages site
 │   ├── index.html             # Landing page
 │   ├── explore.html           # 3D embedding map of every doc
+│   ├── assets/
+│   │   ├── theme.css          # Generated colour tokens (npm run theme)
+│   │   ├── site.css           # Shared components (nav, buttons, chips, cards)
+│   │   ├── theme.js           # Light/dark toggle
+│   │   ├── embedding-map.js   # 3D map (colours read from the theme)
+│   │   └── logo.svg, favicon.svg
 │   ├── guides/
 │   │   ├── index.html         # Knowledge browser (all types, filterable)
 │   │   ├── manifest.json      # Generated: one entry per doc, with its type
@@ -270,6 +291,7 @@ project-alexandria/
 ├── articles/                  # Longer synthesized write-ups
 ├── references/                # Short gotchas, error→fix pairs, lookup tables
 ├── templates/                 # guide / concept / article / reference templates
+├── scripts/                   # sync-docs, publish-content, build-embedding-map, build-theme, preview
 ├── recommendations.json       # Project setup recommendations data
 ├── onboarding.json            # Collaborative maintenance contract + memory templates
 └── mcp-server/

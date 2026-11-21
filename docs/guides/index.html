@@ -3,356 +3,160 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Knowledge Base — Project Alexandria</title>
+  <title>Knowledge Base — Alexandria</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="../assets/theme.css">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/theme.js"></script>
   <style>
-    :root {
-      --bg: #080b14;
-      --surface: #11161f;
-      --border: rgba(255,255,255,0.08);
-      --text: #e8edf4;
-      --text-muted: #8b97a8;
-      --accent: #22d3ee;
-      --orange: #f59e0b;
-      --amber: #f59e0b;
-      --surface-2: #1a2230;
-      --code-bg: #080b14;
-      --brand-gradient: linear-gradient(135deg, #22d3ee, #f59e0b);
+    .kb {
+      max-width: 1240px;
+      display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 28px;
+      padding-top: 24px; padding-bottom: 56px;
     }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.6;
+    /* Sidebar: search, type chips, every doc */
+    .kb-side {
+      position: sticky; top: 72px; align-self: start;
+      max-height: calc(100vh - 88px);
+      display: flex; flex-direction: column; gap: 12px;
+      background: var(--md-surface-container); border-radius: var(--radius-l); padding: 16px;
+    }
+    .type-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+    .kb-list { overflow-y: auto; min-height: 0; flex: 1; margin: 0 -8px; padding: 0 8px; }
+    .kb-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 7px 12px; border-radius: var(--radius-m);
+      color: var(--md-on-surface-variant); text-decoration: none; font-size: 0.86rem; line-height: 1.35;
+    }
+    .kb-item .dot { margin-top: 5px; }
+    .kb-item:hover { color: var(--md-on-surface); background: color-mix(in srgb, var(--md-on-surface) 8%, transparent); }
+    .kb-item[aria-current="page"] {
+      background: var(--md-secondary-container); color: var(--md-on-secondary-container); font-weight: 500;
     }
 
-    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+    /* Index view */
+    .kb-head { margin-bottom: 20px; }
+    .kb-head h1 { font-size: 2.4rem; line-height: 1.1; color: var(--md-primary); }
+    .kb-head p { color: var(--md-on-surface-variant); margin-top: 6px; }
+    #guide-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+    .guide-link .pill { margin-bottom: 10px; }
+    .guide-link h3 { margin-bottom: 6px; }
+    .guide-link .desc { font-size: 0.86rem; line-height: 1.5; }
+    .search-empty { text-align: center; color: var(--md-on-surface-variant); padding: 32px 0; }
+    .loading { color: var(--md-on-surface-variant); padding: 32px 0; }
 
-    /* Nav */
-    .topnav {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(8, 11, 20, 0.92);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border-bottom: 1px solid var(--border);
-      padding: 12px 0;
-    }
-
-    .nav-inner {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .nav-brand {
-      font-weight: 700;
-      font-size: 1rem;
-      text-decoration: none;
-      background: var(--brand-gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .nav-links {
-      display: flex;
-      gap: 24px;
-      align-items: center;
-    }
-
-    .nav-links a {
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 0.9rem;
-      transition: color 0.15s;
-    }
-
-    .nav-links a:hover { color: var(--text); }
-
-    header {
-      padding: 40px 0 24px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 32px;
-    }
-
-    header h1 {
-      font-size: 2rem;
-      font-weight: 800;
-      background: var(--brand-gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    header p {
-      color: var(--text-muted);
-      margin-top: 8px;
-    }
-
-    /* Search */
-    .search-wrapper {
-      margin-bottom: 24px;
-    }
-
-    #guide-search {
-      width: 100%;
-      padding: 10px 16px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text);
-      font-size: 0.95rem;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-
-    #guide-search::placeholder { color: var(--text-muted); }
-    #guide-search:focus { border-color: var(--orange); }
-
-    /* Type filter chips */
-    .type-filters {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 20px;
-    }
-
-    .type-chip {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      color: var(--text-muted);
-      font: inherit;
-      font-size: 0.85rem;
-      padding: 4px 14px;
-      cursor: pointer;
-      transition: border-color 0.15s, color 0.15s;
-    }
-
-    .type-chip:hover { color: var(--text); }
-    .type-chip[aria-pressed="true"] { border-color: var(--orange); color: var(--text); }
-    .type-chip .count { color: var(--text-muted); margin-left: 6px; }
-
-    .search-empty {
-      text-align: center;
-      color: var(--text-muted);
-      padding: 32px 0;
-      font-size: 0.95rem;
-    }
-
-    /* Guide index list */
-    #guide-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
-      margin-bottom: 48px;
-    }
-
-    .guide-link {
-      display: block;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px 24px;
-      text-decoration: none;
-      color: var(--text);
-      transition: border-color 0.2s;
-    }
-
-    .guide-link:hover { border-color: var(--orange); }
-
-    .guide-link h3 {
-      font-size: 1.05rem;
-      margin-bottom: 6px;
-    }
-
-    .guide-link .slug {
-      font-size: 0.75rem;
-      color: var(--orange);
-      font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
-      background: rgba(245, 158, 11, 0.12);
-      padding: 2px 8px;
-      border-radius: 4px;
-    }
-
-    .guide-link .type-badge {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--accent);
-      background: rgba(34, 211, 238, 0.12);
-      padding: 2px 8px;
-      border-radius: 4px;
-      margin-left: 6px;
-    }
-
-    .guide-link .desc {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      margin-top: 10px;
-      line-height: 1.5;
-    }
-
-    /* Guide viewer */
-    #guide-viewer {
-      display: none;
-      margin-bottom: 48px;
-    }
-
-    .viewer-nav {
-      display: flex;
-      align-items: center;
-      margin-bottom: 24px;
-    }
-
-    #back-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      color: var(--accent);
-      text-decoration: none;
-      font-size: 0.9rem;
-    }
-
+    /* Doc viewer */
+    #guide-viewer { display: none; }
+    .viewer-nav { margin-bottom: 14px; }
+    #back-link { font-size: 0.9rem; font-weight: 500; text-decoration: none; }
     #back-link:hover { text-decoration: underline; }
-
     #guide-content {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 32px;
-      line-height: 1.7;
+      background: var(--md-surface-container-low); border-radius: var(--radius-l);
+      padding: 32px 36px; line-height: 1.7;
     }
-
-    #guide-content h1 { font-size: 1.75rem; margin-bottom: 16px; }
-    #guide-content h2 { font-size: 1.35rem; margin-top: 32px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
-    #guide-content h3 { font-size: 1.1rem; margin-top: 24px; margin-bottom: 8px; }
-    #guide-content p { margin-bottom: 12px; color: var(--text); }
+    #guide-content > .pill { margin-bottom: 4px; }
+    #guide-content h1 {
+      font-family: var(--font-display); font-weight: 600; font-size: 2rem; line-height: 1.2;
+      letter-spacing: -0.01em; margin: 6px 0 16px;
+    }
+    #guide-content h2 {
+      font-size: 1.3rem; font-weight: 600; margin: 32px 0 12px;
+      padding-bottom: 6px; border-bottom: 1px solid var(--md-outline-variant);
+    }
+    #guide-content h3 { font-size: 1.08rem; font-weight: 600; margin: 24px 0 8px; }
+    #guide-content p { margin-bottom: 12px; }
     #guide-content ul, #guide-content ol { margin-bottom: 12px; padding-left: 24px; }
     #guide-content li { margin-bottom: 4px; }
-    #guide-content a { color: var(--accent); }
-
-    #guide-content code {
-      font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
-      font-size: 0.85em;
-      background: rgba(245, 158, 11, 0.12);
-      padding: 2px 6px;
-      border-radius: 4px;
-      color: var(--orange);
-    }
-
-    #guide-content pre {
-      background: var(--code-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px;
-      overflow-x: auto;
-      margin-bottom: 16px;
-    }
-
-    #guide-content pre code {
-      background: none;
-      padding: 0;
-      color: var(--text);
-    }
-
+    #guide-content pre { margin-bottom: 16px; }
     #guide-content table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 16px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
+      margin-bottom: 16px; border-radius: var(--radius-m); overflow: hidden;
+      background: var(--md-surface-container-high);
     }
-
-    #guide-content th, #guide-content td {
-      text-align: left;
-      padding: 8px 12px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    #guide-content th {
-      background: var(--surface-2);
-      font-size: 0.85rem;
-      color: var(--text-muted);
-    }
-
+    #guide-content th, #guide-content td { padding: 8px 12px; }
+    #guide-content td { color: var(--md-on-surface); }
     #guide-content blockquote {
-      border-left: 3px solid var(--orange);
-      padding-left: 16px;
-      color: var(--text-muted);
-      margin-bottom: 12px;
+      border-left: 3px solid var(--md-primary); padding-left: 16px;
+      color: var(--md-on-surface-variant); margin-bottom: 12px;
     }
+    #guide-content hr { border: none; border-top: 1px solid var(--md-outline-variant); margin: 24px 0; }
+    #guide-content img { max-width: 100%; }
 
-    footer {
-      padding: 32px 0;
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 0.85rem;
-      border-top: 1px solid var(--border);
+    @media (max-width: 860px) {
+      .kb { grid-template-columns: 1fr; gap: 16px; }
+      .kb-side { position: static; max-height: none; }
+      .kb-list { display: none; }       /* the card grid is the list on small screens */
+      body.viewing .kb-side { display: none; }
+      #guide-content { padding: 22px 18px; }
     }
-
-    footer a { color: var(--orange); text-decoration: none; }
-    footer a:hover { text-decoration: underline; }
-
-    .loading { color: var(--text-muted); text-align: center; padding: 48px 0; }
   </style>
 </head>
 <body>
   <!-- Nav -->
   <nav class="topnav">
     <div class="container nav-inner">
-      <a class="nav-brand" href="../"><img src="../assets/logo.svg" alt="" width="24" height="24" style="vertical-align:-5px;margin-right:8px">Project Alexandria</a>
+      <a class="nav-brand" href="../">
+        <span class="mark"><svg class="pharos" viewBox="0 0 256 256" aria-hidden="true" focusable="false"><defs><linearGradient id="pn-t" gradientUnits="userSpaceOnUse" x1="0" y1="80" x2="0" y2="224"><stop offset="0" style="stop-color:var(--logo-tower-top)"/><stop offset="1" style="stop-color:var(--logo-tower-bottom)"/></linearGradient><radialGradient id="pn-l"><stop offset="0" style="stop-color:var(--logo-lamp-core)"/><stop offset="1" style="stop-color:var(--logo-lamp-edge)"/></radialGradient></defs><g style="stroke:var(--logo-beam)" stroke-width="7" stroke-linecap="round" opacity="0.55"><path d="M100 58 L30 34"/><path d="M100 70 L22 78"/><path d="M156 58 L226 34"/><path d="M156 70 L234 78"/></g><g fill="none" stroke="url(#pn-t)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"><path d="M70 220 L112 96"/><path d="M186 220 L144 96"/><path d="M90 162 L166 162" stroke-width="18"/><path d="M56 220 L200 220" stroke-width="14"/></g><circle cx="128" cy="64" r="24" fill="url(#pn-l)"/><path d="M104 92 L152 92" style="stroke:var(--logo-gallery)" stroke-width="10" stroke-linecap="round"/></svg></span>
+        Alexandria
+      </a>
       <div class="nav-links">
-        <a href="./">Guides</a>
+        <a href="./" aria-current="page">Knowledge Base</a>
+        <a href="../explore.html">Explore Map</a>
         <a href="https://github.com/7ports/project-alexandria">GitHub</a>
+        <button class="theme-toggle" type="button" data-theme-toggle>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <span class="theme-toggle-label">Light</span>
+        </button>
       </div>
     </div>
   </nav>
 
-  <div class="container">
-    <header>
-      <h1>Knowledge Base</h1>
-      <p>Setup guides, concepts, articles and references, maintained collaboratively by Claude instances.</p>
-    </header>
-
-    <!-- Guide index -->
-    <div id="guide-index">
-      <div class="search-wrapper">
-        <input type="text" id="guide-search" placeholder="Search docs..." autocomplete="off" spellcheck="false">
-      </div>
+  <div class="container kb">
+    <aside class="kb-side">
+      <input type="text" id="guide-search" class="field" placeholder="Search docs..." aria-label="Search docs" autocomplete="off" spellcheck="false">
       <div class="type-filters" id="type-filters" role="group" aria-label="Filter by type"></div>
-      <div id="guide-list">
-        <p class="loading">Loading guides...</p>
-      </div>
-      <p id="search-empty" class="search-empty" style="display:none;">No docs match your search.</p>
-    </div>
+      <nav class="kb-list" id="doc-nav" aria-label="All docs"></nav>
+    </aside>
 
-    <!-- Single guide viewer -->
-    <div id="guide-viewer">
-      <div class="viewer-nav">
-        <a id="back-link" href="#">&larr; All docs</a>
+    <main>
+      <!-- Doc index -->
+      <div id="guide-index">
+        <header class="kb-head">
+          <h1 class="display">Knowledge Base</h1>
+          <p>Setup guides, concepts, articles and references, maintained collaboratively by Claude instances.</p>
+        </header>
+        <div id="guide-list">
+          <p class="loading">Loading docs&hellip;</p>
+        </div>
+        <p id="search-empty" class="search-empty" style="display:none;">No docs match your search.</p>
       </div>
-      <div id="guide-content"></div>
-    </div>
 
-    <footer>
+      <!-- Single doc viewer -->
+      <div id="guide-viewer">
+        <div class="viewer-nav">
+          <a id="back-link" href="#">&larr; All docs</a>
+        </div>
+        <article id="guide-content"></article>
+      </div>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
       <a href="../">Home</a> &middot;
       <a href="https://github.com/7ports/project-alexandria">GitHub</a> &middot;
       MIT License
-    </footer>
-  </div>
+    </div>
+  </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
   <script>
     const listEl = document.getElementById('guide-list');
+    const navEl = document.getElementById('doc-nav');
     const indexEl = document.getElementById('guide-index');
     const viewerEl = document.getElementById('guide-viewer');
     const contentEl = document.getElementById('guide-content');
@@ -367,11 +171,12 @@
     const TYPES = [
       { id: 'guide', dir: 'guides', label: 'Guides' },
       { id: 'concept', dir: 'concepts', label: 'Concepts' },
-      { id: 'article', dir: 'articles', label: 'Articles' },
       { id: 'reference', dir: 'references', label: 'References' },
+      { id: 'article', dir: 'articles', label: 'Articles' },
     ];
     const TYPE_BY_ID = Object.fromEntries(TYPES.map(t => [t.id, t]));
     const typeOf = t => (TYPE_BY_ID[t] ? t : 'guide');
+    const SITE = 'Alexandria';
 
     let activeType = '';
 
@@ -396,34 +201,63 @@
       return activeType ? '?type=' + activeType : './';
     }
 
+    // Highlight the open doc in the sidebar (no-op until the manifest has loaded).
+    function markCurrent(name, type) {
+      navEl.querySelectorAll('.kb-item').forEach(item => {
+        const on = name != null && item.dataset.name === name && item.dataset.type === typeOf(type);
+        if (on) {
+          item.setAttribute('aria-current', 'page');
+          item.scrollIntoView({ block: 'nearest' });
+        } else {
+          item.removeAttribute('aria-current');
+        }
+      });
+    }
+
+    let openDoc = null;
+
     function showIndex() {
+      openDoc = null;
       indexEl.style.display = 'block';
       viewerEl.style.display = 'none';
-      document.title = 'Knowledge Base — Project Alexandria';
+      document.body.classList.remove('viewing');
+      document.title = 'Knowledge Base — ' + SITE;
       history.replaceState(null, '', listQuery());
+      markCurrent(null);
     }
 
     function showGuide(name, title, type) {
+      const t = typeOf(type);
+      openDoc = { name, type: t };
       indexEl.style.display = 'none';
       viewerEl.style.display = 'block';
+      document.body.classList.add('viewing');
       contentEl.innerHTML = '<p class="loading">Loading…</p>';
-      document.title = title + ' — Project Alexandria';
-      history.replaceState(null, '', docQuery(name, type));
+      document.title = title + ' — ' + SITE;
+      history.replaceState(null, '', docQuery(name, t));
+      markCurrent(name, t);
       window.scrollTo(0, 0);
 
-      fetch(docFile(name, type))
+      const pill = '<span class="pill t-' + t + '">' + t + '</span>';
+      fetch(docFile(name, t))
         .then(r => {
           if (!r.ok) throw new Error('HTTP ' + r.status);
           return r.text();
         })
         .then(md => {
           // Strip leading YAML front-matter (--- ... ---) so it is not rendered as content
-          const body = md.replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---[ \t]*\r?\n/, '');
+          const fm = md.match(/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---[ \t]*\r?\n/);
+          const body = fm ? md.slice(fm[0].length) : md;
+          // Docs written via write_knowledge keep their title in front-matter only; show it
+          // as the heading when the body has no H1 of its own.
+          const fmTitle = fm && (fm[1].match(/^title:[ \t]*["']?(.*?)["']?[ \t]*\r?$/m) || [])[1];
+          const heading = fmTitle && !/^#[ \t]/m.test(body.replace(/```[\s\S]*?```/g, ''))
+            ? '<h1>' + escapeHtml(fmTitle) + '</h1>' : '';
           if (typeof marked !== 'undefined' && marked.parse) {
-            contentEl.innerHTML = marked.parse(body);
+            contentEl.innerHTML = pill + heading + marked.parse(body);
           } else {
             // Markdown renderer unavailable (e.g. CDN blocked) - show raw text instead of a blank page
-            contentEl.innerHTML = '<pre>' + escapeHtml(body) + '</pre>';
+            contentEl.innerHTML = pill + '<pre>' + escapeHtml(body) + '</pre>';
           }
         })
         .catch(err => {
@@ -436,19 +270,17 @@
       showIndex();
     });
 
-    // Search text and the type chip combine: a card shows when it matches both.
+    // Search text and the type chip combine: a doc shows when it matches both.
+    // Applies to the card grid and the sidebar list alike.
     function applyFilters() {
       const q = searchInput.value.toLowerCase().trim();
       let visible = 0;
       const cards = document.querySelectorAll('.guide-link');
-      cards.forEach(card => {
-        const h3 = card.querySelector('h3');
-        const slug = card.querySelector('.slug');
-        const text = (h3 ? h3.textContent : '') + ' ' + (slug ? slug.textContent : '');
-        const show = (!activeType || card.dataset.type === activeType) &&
-          (!q || text.toLowerCase().includes(q));
-        card.style.display = show ? '' : 'none';
-        if (show) visible++;
+      document.querySelectorAll('.guide-link, .kb-item').forEach(el => {
+        const show = (!activeType || el.dataset.type === activeType) &&
+          (!q || el.dataset.search.includes(q));
+        el.style.display = show ? '' : 'none';
+        if (show && el.classList.contains('guide-link')) visible++;
       });
       searchEmpty.style.display = (cards.length && visible === 0) ? '' : 'none';
     }
@@ -462,14 +294,15 @@
       chips.forEach(c => {
         const b = document.createElement('button');
         b.type = 'button';
-        b.className = 'type-chip';
+        b.className = 'chip type-chip';
         b.setAttribute('aria-pressed', String(c.id === activeType));
-        b.innerHTML = escapeHtml(c.label) + '<span class="count">' + c.n + '</span>';
+        b.innerHTML = (c.id ? '<span class="dot t-' + c.id + '"></span>' : '') +
+          escapeHtml(c.label) + '<span class="count">' + c.n + '</span>';
         b.addEventListener('click', () => {
           activeType = c.id;
           filtersEl.querySelectorAll('.type-chip').forEach(x => x.setAttribute('aria-pressed', 'false'));
           b.setAttribute('aria-pressed', 'true');
-          history.replaceState(null, '', listQuery());
+          if (!openDoc) history.replaceState(null, '', listQuery());
           applyFilters();
         });
         filtersEl.appendChild(b);
@@ -490,32 +323,45 @@
       activeType = params.get('type');
     }
 
-    // Load manifest and render the doc LIST (index view). Its success or
+    // Load manifest and render the doc list (cards + sidebar). Its success or
     // failure does NOT gate the single-doc deep-link handled above.
     fetch('./manifest.json')
       .then(r => r.json())
       .then(entries => {
         const docs = entries.map(e => Object.assign({}, e, { type: typeOf(e.type) }));
         listEl.innerHTML = '';
+        navEl.innerHTML = '';
         docs.sort((a, b) => a.title.localeCompare(b.title));
+        searchInput.placeholder = 'Search ' + docs.length + ' docs...';
         for (const g of docs) {
+          const search = (g.title + ' ' + g.name + ' ' + (g.description || '')).toLowerCase();
+          const open = e => {
+            e.preventDefault();
+            showGuide(g.name, g.title, g.type);
+          };
+
           const card = document.createElement('a');
-          card.className = 'guide-link';
+          card.className = 'card guide-link';
           card.dataset.type = g.type;
+          card.dataset.search = search;
           card.href = docQuery(g.name, g.type);
-          const badge = g.type === 'guide'
-            ? ''
-            : '<span class="type-badge">' + escapeHtml(g.type) + '</span>';
           const descHtml = g.description
             ? '<p class="desc">' + escapeHtml(g.description) + '</p>'
             : '';
-          card.innerHTML = '<h3>' + escapeHtml(g.title) + '</h3><span class="slug">' +
-            escapeHtml(g.name) + '</span>' + badge + descHtml;
-          card.addEventListener('click', e => {
-            e.preventDefault();
-            showGuide(g.name, g.title, g.type);
-          });
+          card.innerHTML = '<span class="pill t-' + g.type + '">' + g.type + '</span>' +
+            '<h3>' + escapeHtml(g.title) + '</h3>' + descHtml;
+          card.addEventListener('click', open);
           listEl.appendChild(card);
+
+          const item = document.createElement('a');
+          item.className = 'kb-item';
+          item.dataset.type = g.type;
+          item.dataset.name = g.name;
+          item.dataset.search = search;
+          item.href = docQuery(g.name, g.type);
+          item.innerHTML = '<span class="dot t-' + g.type + '"></span><span>' + escapeHtml(g.title) + '</span>';
+          item.addEventListener('click', open);
+          navEl.appendChild(item);
         }
         renderFilters(docs);
         applyFilters();
@@ -524,8 +370,9 @@
         // proper title is known from the manifest (doc already rendering).
         if (deepLinkName) {
           const match = docs.find(g => g.name === deepLinkName && g.type === deepLinkType);
-          if (match) document.title = match.title + ' — Project Alexandria';
+          if (match) document.title = match.title + ' — ' + SITE;
         }
+        if (openDoc) markCurrent(openDoc.name, openDoc.type);
       })
       .catch(() => {
         // Manifest failed: only surface a list error when NOT in deep-link

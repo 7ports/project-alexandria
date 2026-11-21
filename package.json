@@ -2,6 +2,10 @@
   "name": "alexandria-docs",
   "private": true,
   "scripts": {
-    "preview": "node scripts/preview.mjs"
+    "preview": "node scripts/preview.mjs",
+    "theme": "node scripts/build-theme.mjs"
+  },
+  "devDependencies": {
+    "@material/material-color-utilities": "0.3.0"
   }
 }

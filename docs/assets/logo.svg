@@ -1,41 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Project Alexandria logo">
-  <title>Project Alexandria</title>
-  <desc>A/V ambigram — an upright chevron (front, A) prominent over a point-down chevron (behind, V). Alexandria variant of the Voltron mark: the A reads in front. Duotone cyan to amber.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Alexandria logo">
+  <title>Alexandria</title>
+  <desc>Pharos mark: the letter A drawn as a lighthouse, with a lit lamp at the apex and four beams. Pale gold on dark backgrounds, deeper gold on light ones.</desc>
+  <!-- Pages inline this mark and colour it from theme.css (--logo-*), so it follows the site's
+       light/dark toggle. This standalone file follows the OS colour scheme instead. -->
+  <style>
+    .tt { stop-color: #f4c969 } .tb { stop-color: #b08c32 } .lc { stop-color: #fff2dd } .le { stop-color: #f4c969 }
+    .beam { stroke: #f4c969 } .gal { stroke: #f4c969 }
+    @media (prefers-color-scheme: light) {
+      .tt { stop-color: #99771f } .tb { stop-color: #664c00 } .lc { stop-color: #ebc162 } .le { stop-color: #aa862d }
+      .beam { stroke: #aa862d } .gal { stroke: #86660a }
+    }
+  </style>
   <defs>
-    <linearGradient id="alexDuotone" gradientUnits="userSpaceOnUse" x1="40" y1="32" x2="216" y2="224">
-      <stop offset="0" stop-color="#22d3ee"/>
-      <stop offset="1" stop-color="#f59e0b"/>
+    <linearGradient id="pharosTower" gradientUnits="userSpaceOnUse" x1="0" y1="80" x2="0" y2="224">
+      <stop offset="0" class="tt"/><stop offset="1" class="tb"/>
     </linearGradient>
-    <linearGradient id="alexDuotoneSoft" gradientUnits="userSpaceOnUse" x1="40" y1="32" x2="216" y2="224">
-      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.85"/>
-      <stop offset="1" stop-color="#f59e0b" stop-opacity="0.85"/>
-    </linearGradient>
-    <linearGradient id="alexDuotoneBack" gradientUnits="userSpaceOnUse" x1="40" y1="32" x2="216" y2="224">
-      <stop offset="0" stop-color="#f59e0b"/>
-      <stop offset="1" stop-color="#22d3ee"/>
-    </linearGradient>
+    <radialGradient id="pharosLamp"><stop offset="0" class="lc"/><stop offset="1" class="le"/></radialGradient>
   </defs>
-
-  <!-- BACK LAYER: point-down chevron (the V) — flipped, dimmed, amber-led, recedes. -->
-  <g transform="translate(0,256) scale(1,-1)" opacity="0.4"
-     fill="none" stroke="url(#alexDuotoneBack)"
-     stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M48 208 L88 128"/>
-    <path d="M96 112 L128 48"/>
-    <path d="M208 208 L168 128"/>
-    <path d="M160 112 L128 48"/>
-    <path d="M82 152 L174 152" stroke-width="22"/>
+  <g class="beam" stroke-width="7" stroke-linecap="round" opacity="0.55">
+    <path d="M100 58 L30 34"/><path d="M100 70 L22 78"/>
+    <path d="M156 58 L226 34"/><path d="M156 70 L234 78"/>
   </g>
-
-  <!-- FRONT LAYER: upright chevron (the A) — prominent, full duotone, owns crossbar + core. -->
-  <g fill="none" stroke="url(#alexDuotone)" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
-    <path id="segLeftOuter" d="M48 208 L88 128"/>
-    <path id="segLeftInner" d="M96 112 L128 48"/>
-    <path id="segRightOuter" d="M208 208 L168 128"/>
-    <path id="segRightInner" d="M160 112 L128 48"/>
+  <g fill="none" stroke="url(#pharosTower)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M70 220 L112 96"/><path d="M186 220 L144 96"/>
+    <path d="M90 162 L166 162" stroke-width="18"/>
+    <path d="M56 220 L200 220" stroke-width="14"/>
   </g>
-  <path id="segCrossbar" d="M82 152 L174 152" fill="none"
-        stroke="url(#alexDuotoneSoft)" stroke-width="22" stroke-linecap="round"/>
-  <circle id="coreNode" cx="128" cy="48" r="18" fill="url(#alexDuotone)"/>
-  <circle cx="128" cy="48" r="7" fill="#0b1220"/>
+  <circle cx="128" cy="64" r="24" fill="url(#pharosLamp)"/>
+  <path class="gal" d="M104 92 L152 92" stroke-width="10" stroke-linecap="round"/>
 </svg>
