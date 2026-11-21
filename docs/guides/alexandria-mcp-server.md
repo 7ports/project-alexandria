@@ -7,7 +7,7 @@ tags:
   - mcp-server
 status: active
 created: 2026-06-17
-updated: 2026-09-28
+updated: 2026-11-21
 embedding_version: 1
 ---
 
@@ -15,12 +15,15 @@ embedding_version: 1
 
 ## Quick Reference
 
+**Let an agent install it:** paste this into Claude Code, Codex, Cursor, Copilot or Gemini CLI:
+`Install the Alexandria MCP server for me: read https://7ports.github.io/project-alexandria/install.md and follow its steps.`
+
 **Install:**
 ```bash
 cd /path/to/project-alexandria/mcp-server && npm install
 ```
 
-**Claude Code config** (`~/.claude.json` → `mcpServers`):
+**Register (Claude Code):** `claude mcp add --scope user alexandria -- node /path/to/project-alexandria/mcp-server/index.js`, or add to `~/.claude.json` → `mcpServers`:
 ```json
 {
   "alexandria": {
@@ -41,7 +44,7 @@ A custom MCP server that exposes Project Alexandria's tooling setup guides as se
 
 ## Prerequisites
 
-- Node.js (v18+)
+- Node.js 22 or newer (the native modules ship prebuilt binaries for Node 22+ only)
 - Project Alexandria repository cloned/present at its expected location
 
 ## Installation
@@ -63,7 +66,7 @@ Add to your `~/.claude.json` under `"mcpServers"`:
     "type": "stdio",
     "command": "node",
     "args": [
-      "C:/Users/Raj/Documents/nongamerepos/project-alexandria/mcp-server/index.js"
+      "/path/to/project-alexandria/mcp-server/index.js"
     ],
     "env": {}
   }

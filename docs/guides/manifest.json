@@ -378,6 +378,12 @@
     "description": ""
   },
   {
+    "name": "agent-installers-for-mcp-servers-pick-by-distribution",
+    "type": "concept",
+    "title": "Agent installers for MCP servers: pick the pattern by how the server is distributed",
+    "description": "One-click deeplinks, add-mcp and .mcpb only work for servers published as a package or URL. A clone-based local server needs an agent-executable insta"
+  },
+  {
     "name": "committed-generated-artifacts-regenerate-never-merge",
     "type": "concept",
     "title": "Generated artifacts committed to git must be regenerated on conflict, never side-selected",
