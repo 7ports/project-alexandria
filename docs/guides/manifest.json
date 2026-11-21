@@ -402,6 +402,12 @@
     "description": "Embeddings differ in the last bits across CPUs and UMAP/k-means amplify that, so a byte-for-byte 'is the committed artifact fresh?' check flaps betwee"
   },
   {
+    "name": "theme-tokens-must-reach-svg-and-canvas",
+    "type": "concept",
+    "title": "A light/dark theme is only as complete as the places its tokens can reach",
+    "description": "CSS custom-property themes miss external SVGs, favicons, canvas/WebGL charts and script colour constants. Inline the logo coloured from tokens, give s"
+  },
+  {
     "name": "unity-automation-modal-dialogs",
     "type": "concept",
     "title": "Unity editor automation: modal dialogs, background-idle editor, and paused tests",
@@ -472,6 +478,12 @@
     "type": "reference",
     "title": "Free / cheap low-poly rigged character & monster sources (Unity-compatible) — licensing gotchas",
     "description": "Where to get free CC0 low-poly rigged humanoids and monsters, which share rigs, and the licence traps (Quaternius QAL, Meshy CC BY, Tripo free non-com"
+  },
+  {
+    "name": "headless-chrome-screenshots-color-scheme-webgl-narrow-viewports",
+    "type": "reference",
+    "title": "Headless Chrome screenshots: forcing light/dark, getting WebGL, and true phone widths",
+    "description": "Headless Chrome follows the OS colour scheme (force with --force-dark-mode or --blink-settings=preferredColorScheme=1), needs --enable-unsafe-swiftsha"
   },
   {
     "name": "jsdom-test-static-site-fetch-routing",
