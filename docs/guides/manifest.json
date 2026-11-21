@@ -480,6 +480,12 @@
     "description": "jsdom has no window.fetch; inject Node's fetch resolving relative URLs against window.location, stub CDN libraries, and load pages with JSDOM.fromURL "
   },
   {
+    "name": "material-color-utilities-esm-import-and-scheme-generation",
+    "type": "reference",
+    "title": "material-color-utilities: 0.4.0 fails to import in Node; generating Material 3 schemes from a seed",
+    "description": "@material/material-color-utilities 0.4.0 throws ERR_MODULE_NOT_FOUND in Node ESM (extensionless import in color_spec_2025.js); pin 0.3.0. Plus how to "
+  },
+  {
     "name": "onnxruntime-node-cuda-download-404-in-ci",
     "type": "reference",
     "title": "onnxruntime-node npm install fails in Linux CI: CUDA binary download 404",
